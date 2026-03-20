@@ -1,9 +1,9 @@
 # gcmgl
 <img src="media/gcmgl.png" height="180"/>
 
-### A C++ rendering library for PlayStation 3 and Linux.
+### A C++ graphics library for PlayStation 3 and Linux.
 
-gcmgl is a C++ rendering library targeting PlayStation 3 (RSX/GCM) and Linux (x86_64, OpenGL). It provides a platform-abstracted renderer interface covering buffer management, shader programs, textures, draw calls, and batch rendering. Mathematics support is provided by [mathsfury](https://github.com/rs189/mathsfury).
+gcmgl is a C++ graphics library targeting PlayStation 3 (GCM) and Linux (x86_64, OpenGL). gcmgl provides a platform-abstracted renderer interface covering viewports, buffers, shader programs, textures, blend states, draw calls, and batch rendering. Mathematics support is provided by [mathsfury](https://github.com/rs189/mathsfury).
 
 ## Requirements
 
@@ -21,7 +21,6 @@ gcmgl is a C++ rendering library targeting PlayStation 3 (RSX/GCM) and Linux (x8
 ##### Linux build dependencies:
 
 - [glad](https://github.com/Dav1dde/glad)
-- [cgc (Cg Toolkit)](https://developer.nvidia.com/cg-toolkit-download)
 - [SIMDe](https://github.com/simd-everywhere/simde) (optional, for SSE path)
 
 ## Interface
