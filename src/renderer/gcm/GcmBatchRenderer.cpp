@@ -178,7 +178,7 @@ void CGcmBatchRenderer::SpuTransformChunk(
 			}
 		}
 	}
-#endif
+#endif // PS3_SPU_ENABLED
 }
 
 void CGcmBatchRenderer::DrawBatchedChunk(
@@ -255,7 +255,7 @@ void CGcmBatchRenderer::DrawBatchedChunk(
 			vertexPosOffset,
 			localBatchData);
 	}
-#else
+#else // PS3_SPU_ENABLED
 	const uint32 numThreads = (chunkSize > 1) ? 2 : 1;
 	if (numThreads > 1)
 	{
@@ -324,7 +324,7 @@ void CGcmBatchRenderer::DrawBatchedChunk(
 			}
 		}
 	}
-#endif
+#endif // !PS3_SPU_ENABLED
 
 	rsxFlushBuffer(context);
 
@@ -519,7 +519,7 @@ void CGcmBatchRenderer::DrawIndexedBatchedChunk(
 			vertexPosOffset,
 			localBatchData);
 	}
-#else
+#else // PS3_SPU_ENABLED
 	const uint32 numThreads = (chunkSize > 1) ? 2 : 1;
 	if (numThreads > 1)
 	{
@@ -597,7 +597,7 @@ void CGcmBatchRenderer::DrawIndexedBatchedChunk(
 			}
 		}
 	}
-#endif
+#endif // !PS3_SPU_ENABLED
 
 	rsxFlushBuffer(context);
 

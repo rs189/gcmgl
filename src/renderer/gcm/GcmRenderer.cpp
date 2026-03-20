@@ -155,7 +155,7 @@ bool CGcmRenderer::Init(const RendererDesc_t& rendererDesc)
 			m_pSpuBtm = GCMGL_NULL;
 		}
 	}
-#endif
+#endif // PS3_SPU_ENABLED
 
 	return true;
 }
