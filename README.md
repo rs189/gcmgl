@@ -24,36 +24,6 @@ gcmgl is a C++ rendering library targeting PlayStation 3 (RSX/GCM) and Linux (x8
 - [cgc (Cg Toolkit)](https://developer.nvidia.com/cg-toolkit-download)
 - [SIMDe](https://github.com/simd-everywhere/simde) (optional, for SSE path)
 
-## Build
-
-Install required build dependencies:
-
-- Fedora:
-```bash
-sudo dnf install cmake gcc-c++ glfw-devel mesa-libGL-devel pkgconf-pkg-config ImageMagick
-```
-
-Build using the provided scripts:
-
-- Linux (x86_64):
-```bash
-./build_linux_x86_64.sh
-```
-- PlayStation 3:
-```bash
-./build_ps3.sh
-```
-
-## Examples
-
-Build scripts prompt for an example to build: `Triangle`, `Cube`, `Shader`, `Textured`, `Lit`, `TexturedLit`, or `Batch`.
-
-![Triangle](media/Triangle.png) ![Cube](media/Cube.png) ![Shader](media/Shader.png)
-
-![Textured](media/Textured.png) ![Lit](media/Lit.png) ![TexturedLit](media/TexturedLit.png)
-
-![Batch](media/Batch.png)
-
 ## Interface
 
 ### Handles
@@ -247,7 +217,6 @@ Build scripts prompt for an example to build: `Triangle`, `Cube`, `Shader`, `Tex
 ### CBatchRenderer
 - `DrawBatched(uint32 vertexCount, const BatchData_t& batchData, const CMatrix4& viewProj, uint32 startVertex)`
 - `DrawIndexedBatched(uint32 indexCount, uint32 vertexCount, const BatchData_t& batchData, const CMatrix4& viewProj, uint32 startIndex, int32 baseVertex)`
-
 
 ## Build
 
