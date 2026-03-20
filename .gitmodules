@@ -1,3 +1,9 @@
 [submodule "src/mathsfury"]
 	path = src/mathsfury
 	url = ../mathsfury
+[submodule "thirdparty/glad"]
+	path = thirdparty/glad
+	url = https://github.com/Dav1dde/glad.git
+[submodule "thirdparty/simde"]
+	path = thirdparty/simde
+	url = https://github.com/simd-everywhere/simde.git
