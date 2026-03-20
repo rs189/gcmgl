@@ -1,5 +1,5 @@
 # gcmgl
-<img src="media/gcmgl.png" width="200"/>
+<img src="media/gcmgl.png" height="180"/>
 
 ### A C++ rendering library for PlayStation 3 and Linux.
 
@@ -15,7 +15,7 @@ gcmgl is a C++ rendering library targeting PlayStation 3 (RSX/GCM) and Linux (x8
 
 - [ps3toolchain](http://github.com/ps3dev/ps3toolchain)
 - [PSL1GHT](http://github.com/ps3dev/PSL1GHT)
-- [cgc (Cg Toolkit)](https://developer.nvidia.com/cg-toolkit-download)
+- [NVIDIA Cg Toolkit](https://developer.nvidia.com/cg-toolkit-download)
 - [ImageMagick](https://imagemagick.org)
 
 ##### Linux build dependencies:

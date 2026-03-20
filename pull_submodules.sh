@@ -2,15 +2,11 @@
 set -e
 
 echo "Updating mathsfury submodule..."
+git submodule update --init --recursive --remote
 
-cd src/mathsfury
-git fetch origin
-git reset --hard origin/main
+echo "Committing updated submodules..."
+git add src/mathsfury thirdparty/glad thirdparty/simde
 
-cd ../..
+git commit -m "feat: update submodules" || true
 
-echo "Committing updated mathsfury submodule..."
-git add src/mathsfury
-git commit -m "Update mathsfury submodule after force push" || true
-
-echo "mathsfury submodule updated successfully"
+echo "Submodules updated successfully"
