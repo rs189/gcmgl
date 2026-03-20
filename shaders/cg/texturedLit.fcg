@@ -1,0 +1,139 @@
+//===----------------------------------------------------------------------===//
+//
+// Part of the gcmgl, under the MIT License.
+// See LICENSE for license information.
+// SPDX-License-Identifier: MIT
+//
+//===----------------------------------------------------------------------===//
+
+struct PS_INPUT
+{
+    float3 worldPos : TEXCOORD0;
+    float2 texCoord : TEXCOORD1;
+    float3 normal : TEXCOORD2;
+    float3 color : COLOR;
+};
+
+struct PS_OUTPUT
+{
+    float4 color : COLOR;
+};
+
+float3 calculateLight(
+    float3 worldPos,
+    float3 normal,
+    float3 baseColor,
+    float3 lightPosition,
+    float3 lightColor,
+    float intensity)
+{
+    float3 lightDir = lightPosition - worldPos;
+    float distance = length(lightDir);
+    lightDir = normalize(lightDir);
+
+    float3 norm = normalize(normal);
+
+    // Half-lambert
+    float dotNL = dot(norm, lightDir);
+    float wrap = 0.5;
+    float diff = (dotNL + wrap) / (1.0 + wrap);
+    diff = max(diff, 0.0);
+
+    // Distance attenuation
+    float attenuation = 1.0 / (1.0 + 0.05 * distance + 0.01 * distance * distance);
+
+    return intensity * attenuation * diff * lightColor * baseColor;
+}
+
+PS_OUTPUT main(
+    PS_INPUT input,
+    uniform sampler2D tex : TEXUNIT0,
+    // 8 lights (16 float4 registers)
+    uniform float4 lightData0 : register(c0),
+    uniform float4 lightData1 : register(c1),
+    uniform float4 lightData2 : register(c2),
+    uniform float4 lightData3 : register(c3),
+    uniform float4 lightData4 : register(c4),
+    uniform float4 lightData5 : register(c5),
+    uniform float4 lightData6 : register(c6),
+    uniform float4 lightData7 : register(c7),
+    uniform float4 lightData8 : register(c8),
+    uniform float4 lightData9 : register(c9),
+    uniform float4 lightData10 : register(c10),
+    uniform float4 lightData11 : register(c11),
+    uniform float4 lightData12 : register(c12),
+    uniform float4 lightData13 : register(c13),
+    uniform float4 lightData14 : register(c14),
+    uniform float4 lightData15 : register(c15))
+{
+    PS_OUTPUT output;
+
+    // Sample texture
+    float4 texColor = tex2D(tex, input.texCoord);
+
+    float3 diffuse = float3(0.0, 0.0, 0.0);
+
+    // 8 lights
+    diffuse += calculateLight(
+        input.worldPos,
+        input.normal,
+        input.color,
+        lightData0.xyz,
+        lightData1.xyz,
+        lightData0.w);
+    diffuse += calculateLight(
+        input.worldPos,
+        input.normal,
+        input.color,
+        lightData2.xyz,
+        lightData3.xyz,
+        lightData2.w);
+    diffuse += calculateLight(
+        input.worldPos,
+        input.normal,
+        input.color,
+        lightData4.xyz,
+        lightData5.xyz,
+        lightData4.w);
+    diffuse += calculateLight(
+        input.worldPos,
+        input.normal,
+        input.color,
+        lightData6.xyz,
+        lightData7.xyz,
+        lightData6.w);
+    diffuse += calculateLight(
+        input.worldPos,
+        input.normal,
+        input.color,
+        lightData8.xyz,
+        lightData9.xyz,
+        lightData8.w);
+    diffuse += calculateLight(
+        input.worldPos,
+        input.normal,
+        input.color,
+        lightData10.xyz,
+        lightData11.xyz,
+        lightData10.w);
+    diffuse += calculateLight(
+        input.worldPos,
+        input.normal,
+        input.color,
+        lightData12.xyz,
+        lightData13.xyz,
+        lightData12.w);
+    diffuse += calculateLight(
+        input.worldPos,
+        input.normal,
+        input.color,
+        lightData14.xyz,
+        lightData15.xyz,
+        lightData14.w);
+
+    float3 ambient = 0.3 * input.color;
+
+    output.color = float4(texColor.rgb * (ambient + diffuse), texColor.a);
+
+    return output;
+}

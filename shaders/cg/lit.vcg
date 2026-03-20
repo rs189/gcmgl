@@ -1,0 +1,50 @@
+//===----------------------------------------------------------------------===//
+//
+// Part of the gcmgl, under the MIT License.
+// See LICENSE for license information.
+// SPDX-License-Identifier: MIT
+//
+//===----------------------------------------------------------------------===//
+
+struct VS_INPUT
+{
+    float3 position : POSITION;
+    float2 texCoord : TEXCOORD0;
+    float3 normal : NORMAL;
+    float3 color : COLOR;
+};
+
+struct VS_OUTPUT
+{
+    float4 position : POSITION;
+    float3 worldPos : TEXCOORD0;
+    float2 texCoord : TEXCOORD1;
+    float3 normal : TEXCOORD2;
+    float3 color : COLOR;
+};
+
+void main(
+    float3 position : POSITION,
+    float2 texCoord : TEXCOORD0,
+    float3 normal : NORMAL,
+    float4 color : COLOR0,
+
+    out float4 oPosition : POSITION,
+    out float3 oWorldPos : TEXCOORD0,
+    out float2 oTexCoord : TEXCOORD1,
+    out float3 oNormal : TEXCOORD2,
+    out float3 oColor : COLOR,
+
+    uniform float4x4 mvp,
+    uniform float4x4 model)
+{
+    // World space
+    oWorldPos = mul(model, float4(position, 1.0)).xyz;
+
+    // Transform using inverse transpose
+    oNormal = normalize(mul((float3x3)model, normal));
+
+    oTexCoord = texCoord;
+    oColor = color.rgb;
+    oPosition = mul(mvp, float4(position, 1.0));
+}

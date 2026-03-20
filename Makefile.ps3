@@ -1,0 +1,123 @@
+.SUFFIXES:
+
+ifeq ($(strip $(PSL1GHT)),)
+$(error "Please set PSL1GHT in your environment")
+endif
+
+include $(PSL1GHT)/ppu_rules
+
+TARGET := gcmgl
+BUILD := build/bin/ps3
+OBJDIR := build/obj/ps3
+SOURCES := src src/mathsfury src/utils src/renderer src/renderer/gcm src/renderer/gcm/spu thirdparty/rsxutil src/window src/window/ps3
+INCLUDES := src include public thirdparty src/renderer/gcm/spu
+
+SPU_SRCDIR := src/renderer/gcm/spu
+SPU_BUILD_DIR := $(OBJDIR)/spu
+SPU_ELF := $(SPU_BUILD_DIR)/SpuBatchTransformJob.elf
+SPU_OBJ := $(OBJDIR)/SpuBatchTransformJob_spu.o
+SPU_SRC := $(SPU_SRCDIR)/SpuBatchTransformJob.c
+SPU_CC := spu-gcc
+SPU_CFLAGS := -O2 -Wall -I$(SPU_SRCDIR) -I/usr/local/ps3dev/spu/include -Ipublic -DPLATFORM_PS3
+
+BUILD_TYPE ?= Release
+ifeq ($(BUILD_TYPE),Debug)
+	OPT_FLAGS = -O0 -g
+else
+	OPT_FLAGS = -O2
+endif
+
+CFLAGS = $(OPT_FLAGS) -Wall -mcpu=cell -maltivec $(MACHDEP) $(INCLUDE) -DPLATFORM_PS3
+CXXFLAGS = $(CFLAGS) -std=c++11
+LDFLAGS = $(MACHDEP) -Wl,-Map,$@.map
+
+ifeq ($(EXAMPLE),Triangle)
+	CFLAGS += -DEXAMPLE_TRIANGLE
+	EXAMPLE_SRC = Triangle.cpp
+	EXAMPLE_DIR = src/examples/example_triangle
+else ifeq ($(EXAMPLE),Cube)
+	CFLAGS += -DEXAMPLE_CUBE
+	EXAMPLE_SRC = Cube.cpp
+	EXAMPLE_DIR = src/examples/example_cube
+else ifeq ($(EXAMPLE),Shader)
+	CFLAGS += -DEXAMPLE_SHADER
+	EXAMPLE_SRC = Shader.cpp
+	EXAMPLE_DIR = src/examples/example_shader
+else ifeq ($(EXAMPLE),Batch)
+	CFLAGS += -DEXAMPLE_BATCH
+	EXAMPLE_SRC = Batch.cpp
+	EXAMPLE_DIR = src/examples/example_batch
+else ifeq ($(EXAMPLE),Textured)
+	CFLAGS += -DEXAMPLE_TEXTURED
+	EXAMPLE_SRC = Textured.cpp
+	EXAMPLE_DIR = src/examples/example_textured
+else ifeq ($(EXAMPLE),Lit)
+	CFLAGS += -DEXAMPLE_LIT
+	EXAMPLE_SRC = Lit.cpp
+	EXAMPLE_DIR = src/examples/example_lit
+else ifeq ($(EXAMPLE),TexturedLit)
+	CFLAGS += -DEXAMPLE_TEXTURED_LIT
+	EXAMPLE_SRC = TexturedLit.cpp
+	EXAMPLE_DIR = src/examples/example_texturedLit
+endif
+
+LIBS := -lgcm_sys -lrsx -llv2 -lsysutil -lio -lm -lrt $(wildcard build/shaders/*.o)
+
+CFILES := $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
+CFILES := $(filter-out SpuBatchTransformJob.c, $(CFILES))
+CPPFILES := $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.cpp)))
+CPPFILES := $(filter-out gl_renderer.cpp gl_device.cpp WindowGlfw.cpp windowing_glfw.cpp imgui_renderer.cpp diagnostics.cpp, $(CPPFILES))
+CPPFILES += $(EXAMPLE_SRC)
+
+export OUTPUT := $(BUILD)/$(TARGET)
+export VPATH := $(SOURCES) $(EXAMPLE_DIR)
+export BUILDDIR := $(OBJDIR)
+export LD := $(CXX)
+
+export OFILES := $(addprefix $(BUILDDIR)/, $(CPPFILES:.cpp=.o) $(CFILES:.c=.o)) $(SPU_OBJ)
+
+export INCLUDE := $(foreach dir,$(INCLUDES), -I$(dir)) $(LIBPSL1GHT_INC) -I$(OBJDIR)
+export LIBPATHS := $(LIBPSL1GHT_LIB)
+
+.PHONY: all clean run pkg
+
+all: $(BUILD)/$(TARGET).self
+
+$(BUILD)/$(TARGET).self: $(BUILD)/$(TARGET).elf
+
+$(BUILD)/$(TARGET).elf: $(OFILES) | $(BUILD)
+	@echo Linking $(notdir $@)
+	$(LD) $(LDFLAGS) $(OFILES) $(LIBPATHS) $(LIBS) -o $@
+
+$(BUILD) $(OBJDIR):
+	@mkdir -p $@
+
+$(BUILDDIR)/%.o: %.cpp | $(OBJDIR)
+	@echo $(notdir $<)
+	@$(CXX) -MD -MP -MF $(BUILDDIR)/$*.d $(CXXFLAGS) -c $< -o $@
+
+$(BUILDDIR)/%.o: %.c | $(OBJDIR)
+	@echo $(notdir $<)
+	@$(CC) -MD -MP -MF $(BUILDDIR)/$*.d $(CFLAGS) -c $< -o $@
+
+$(SPU_ELF): $(SPU_SRC) $(SPU_SRCDIR)/SpuBatchTransformJob.h | $(SPU_BUILD_DIR)
+	@echo Building $(notdir $@)
+	@$(SPU_CC) $(SPU_CFLAGS) -o $@ $(SPU_SRC)
+
+$(SPU_OBJ): $(SPU_ELF)
+	@echo Embedding $(notdir $<)
+	@cd "$(SPU_BUILD_DIR)" && powerpc64-ps3-elf-ld -r -b binary -o "$(notdir $(SPU_OBJ))" $(notdir $(SPU_ELF)) && mv "$(notdir $(SPU_OBJ))" "$(abspath $(SPU_OBJ))"
+
+$(SPU_BUILD_DIR):
+	@mkdir -p $@
+
+-include $(OFILES:.o=.d)
+
+clean:
+	@echo Cleaning...
+	@rm -rf $(BUILD) $(OBJDIR)
+
+run: all
+	ps3load $(BUILD)/$(TARGET).self
+
+pkg: all

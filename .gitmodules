@@ -1,0 +1,3 @@
+[submodule "src/mathsfury"]
+	path = src/mathsfury
+	url = ../mathsfury
