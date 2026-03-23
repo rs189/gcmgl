@@ -1,4 +1,5 @@
 cmake_minimum_required(VERSION 3.10...3.30)
+
 project(gcmgl CXX)
 
 enable_language(C)
@@ -57,12 +58,12 @@ elseif(EXAMPLE STREQUAL "TexturedLit")
 endif()
 
 if(BUILD_PS3)
+	add_definitions(-DPLATFORM_PS3 -mcpu=cell)
+
 	set(CMAKE_SYSTEM_NAME Generic)
 	set(CMAKE_C_COMPILER "$ENV{PS3DEV}/bin/ppu-gcc")
 	set(CMAKE_CXX_COMPILER "$ENV{PS3DEV}/bin/ppu-g++")
 	set(CMAKE_FIND_ROOT_PATH "$ENV{PS3DEV}/ppu" "$ENV{PSL1GHT}")
-
-	add_definitions(-DPLATFORM_PS3 -mcpu=cell)
 	set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -mcpu=cell -maltivec")
 	set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -mcpu=cell -maltivec")
 
@@ -130,17 +131,22 @@ else()
 	find_package(PkgConfig REQUIRED)
 	pkg_check_modules(GLFW3 glfw3)
 	if(NOT GLFW3_FOUND)
-		message(FATAL_ERROR "glfw3 not found. On Fedora, run: sudo dnf install glfw-devel")
+		message(FATAL_ERROR "Build failed, glfw3 not found")
 	endif()
 
 	add_library(glad STATIC thirdparty/glad/generated/src/gl.c)
+
 	target_include_directories(glad PUBLIC
 		${CMAKE_SOURCE_DIR}/thirdparty/glad/generated/include
 		${CMAKE_SOURCE_DIR}/thirdparty/glad/include
 	)
 
+	file(READ "${CMAKE_SOURCE_DIR}/src/Main.h" MAIN_H_CONTENT)
+	if(MAIN_H_CONTENT MATCHES "(^|\n)[ \t]*#[ \t]*define[ \t]+GCMGL_DIAGNOSTICS")
+		list(APPEND ENGINE_SRCS src/utils/DiagnosticsReporter.cpp)
+	endif()
+
 	list(APPEND ENGINE_SRCS
-		src/utils/DiagnosticsReporter.cpp
 		src/renderer/gl/GlRenderer.cpp
 		src/renderer/gl/GlBatchRenderer.cpp
 		src/window/glfw/WindowGlfw.cpp

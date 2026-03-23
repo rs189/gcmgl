@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+
 echo "1 - Triangle"
 echo "2 - Cube"
 echo "3 - Shader"
@@ -41,18 +44,17 @@ esac
 
 echo "Building example: $EXAMPLE"
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUILD_DIR="$ROOT_DIR/build"
 mkdir -p "$BUILD_DIR"
 mkdir -p "$BUILD_DIR/bin/ps3"
-
-echo "Cleaning previous build..."
-rm -rf build/bin/ps3/ build/obj/ps3/ || true
 
 export PS3DEV=/usr/local/ps3dev
 export PSL1GHT=/usr/local/ps3dev
 export EXAMPLE=$EXAMPLE
 export BUILD_TYPE=Release
+
+echo "Cleaning previous build..."
+rm -rf build/bin/ps3/ build/obj/ps3/ || true
 
 echo "Compiling shaders..."
 python3 "$ROOT_DIR/shaders/compile_shaders.py"

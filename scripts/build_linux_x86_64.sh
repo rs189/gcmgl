@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+
 echo "1 - Triangle"
 echo "2 - Cube"
 echo "3 - Shader"
@@ -41,7 +44,6 @@ esac
 
 echo "Building example: $EXAMPLE"
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BUILD_DIR="$ROOT_DIR/build"
 mkdir -p "$BUILD_DIR"
 mkdir -p "$BUILD_DIR/bin/linux-x86_64"
