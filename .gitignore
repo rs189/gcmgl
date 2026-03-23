@@ -39,6 +39,7 @@ gitignore/
 
 # Build
 build/
+bin/
 
 # Shaders
 shaders/__pycache__
