@@ -74,10 +74,10 @@ int32 RunTriangleExample(
 
 	// Create shader
 	ShaderProgramHandle hShaderProgram = pRenderer->CreateShaderProgram(
-		"rainbow");
+		"example_rainbow");
 	if (hShaderProgram == 0)
 	{
-		Error("[Triangle] Failed to create shader program 'rainbow'\n");
+		Error("[Triangle] Failed to create shader program 'example_rainbow'\n");
 
 		return 1;
 	}

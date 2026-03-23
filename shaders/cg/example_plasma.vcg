@@ -15,14 +15,14 @@ struct VS_INPUT
 struct VS_OUTPUT
 {
     float4 position : POSITION;
-    float3 color : COLOR;
+    float3 objPos : TEXCOORD0;
 };
 
-VS_OUTPUT main(VS_INPUT input, uniform float4x4 mvp, uniform float time)
+VS_OUTPUT main(VS_INPUT input, uniform float4x4 mvp)
 {
     VS_OUTPUT output;
     output.position = mul(mvp, float4(input.position, 1.0));
-    output.color = input.color;
+    output.objPos = input.position;
 
     return output;
 }

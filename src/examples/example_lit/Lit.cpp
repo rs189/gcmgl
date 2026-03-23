@@ -66,10 +66,10 @@ int32 RunLitExample(
 	CCamera camera;
 
 	// Create shader
-	ShaderProgramHandle hShaderProgram = pRenderer->CreateShaderProgram("lit");
+	ShaderProgramHandle hShaderProgram = pRenderer->CreateShaderProgram("example_lit");
 	if (hShaderProgram == 0)
 	{
-		Error("[Lit] Failed to create shader program 'lit'\n");
+		Error("[Lit] Failed to create shader program 'example_lit'\n");
 
 		return 1;
 	}

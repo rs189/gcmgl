@@ -52,10 +52,10 @@ int32 RunTexturedExample(
 	
 	// Create shader
 	ShaderProgramHandle hShaderProgram =
-		pRenderer->CreateShaderProgram("textured");
+		pRenderer->CreateShaderProgram("example_textured");
 	if (hShaderProgram == 0)
 	{
-		Error("[Textured] Failed to create shader program 'textured'\n");
+		Error("[Textured] Failed to create shader program 'example_textured'\n");
 
 		return 1;
 	}
@@ -135,7 +135,7 @@ int32 RunTexturedExample(
 		&texChannels,
 		4);
 	uint32* pTextureData = GCMGL_NULL;
-	int32 finalWidth = 64, finalHeight = 64;
+	int32 finalWidth = 512, finalHeight = 512;
  
 	if (pRawImageData)
 	{

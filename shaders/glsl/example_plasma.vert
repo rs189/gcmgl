@@ -8,14 +8,15 @@
 
 #version 120
 
-varying vec3 v_color;
+attribute vec3 position;
+attribute vec3 color;
 
-uniform float time;
+varying vec3 v_objPos;
+
+uniform mat4 mvp;
 
 void main()
 {
-    // Create a wave pattern based on time
-    float wave = sin(time * 3.0 + gl_FragCoord.x * 0.01 + gl_FragCoord.y * 0.01) * 0.5 + 0.5;
-    vec3 animatedColor = mix(v_color, vec3(1.0) - v_color, wave);
-    gl_FragColor = vec4(animatedColor, 1.0);
+    gl_Position = mvp * vec4(position, 1.0);
+    v_objPos = position;
 }

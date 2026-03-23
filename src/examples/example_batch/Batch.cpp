@@ -46,10 +46,10 @@ int32 RunBatchExample(
 	camera.m_Position = CVector3(0.0f, 2.5f, 9.33f);
 
 	// Create shader
-	ShaderProgramHandle hShaderProgram = pRenderer->CreateShaderProgram("rainbow");
+	ShaderProgramHandle hShaderProgram = pRenderer->CreateShaderProgram("example_rainbow");
 	if (hShaderProgram == 0)
 	{
-		Error("[Batch] Failed to create shader program 'rainbow'\n");
+		Error("[Batch] Failed to create shader program 'example_rainbow'\n");
 
 		return 1;
 	}

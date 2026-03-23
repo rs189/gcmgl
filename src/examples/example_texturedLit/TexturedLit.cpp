@@ -143,7 +143,7 @@ int32 RunTexturedLitExample(
 		&texChannels,
 		4);
 	uint32* pTextureData = GCMGL_NULL;
-	int32 finalWidth = 64, finalHeight = 64;
+	int32 finalWidth = 512, finalHeight = 512;
 
 	if (pRawImageData)
 	{
@@ -162,10 +162,10 @@ int32 RunTexturedLitExample(
 
 	// Create shader
 	ShaderProgramHandle hShaderProgram =
-		pRenderer->CreateShaderProgram("texturedLit");
+		pRenderer->CreateShaderProgram("example_textured_lit");
 	if (hShaderProgram == 0)
 	{
-		Error("[TexturedLit] Failed to create shader program 'texturedLit'\n");
+		Error("[TexturedLit] Failed to create shader program 'example_textured_lit'\n");
 		
 		return 1;
 	}

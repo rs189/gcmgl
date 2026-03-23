@@ -42,10 +42,10 @@ int32 RunShaderExample(
 
 	// Create shader
 	ShaderProgramHandle hShaderProgram = pRenderer->CreateShaderProgram(
-		"example");
+		"example_plasma");
 	if (hShaderProgram == 0)
 	{
-		Error("[Shader] Failed to create shader program 'example'\n");
+		Error("[Shader] Failed to create shader program 'example_plasma'\n");
 
 		return 1;
 	}

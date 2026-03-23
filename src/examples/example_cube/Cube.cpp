@@ -112,10 +112,10 @@ int32 RunCubeExample(
 
 	// Create shader
 	ShaderProgramHandle hShaderProgram = pRenderer->CreateShaderProgram(
-		"rainbow");
+		"example_rainbow");
 	if (hShaderProgram == 0)
 	{
-		Error("[Cube] Failed to create shader program 'rainbow'\n");
+		Error("[Cube] Failed to create shader program 'example_rainbow'\n");
 
 		return 1;
 	}

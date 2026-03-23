@@ -1,0 +1,41 @@
+//===----------------------------------------------------------------------===//
+//
+// Part of the gcmgl, under the MIT License.
+// See LICENSE for license information.
+// SPDX-License-Identifier: MIT
+//
+//===----------------------------------------------------------------------===//
+
+struct PS_INPUT
+{
+    float3 objPos : TEXCOORD0;
+};
+
+struct PS_OUTPUT
+{
+    float4 color : COLOR;
+};
+
+PS_OUTPUT main(PS_INPUT input, uniform float time)
+{
+    PS_OUTPUT output;
+
+    float x = input.objPos.x;
+    float y = input.objPos.y;
+    float z = input.objPos.z;
+
+    float v = sin(x * 6.0 + time * 1.5)
+            + sin(y * 6.0 + time * 1.2)
+            + sin((x + y + z) * 4.0 + time)
+            + sin(sqrt(x * x + y * y + z * z + 1.0) * 5.0 - time * 2.0);
+
+    v = v * 0.25 + 0.5;
+
+    float r = sin(v * 3.14159);
+    float g = sin(v * 3.14159 + 2.094);
+    float b = sin(v * 3.14159 + 4.189);
+
+    output.color = float4(r, g, b, 1.0);
+
+    return output;
+}
