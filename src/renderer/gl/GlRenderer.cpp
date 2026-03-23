@@ -843,6 +843,8 @@ void CGlRenderer::SetConstantBuffer(
 	boundUniform.m_hBuffer = hBuffer;
 	boundUniform.m_Slot = slot;
 	boundUniform.m_Stage = stage;
+
+	m_StateDirtyFlags = m_StateDirtyFlags | StateDirtyFlags_t::Uniforms;
 }
 
 void CGlRenderer::SetBlendState(const BlendState_t& state)
