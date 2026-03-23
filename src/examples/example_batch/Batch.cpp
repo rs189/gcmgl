@@ -7,6 +7,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "Main.h"
+#include "tier0/dbg.h"
 #include "window/WindowManager.h"
 #include "renderer/Renderer.h"
 #include "utils/Time.h"
@@ -48,7 +49,7 @@ int32 RunBatchExample(
 	ShaderProgramHandle hShaderProgram = pRenderer->CreateShaderProgram("rainbow");
 	if (hShaderProgram == 0)
 	{
-		printf("[ERROR][Batch] Failed to create shader program 'rainbow'\n");
+		Error("[Batch] Failed to create shader program 'rainbow'\n");
 
 		return 1;
 	}
@@ -163,7 +164,7 @@ int32 RunBatchExample(
 
 		pRenderer->BeginFrame();
 
-		pRenderer->Clear(ClearAll, CColor(0.1f, 0.1f, 0.15f, 1.0f), 1.0f, 0);
+		pRenderer->Clear(ClearAll, CColor(0.1f, 0.1f, 0.1f, 1.0f), 1.0f, 0);
 
 		// Set viewport
 		Viewport_t viewport(

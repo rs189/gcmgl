@@ -7,6 +7,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "Main.h"
+#include "tier0/dbg.h"
 #include "window/WindowManager.h"
 #include "renderer/Renderer.h"
 #include "utils/Time.h"
@@ -150,11 +151,11 @@ int32 RunTexturedLitExample(
 		finalWidth = texWidth;
 		finalHeight = texHeight;
 
-		printf("[TexturedLit] Loaded texture: %dx%d\n", texWidth, texHeight);
+		Msg("[TexturedLit] Loaded texture: %dx%d\n", texWidth, texHeight);
 	}
 	else
 	{
-		printf("[ERROR][TexturedLit] Failed to load texture.png\n");
+		Error("[TexturedLit] Failed to load texture.png\n");
 		
 		return 1;
 	}
@@ -164,8 +165,7 @@ int32 RunTexturedLitExample(
 		pRenderer->CreateShaderProgram("texturedLit");
 	if (hShaderProgram == 0)
 	{
-		printf(
-			"[ERROR][TexturedLit] Failed to create shader program 'texturedLit'\n");
+		Error("[TexturedLit] Failed to create shader program 'texturedLit'\n");
 		
 		return 1;
 	}
@@ -292,7 +292,7 @@ int32 RunTexturedLitExample(
 
 		pRenderer->BeginFrame();
 
-		pRenderer->Clear(ClearAll, CColor(0.1f, 0.1f, 0.15f, 1.0f), 1.0f, 0);
+		pRenderer->Clear(ClearAll, CColor(0.1f, 0.1f, 0.1f, 1.0f), 1.0f, 0);
 
 		// Set viewport
 		Viewport_t viewport(

@@ -7,6 +7,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "Main.h"
+#include "tier0/dbg.h"
 #include "window/WindowManager.h"
 #include "renderer/Renderer.h"
 #include "utils/Time.h"
@@ -54,8 +55,7 @@ int32 RunTexturedExample(
 		pRenderer->CreateShaderProgram("textured");
 	if (hShaderProgram == 0)
 	{
-		printf(
-			"[ERROR][Textured] Failed to create shader program 'textured'\n");
+		Error("[Textured] Failed to create shader program 'textured'\n");
 
 		return 1;
 	}
@@ -142,11 +142,11 @@ int32 RunTexturedExample(
 		pTextureData = reinterpret_cast<uint32*>(pRawImageData); // RGBA
 		finalWidth = texWidth;
 		finalHeight = texHeight;
-		printf("[Textured] Loaded texture: %dx%d\n", texWidth, texHeight);
+		Msg("[Textured] Loaded texture: %dx%d\n", texWidth, texHeight);
 	}
 	else
 	{
-		printf("[ERROR][Textured] Failed to load texture.png\n");
+		Error("[Textured] Failed to load texture.png\n");
 
 		return 1;
 	}
@@ -214,7 +214,7 @@ int32 RunTexturedExample(
  
 		pRenderer->BeginFrame();
 
-		pRenderer->Clear(ClearAll, CColor(0.1f, 0.1f, 0.15f, 1.0f), 1.0f, 0);
+		pRenderer->Clear(ClearAll, CColor(0.1f, 0.1f, 0.1f, 1.0f), 1.0f, 0);
 
 		// Set viewport
 		Viewport_t viewport(

@@ -7,6 +7,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "Main.h"
+#include "tier0/dbg.h"
 #include "window/WindowManager.h"
 #include "renderer/Renderer.h"
 #include "utils/Time.h"
@@ -44,7 +45,7 @@ int32 RunShaderExample(
 		"example");
 	if (hShaderProgram == 0)
 	{
-		printf("[ERROR][Shader] Failed to create shader program 'example'\n");
+		Error("[Shader] Failed to create shader program 'example'\n");
 
 		return 1;
 	}
@@ -140,7 +141,7 @@ int32 RunShaderExample(
 
 		pRenderer->BeginFrame();
 
-		pRenderer->Clear(ClearAll, CColor(0.1f, 0.1f, 0.15f, 1.0f), 1.0f, 0);
+		pRenderer->Clear(ClearAll, CColor(0.1f, 0.1f, 0.1f, 1.0f), 1.0f, 0);
 
 		// Set viewport
 		Viewport_t viewport(

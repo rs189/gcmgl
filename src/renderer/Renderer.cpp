@@ -228,6 +228,7 @@ void CRenderer::ClearShaderCache()
 	{
 		DestroyShaderProgram(m_ShaderCache.Element(i));
 	}
+
 	m_ShaderCache.RemoveAll();
 }
 

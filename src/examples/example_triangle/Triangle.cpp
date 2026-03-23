@@ -7,6 +7,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "Main.h"
+#include "tier0/dbg.h"
 #include "window/WindowManager.h"
 #include "renderer/Renderer.h"
 #include "utils/Time.h"
@@ -76,7 +77,7 @@ int32 RunTriangleExample(
 		"rainbow");
 	if (hShaderProgram == 0)
 	{
-		printf("[ERROR][Triangle] Failed to create shader program 'rainbow'\n");
+		Error("[Triangle] Failed to create shader program 'rainbow'\n");
 
 		return 1;
 	}
@@ -95,7 +96,7 @@ int32 RunTriangleExample(
 
 		pRenderer->BeginFrame();
 
-		pRenderer->Clear(ClearAll, CColor(0.0f, 0.0f, 0.25f, 1.0f), 1.0f, 0);
+		pRenderer->Clear(ClearAll, CColor(0.1f, 0.1f, 0.1f, 1.0f), 1.0f, 0);
 
 		// Set viewport
 		Viewport_t viewport(

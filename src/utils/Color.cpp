@@ -18,10 +18,10 @@ const CColor CColor::Blue(0.0f, 0.0f, 1.0f, 1.0f);
 uint32 CColor::PackColor(const CColor& color)
 {
 #ifdef PLATFORM_PS3
-	// RGBA (Big Endian)
+	// RGBA (Big-endian)
 	return PackRGBA(color);
 #else
-	// ABGR (Little Endian)
+	// ABGR (Little-endian)
 	return PackABGR(color);
 #endif
 }

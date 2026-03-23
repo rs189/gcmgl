@@ -29,7 +29,6 @@ bool CWindowGlfw::Init(const WindowConfig_t& windowConfig)
 		return false;
 	}
 
-	// Configuration Table
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE);

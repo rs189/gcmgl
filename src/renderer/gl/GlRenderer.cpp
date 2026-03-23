@@ -1319,7 +1319,8 @@ void CGlRenderer::BindVertexAttributes(
 			dataType,
 			normalized,
 			static_cast<GLsizei>(vertexStride),
-			reinterpret_cast<const void*>(static_cast<uintptr_t>(attributeOffset)));
+			reinterpret_cast<const void*>(
+				static_cast<uintptr_t>(attributeOffset)));
 	}
 }
 
