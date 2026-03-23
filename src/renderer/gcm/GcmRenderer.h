@@ -145,6 +145,14 @@ protected:
 
 	struct StagingBuffer_t
 	{
+		StagingBuffer_t() : 
+			m_pPtr(GCMGL_NULL), 
+			m_Offset(0), 
+			m_Size(0), 
+			m_hBuffer(0) 
+		{
+		}
+
 		void* m_pPtr;
 		uint32 m_Offset;
 		uint32 m_Size;

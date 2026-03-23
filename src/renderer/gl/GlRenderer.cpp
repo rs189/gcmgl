@@ -35,9 +35,6 @@ CGlRenderer::CGlRenderer() :
 	m_PipelineState.m_pVertexLayout = GCMGL_NULL;
 
 	m_StateDirtyFlags = StateDirtyFlags_t::All;
-
-	memset(m_StagingVertexBuffer, 0, sizeof(m_StagingVertexBuffer));
-	memset(m_StagingIndexBuffer, 0, sizeof(m_StagingIndexBuffer));
 }
 
 CGlRenderer::~CGlRenderer()
@@ -138,6 +135,24 @@ void CGlRenderer::Shutdown()
 	for (int32 i = m_BufferResources.FirstInorder(); m_BufferResources.IsValidIndex(i); i = m_BufferResources.NextInorder(i))
 	{
 		BufferResource_t& bufferResource = m_BufferResources.Element(i);
+
+		bool isStaging = false;
+		for (int32 j = 0; j < 2; j++)
+		{
+			if (bufferResource.m_pPtr == m_StagingVertexBuffer[j].m_Data.Base() ||
+				bufferResource.m_pPtr == m_StagingIndexBuffer[j].m_Data.Base())
+			{
+				isStaging = true;
+
+				break;
+			}
+		}
+
+		if (isStaging)
+		{
+			continue;
+		}
+
 		if (bufferResource.m_hId)
 		{
 			GLuint id = bufferResource.m_hId;
@@ -147,29 +162,15 @@ void CGlRenderer::Shutdown()
 
 		if (bufferResource.m_pPtr)
 		{
-			bool isStaging = false;
-			for (int32 j = 0; j < 2; j++)
+			if (bufferResource.m_IsAligned)
 			{
-				if (bufferResource.m_pPtr == m_StagingVertexBuffer[j].m_Data.Base() || 
-					bufferResource.m_pPtr == m_StagingIndexBuffer[j].m_Data.Base())
-				{
-					isStaging = true;
-
-					break;
-				}
+				CUtlMemory::AlignedFree(bufferResource.m_pPtr);
+			}
+			else
+			{
+				CUtlMemory::Free(bufferResource.m_pPtr);
 			}
 
-			if (!isStaging)
-			{
-				if (bufferResource.m_IsAligned)
-				{
-					CUtlMemory::AlignedFree(bufferResource.m_pPtr);
-				}
-				else
-				{
-					CUtlMemory::Free(bufferResource.m_pPtr);
-				}
-			}
 			bufferResource.m_pPtr = GCMGL_NULL;
 		}
 	}
@@ -213,7 +214,7 @@ void CGlRenderer::Shutdown()
 			isStaging = true;
 		}
 
-		if (!isStaging) 
+		if (!isStaging && (m_StagingVertexBuffer[i].m_Data.Count() > 0 || m_StagingIndexBuffer[i].m_Data.Count() > 0))
 		{
 			Warning("[GLRenderer] Staging buffers already deleted\n");
 		}

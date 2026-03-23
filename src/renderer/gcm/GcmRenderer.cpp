@@ -45,9 +45,6 @@ CGcmRenderer::CGcmRenderer() :
 	m_PipelineState.m_pVertexLayout = GCMGL_NULL;
 
 	m_StateDirtyFlags = StateDirtyFlags_t::All;
-
-	memset(m_StagingVertexBuffer, 0, sizeof(m_StagingVertexBuffer));
-	memset(m_StagingIndexBuffer, 0, sizeof(m_StagingIndexBuffer));
 }
 
 CGcmRenderer::~CGcmRenderer()
@@ -180,6 +177,24 @@ void CGcmRenderer::Shutdown()
 	for (int32 i = m_BufferResources.FirstInorder(); m_BufferResources.IsValidIndex(i); i = m_BufferResources.NextInorder(i))
 	{
 		BufferResource_t& bufferResource = m_BufferResources.Element(i);
+
+		bool isStaging = false;
+		for (int32 j = 0; j < 2; j++)
+		{
+			if (bufferResource.m_pPtr == m_StagingVertexBuffer[j].m_pPtr ||
+				bufferResource.m_pPtr == m_StagingIndexBuffer[j].m_pPtr)
+			{
+				isStaging = true;
+
+				break;
+			}
+		}
+
+		if (isStaging)
+		{
+			continue;
+		}
+
 		if (bufferResource.m_pPtr)
 		{
 			rsxFree(bufferResource.m_pPtr);

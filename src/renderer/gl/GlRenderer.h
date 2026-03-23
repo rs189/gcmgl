@@ -143,6 +143,12 @@ protected:
 
 	struct StagingBuffer_t
 	{
+		StagingBuffer_t() : 
+			m_hId(0), 
+			m_hBuffer(0) 
+		{
+		}
+
 		CUtlVector<uint8> m_Data;
 		uint32 m_hId;
 		BufferHandle m_hBuffer;
