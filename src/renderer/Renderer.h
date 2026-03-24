@@ -16,6 +16,7 @@
 #include "mathsfury/Matrix4.h"
 #include "mathsfury/Vector3.h"
 #include "mathsfury/Quaternion.h"
+#include "mathsfury/Maths.h"
 #include "utils/UtlVector.h"
 #include "utils/UtlMap.h"
 #include "utils/FixedString.h"
@@ -173,7 +174,7 @@ struct VertexAttribute_t
 	VertexFormat_t m_Format;
 	uint32 m_Offset;
 	uint32 m_Location;
-	VertexSemantic_t m_Semantic;
+	VertexSemantic_t m_VertexSemantic;
 };
 
 class CVertexLayout
@@ -190,14 +191,14 @@ public:
 		const CFixedString& name,
 		uint32 format,
 		uint32 offset,
-		VertexSemantic_t semantic,
+		VertexSemantic_t vertexSemantic,
 		uint32 location = 0);
 
-	void SetStride(uint32 stride);
+	void SetStride(uint32 vertexStride);
 
 	uint32 GetStride() const
 	{
-		return m_Stride;
+		return m_VertexStride;
 	}
 
 	const CUtlVector<VertexAttribute_t>& GetAttributes() const
@@ -206,7 +207,7 @@ public:
 	}
 private:
 	CUtlVector<VertexAttribute_t> m_Attributes;
-	uint32 m_Stride;
+	uint32 m_VertexStride;
 };
 
 struct BlendState_t
@@ -242,20 +243,20 @@ struct UniformBlockLayout_t
 	uint32 m_Size;
 };
 
-struct BatchTransform_t
+struct BatchChunkTransform_t
 {
 	CVector3 m_Position;
 	CQuaternion m_Rotation;
 	CVector3 m_Scale;
 
-	BatchTransform_t() :
+	BatchChunkTransform_t() :
 		m_Position(0.0f, 0.0f, 0.0f),
 		m_Rotation(),
 		m_Scale(1.0f, 1.0f, 1.0f)
 	{
 	}
 
-	BatchTransform_t(
+	BatchChunkTransform_t(
 		const CVector3& position,
 		const CQuaternion& rotation,
 		const CVector3& scale) :
@@ -265,36 +266,120 @@ struct BatchTransform_t
 	{
 	}
 
-	CMatrix4 ToMatrix() const;
+	CMatrix4 ToMatrix() const
+	{
+		return m_Rotation.ToTransformMatrix(m_Position, m_Scale);
+	}
 };
 
-struct BatchData_t
+struct BatchChunk_t
 {
-	CUtlVector<BatchTransform_t> m_Transforms;
+	CVector3 m_Center;
+	CUtlVector<BatchChunkTransform_t> m_BatchChunkTransforms;
+};
 
-	void AddBatch(
+class CBatch
+{
+public:
+	CUtlVector<BatchChunk_t> m_BatchChunks;
+	const CVector3* m_pCameraPos;
+
+	CBatch() :
+		m_pCameraPos(GCMGL_NULL)
+	{
+	}
+
+	void Add(
 		const CVector3& position,
 		const CQuaternion& rotation = CQuaternion(),
 		const CVector3& scale = CVector3(1.0f, 1.0f, 1.0f))
 	{
-		m_Transforms.AddToTail(BatchTransform_t(position, rotation, scale));
+		m_BatchChunkTransforms.AddToTail(
+			BatchChunkTransform_t(position, rotation, scale));
+	}
+
+	void Build(float32 chunkSize = 500.0f)
+	{
+		m_BatchChunks.RemoveAll();
+		if (m_BatchChunkTransforms.Count() == 0) return;
+
+		CVector3 minBounds = m_BatchChunkTransforms[0].m_Position;
+		CVector3 maxBounds = minBounds;
+		for (int32 i = 1; i < m_BatchChunkTransforms.Count(); i++)
+		{
+			const CVector3& position = m_BatchChunkTransforms[i].m_Position;
+			if (position.m_X < minBounds.m_X) minBounds.m_X = position.m_X;
+			if (position.m_X > maxBounds.m_X) maxBounds.m_X = position.m_X;
+			if (position.m_Y < minBounds.m_Y) minBounds.m_Y = position.m_Y;
+			if (position.m_Y > maxBounds.m_Y) maxBounds.m_Y = position.m_Y;
+			if (position.m_Z < minBounds.m_Z) minBounds.m_Z = position.m_Z;
+			if (position.m_Z > maxBounds.m_Z) maxBounds.m_Z = position.m_Z;
+		}
+
+		const int32 numChunksX = int32(
+			(maxBounds.m_X - minBounds.m_X) / chunkSize) + 1;
+		const int32 numChunksY = int32(
+			(maxBounds.m_Y - minBounds.m_Y) / chunkSize) + 1;
+		const int32 numChunksZ = int32(
+			(maxBounds.m_Z - minBounds.m_Z) / chunkSize) + 1;
+		const int32 numChunks = numChunksX * numChunksY * numChunksZ;
+		m_BatchChunks.SetCount(numChunks);
+		for (int32 y = 0; y < numChunksY; y++)
+		{
+			for (int32 z = 0; z < numChunksZ; z++)
+			{
+				for (int32 x = 0; x < numChunksX; x++)
+				{
+					BatchChunk_t& batchChunk = m_BatchChunks[y * numChunksX * numChunksZ + z * numChunksX + x];
+					batchChunk.m_Center = CVector3(
+						minBounds.m_X + (x + 0.5f) * chunkSize,
+						minBounds.m_Y + (y + 0.5f) * chunkSize,
+						minBounds.m_Z + (z + 0.5f) * chunkSize);
+					batchChunk.m_BatchChunkTransforms.RemoveAll();
+				}
+			}
+		}
+
+		for (int32 i = 0; i < m_BatchChunkTransforms.Count(); i++)
+		{
+			const CVector3& position = m_BatchChunkTransforms[i].m_Position;
+			const int32 x = CMaths::Max(0, CMaths::Min(numChunksX - 1,
+				int32((position.m_X - minBounds.m_X) / chunkSize)));
+			const int32 y = CMaths::Max(0, CMaths::Min(numChunksY - 1,
+				int32((position.m_Y - minBounds.m_Y) / chunkSize)));
+			const int32 z = CMaths::Max(0, CMaths::Min(numChunksZ - 1,
+				int32((position.m_Z - minBounds.m_Z) / chunkSize)));
+			m_BatchChunks[y * numChunksX * numChunksZ + z * numChunksX + x].m_BatchChunkTransforms.AddToTail(
+				m_BatchChunkTransforms[i]);
+		}
+		m_BatchChunkTransforms.RemoveAll();
 	}
 
 	void Clear()
 	{
-		m_Transforms.RemoveAll();
+		m_BatchChunks.RemoveAll();
+		m_BatchChunkTransforms.RemoveAll();
 	}
 
 	uint32 GetCount() const
 	{
-		return uint32(m_Transforms.Count());
+		uint32 count = 0;
+		for (int32 i = 0; i < m_BatchChunks.Count(); i++)
+		{
+			count += uint32(m_BatchChunks[i].m_BatchChunkTransforms.Count());
+		}
+
+		return count;
 	}
+private:
+	CUtlVector<BatchChunkTransform_t> m_BatchChunkTransforms;
 };
 
 struct BatchThreadData_t
 {
 	uint32 m_ThreadStart;
 	uint32 m_ThreadEnd;
+	uint32 m_ChunkStart;
 	uint32 m_VertexCount;
 	uint32 m_IndexCount;
 	uint32 m_VertexLayoutStride;
@@ -304,7 +389,7 @@ struct BatchThreadData_t
 	uint32* m_pDstIndexData;
 	const char* m_pSrcVertexData;
 	const uint32* m_pSrcIndices;
-	const BatchData_t* m_pBD;
+	const CUtlVector<BatchChunkTransform_t>* m_pBatchChunkTransforms;
 };
 
 struct Plane_t
@@ -421,7 +506,7 @@ public:
 	virtual void SetVertexBuffer(
 		BufferHandle hBuffer,
 		uint32 slot = 0,
-		uint32 stride = 0,
+		uint32 vertexStride = 0,
 		uint32 offset = 0,
 		const CVertexLayout* pLayout = GCMGL_NULL) = 0;
 	virtual void SetIndexBuffer(BufferHandle hBuffer, uint64 offset = 0) = 0;
@@ -443,26 +528,26 @@ public:
 	virtual void Draw(
 		uint32 vertexCount,
 		uint32 startVertex = 0,
-		const CMatrix4* pViewProj = GCMGL_NULL,
+		const CMatrix4* pViewProjection = GCMGL_NULL,
 		const CVector3* pAABBCenter = GCMGL_NULL,
 		const CVector3* pAABBExtent = GCMGL_NULL) = 0;
 	virtual void DrawIndexed(
 		uint32 indexCount,
 		uint32 startIndex = 0,
 		int32 baseVertex = 0,
-		const CMatrix4* pViewProj = GCMGL_NULL,
+		const CMatrix4* pViewProjection = GCMGL_NULL,
 		const CVector3* pAABBCenter = GCMGL_NULL,
 		const CVector3* pAABBExtent = GCMGL_NULL) = 0;
 	virtual void DrawBatched(
 		uint32 vertexCount,
-		const BatchData_t& batchData,
-		const CMatrix4& viewProj,
+		const CBatch& batch,
+		const CMatrix4& viewProjection,
 		uint32 startVertex = 0) = 0;
 	virtual void DrawIndexedBatched(
 		uint32 indexCount,
 		uint32 vertexCount,
-		const BatchData_t& batchData,
-		const CMatrix4& viewProj,
+		const CBatch& batch,
+		const CMatrix4& viewProjection,
 		uint32 startIndex = 0,
 		int32 baseVertex = 0) = 0;
 
@@ -496,7 +581,7 @@ public:
 	virtual void SetVertexBuffer(
 		BufferHandle hBuffer,
 		uint32 slot = 0,
-		uint32 stride = 0,
+		uint32 vertexStride = 0,
 		uint32 offset = 0,
 		const CVertexLayout* pLayout = GCMGL_NULL) GCMGL_OVERRIDE;
 	virtual void SetIndexBuffer(
@@ -512,7 +597,7 @@ protected:
 	virtual void FlushProgramState() = 0;
 	virtual void BindVertexAttributes(
 		const CVertexLayout* pLayout,
-		uint32 stride,
+		uint32 vertexStride,
 		uint32 offset) = 0;
 	virtual void SetBlendState(const BlendState_t& state) = 0;
 	virtual void SetDepthStencilState(const DepthStencilState_t& state) = 0;

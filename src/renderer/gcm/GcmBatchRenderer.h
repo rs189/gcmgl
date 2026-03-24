@@ -21,20 +21,20 @@ protected:
 		char* pDstVertexData,
 		uint32 chunkSize,
 		uint32 vertexCount,
-		uint32 stride,
+		uint32 vertexStride,
 		uint32 vertexPosOffset,
-		const BatchData_t& localBatchData);
+		const CUtlVector<BatchChunkTransform_t>& batchChunkTransforms);
 
 	virtual void DrawBatchedChunk(
 		uint32 vertexCount,
-		const BatchData_t& batchData,
+		const CUtlVector<BatchChunkTransform_t>& batchChunkTransforms,
 		uint32 chunkStart,
 		uint32 chunkSize,
 		uint32 startVertex) GCMGL_OVERRIDE;
 	virtual void DrawIndexedBatchedChunk(
 		uint32 indexCount,
 		uint32 vertexCount,
-		const BatchData_t& batchData,
+		const CUtlVector<BatchChunkTransform_t>& batchChunkTransforms,
 		uint32 chunkStart,
 		uint32 chunkSize,
 		uint32 startIndex,

@@ -43,8 +43,7 @@ public:
 
 	CMatrix4 ToTransformMatrix(
 		const CVector3& position,
-		const CVector3& scale
-	) const;
+		const CVector3& scale) const;
 };
 
 #endif // MATRIX4_H

@@ -47,6 +47,9 @@ public:
 	bool operator!=(const CVector4& other) const;
 
 	float32 Length() const;
+	float32 LengthSq() const;
+	float32 Distance(const CVector4& other) const;
+	float32 DistanceSq(const CVector4& other) const;
 };
 
 #endif // VECTOR4_H

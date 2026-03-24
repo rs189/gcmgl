@@ -47,8 +47,9 @@ public:
 
 	float32 LengthXY() const;
 	float32 Length() const;
+	float32 LengthSq() const;
 	float32 Distance(const CVector3& other) const;
-	float32 Distance2(const CVector3& other) const;
+	float32 DistanceSq(const CVector3& other) const;
 	float32 Dot(const CVector3& other) const;
 };
 

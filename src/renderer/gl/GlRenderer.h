@@ -113,22 +113,22 @@ public:
 	virtual void Draw(
 		uint32 vertexCount,
 		uint32 startVertex = 0,
-		const CMatrix4* pViewProj = GCMGL_NULL,
+		const CMatrix4* pViewProjection = GCMGL_NULL,
 		const CVector3* pAABBCenter = GCMGL_NULL,
 		const CVector3* pAABBExtent = GCMGL_NULL) GCMGL_OVERRIDE;
 	virtual void DrawIndexed(
 		uint32 indexCount,
 		uint32 startIndex = 0,
 		int32 baseVertex = 0,
-		const CMatrix4* pViewProj = GCMGL_NULL,
+		const CMatrix4* pViewProjection = GCMGL_NULL,
 		const CVector3* pAABBCenter = GCMGL_NULL,
 		const CVector3* pAABBExtent = GCMGL_NULL) GCMGL_OVERRIDE;
 
 	// Pipeline
-	uint32 GetSemanticAttributeIndex(VertexSemantic_t semantic);
+	uint32 GetVertexSemanticAttributeIndex(VertexSemantic_t vertexSemantic);
 	virtual void BindVertexAttributes(
 		const CVertexLayout* pLayout,
-		uint32 stride,
+		uint32 vertexStride,
 		uint32 offset) GCMGL_OVERRIDE;
 	virtual void FlushProgramState() GCMGL_OVERRIDE;
 protected:

@@ -28,7 +28,6 @@ CVector3 CMaths::Normalise(const CVector3& v)
 #ifdef SIMD_ENABLED
 #ifdef PLATFORM_PS3
 	vector float zero = { 0.0f, 0.0f, 0.0f, 0.0f };
-
 	vector float vec = { v.m_X, v.m_Y, v.m_Z, 0.0f };
 
 	union
@@ -36,46 +35,39 @@ CVector3 CMaths::Normalise(const CVector3& v)
 		vector float v;
 		float32 f[4];
 	}
-	squared;
-	squared.v = vec_madd(vec, vec, zero);
+	u;
+	u.v = vec_madd(vec, vec, zero);
 
-	float32 lenSq = squared.f[0] + squared.f[1] + squared.f[2];
+	float32 lenSq = u.f[0] + u.f[1] + u.f[2];
 	if (lenSq > 1e-8f)
 	{
 		vector float invLenVec = vec_splats(1.0f / Sqrt(lenSq));
+		u.v = vec_madd(vec, invLenVec, zero);
 
-		union
-		{
-			vector float v;
-			float32 f[4];
-		}
-		result;
-		result.v = vec_madd(vec, invLenVec, zero);
-
-		return CVector3(result.f[0], result.f[1], result.f[2]);
+		return CVector3(u.f[0], u.f[1], u.f[2]);
 	}
 
 	return CVector3(0.0f, 0.0f, 0.0f);
-#else
+#else // PLATFORM_PS3
 	simde__m128 vec = simde_mm_set_ps(0.0f, v.m_Z, v.m_Y, v.m_X);
-	simde__m128 squared = simde_mm_mul_ps(vec, vec);
+	simde__m128 res = simde_mm_mul_ps(vec, vec);
 	float32 temp[4];
-	simde_mm_storeu_ps(temp, squared);
+	simde_mm_storeu_ps(temp, res);
 
 	float32 lenSq = temp[0] + temp[1] + temp[2];
 	if (lenSq > 1e-8f)
 	{
 		float32 invLen = 1.0f / Sqrt(lenSq);
 		simde__m128 invLenVec = simde_mm_set1_ps(invLen);
-		
-		simde__m128 result = simde_mm_mul_ps(vec, invLenVec);
-		simde_mm_storeu_ps(temp, result);
+
+		res = simde_mm_mul_ps(vec, invLenVec);
+		simde_mm_storeu_ps(temp, res);
 
 		return CVector3(temp[0], temp[1], temp[2]);
 	}
 
 	return CVector3(0.0f, 0.0f, 0.0f);
-#endif
+#endif // !PLATFORM_PS3
 #else
 	float32 lenSq = v.m_X * v.m_X + v.m_Y * v.m_Y + v.m_Z * v.m_Z;
 	if (lenSq > 1e-8f)
@@ -94,7 +86,6 @@ CVector3 CMaths::Cross(const CVector3& a, const CVector3& b)
 #ifdef SIMD_ENABLED
 #ifdef PLATFORM_PS3
 	vector float zero = {0.0f, 0.0f, 0.0f, 0.0f};
-
 	vector float va = { a.m_X, a.m_Y, a.m_Z, 0.0f };
 	vector float vb = { b.m_X, b.m_Y, b.m_Z, 0.0f };
 
@@ -114,27 +105,31 @@ CVector3 CMaths::Cross(const CVector3& a, const CVector3& b)
 		vector float v;
 		float32 f[4];
 	}
-	result;
-	result.v = vec_sub(prod1, prod2);
+	u;
+	u.v = vec_sub(prod1, prod2);
 	
-	return CVector3(result.f[0], result.f[1], result.f[2]);
-#else
+	return CVector3(u.f[0], u.f[1], u.f[2]);
+#else // PLATFORM_PS3
 	simde__m128 va = simde_mm_set_ps(0.0f, a.m_Z, a.m_Y, a.m_X);
 	simde__m128 vb = simde_mm_set_ps(0.0f, b.m_Z, b.m_Y, b.m_X);
 
-	simde__m128 ayzx = simde_mm_shuffle_ps(va, va, SIMDE_MM_SHUFFLE(3, 0, 2, 1));
-	simde__m128 bzxy = simde_mm_shuffle_ps(vb, vb, SIMDE_MM_SHUFFLE(3, 1, 0, 2));
+	simde__m128 ayzx = simde_mm_shuffle_ps(
+		va,
+		va,
+		SIMDE_MM_SHUFFLE(3, 0, 2, 1));
+	simde__m128 bzxy = simde_mm_shuffle_ps(
+		vb, vb, SIMDE_MM_SHUFFLE(3, 1, 0, 2));
 	simde__m128 azxy = simde_mm_shuffle_ps(va, va, SIMDE_MM_SHUFFLE(3, 1, 0, 2));
 	simde__m128 byzx = simde_mm_shuffle_ps(vb, vb, SIMDE_MM_SHUFFLE(3, 0, 2, 1));
 	
-	simde__m128 result = simde_mm_sub_ps(
+	simde__m128 res = simde_mm_sub_ps(
 		simde_mm_mul_ps(ayzx, bzxy),
 		simde_mm_mul_ps(azxy, byzx));
 	float32 temp[4];
-	simde_mm_storeu_ps(temp, result);
+	simde_mm_storeu_ps(temp, res);
 
 	return CVector3(temp[0], temp[1], temp[2]);
-#endif
+#endif // !PLATFORM_PS3
 #else
 	return CVector3(
 		a.m_Y * b.m_Z - a.m_Z * b.m_Y,
@@ -156,20 +151,20 @@ float32 CMaths::Dot(const CVector3& a, const CVector3& b)
 		vector float v;
 		float32 f[4];
 	}
-	product;
-	product.v = vec_madd(va, vb, zero);
+	u;
+	u.v = vec_madd(va, vb, zero);
 	
-	return product.f[0] + product.f[1] + product.f[2];
-#else
+	return u.f[0] + u.f[1] + u.f[2];
+#else // PLATFORM_PS3
 	simde__m128 va = simde_mm_set_ps(0.0f, a.m_Z, a.m_Y, a.m_X);
 	simde__m128 vb = simde_mm_set_ps(0.0f, b.m_Z, b.m_Y, b.m_X);
-	simde__m128 product = simde_mm_mul_ps(va, vb);
+	simde__m128 res = simde_mm_mul_ps(va, vb);
 
 	float32 temp[4];
-	simde_mm_storeu_ps(temp, product);
+	simde_mm_storeu_ps(temp, res);
 
 	return temp[0] + temp[1] + temp[2];
-#endif
+#endif // !PLATFORM_PS3
 #else
 	return a.m_X * b.m_X + a.m_Y * b.m_Y + a.m_Z * b.m_Z;
 #endif
@@ -199,6 +194,7 @@ CMatrix4 CMaths::Perspective(
 	float32 wTerm = twoFarNear / nearMinusFar;
 	
 	CMatrix4 result;
+
 	result.m_Data[0] = fOverAspect;
 	result.m_Data[1] = 0.0f;
 	result.m_Data[2] = 0.0f;
@@ -236,6 +232,7 @@ CMatrix4 CMaths::Orthographic(
 	float32 depth = farClip - nearClip;
 
 	CMatrix4 result;
+
 	result.m_Data[0] = 2.0f / width;
 	result.m_Data[1] = 0.0f;
 	result.m_Data[2] = 0.0f;
@@ -273,6 +270,7 @@ CMatrix4 CMaths::LookAt(
 	CVector3 u = Cross(s, f);
 	
 	CMatrix4 result;
+
 	result.m_Data[0] = s.m_X;
 	result.m_Data[1] = u.m_X;
 	result.m_Data[2] = -f.m_X;
@@ -299,6 +297,7 @@ CMatrix4 CMaths::LookAt(
 CMatrix4 CMaths::Translate(const CMatrix4& m, const CVector3& v)
 {
 	CMatrix4 result = m;
+
 	result.m_Data[12] += m.m_Data[0] * v.m_X + m.m_Data[4] * v.m_Y + m.m_Data[8] * v.m_Z;
 	result.m_Data[13] += m.m_Data[1] * v.m_X + m.m_Data[5] * v.m_Y + m.m_Data[9] * v.m_Z;
 	result.m_Data[14] += m.m_Data[2] * v.m_X + m.m_Data[6] * v.m_Y + m.m_Data[10] * v.m_Z;
@@ -338,6 +337,7 @@ CMatrix4 CMaths::Rotate(
 	float32 r22 = c + oneMinusC * azAz;
 
 	CMatrix4 result;
+
 	result.m_Data[0] = m.m_Data[0] * r00 + m.m_Data[4] * r10 + m.m_Data[8] * r20;
 	result.m_Data[1] = m.m_Data[1] * r00 + m.m_Data[5] * r10 + m.m_Data[9] * r20;
 	result.m_Data[2] = m.m_Data[2] * r00 + m.m_Data[6] * r10 + m.m_Data[10] * r20;
@@ -364,6 +364,7 @@ CMatrix4 CMaths::Rotate(
 CMatrix4 CMaths::Scale(const CMatrix4& m, const CVector3& v)
 {
 	CMatrix4 result;
+
 	result.m_Data[0] = m.m_Data[0] * v.m_X;
 	result.m_Data[1] = m.m_Data[1] * v.m_X;
 	result.m_Data[2] = m.m_Data[2] * v.m_X;
@@ -390,10 +391,7 @@ CMatrix4 CMaths::Scale(const CMatrix4& m, const CVector3& v)
 EquirectUV_t CMaths::DirectionToEquirect(const CVector3& dir)
 {
 	CVector3 d = Normalise(dir);
-
-	// Compute atan2(x, z), measuring angle in the XZ plane from the Z axis.
 	float32 lon = ATan2(d.m_X, d.m_Z);
-	// Clamp y to valid asin range.
 	float32 clampedY = Clamp(d.m_Y, -1.0f, 1.0f);
 	float32 lat = ASin(clampedY);
 

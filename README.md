@@ -28,8 +28,10 @@ gcmgl is a C++ graphics library targeting PlayStation 3 (GCM) and Linux (x86_64,
 ### Handles
 - `BufferHandle`
 - `ShaderProgramHandle`
+- `MaterialHandle`
 - `TextureHandle`
 - `SamplerHandle`
+- `RenderTargetHandle`
 - `UniformBlockLayoutHandle`
 
 ### ClearFlags_t
@@ -80,9 +82,13 @@ gcmgl is a C++ graphics library targeting PlayStation 3 (GCM) and Linux (x86_64,
 
 ### VertexSemantic_t
 - `Position`
+- `Weight`
 - `Normal`
 - `Color0`
 - `Color1`
+- `Fog`
+- `PointSize`
+- `EdgeFlag`
 - `TexCoord0`
 - `TexCoord1`
 - `TexCoord2`
@@ -95,127 +101,140 @@ gcmgl is a C++ graphics library targeting PlayStation 3 (GCM) and Linux (x86_64,
 - `Binormal`
 
 ### RendererDesc_t
-- `m_Width`
-- `m_Height`
-- `m_IsFullscreen`
-- `m_IsVSync`
-- `m_pWindow`
+- `uint32 m_Width`
+- `uint32 m_Height`
+- `bool m_IsFullscreen`
+- `bool m_IsVSync`
+- `void* m_pWindow`
 
 ### Viewport_t
-- `m_X`
-- `m_Y`
-- `m_Width`
-- `m_Height`
-- `m_MinDepth`
-- `m_MaxDepth`
+- `float32 m_X`
+- `float32 m_Y`
+- `float32 m_Width`
+- `float32 m_Height`
+- `float32 m_MinDepth`
+- `float32 m_MaxDepth`
 
 ### Rect_t
-- `m_X`
-- `m_Y`
-- `m_Width`
-- `m_Height`
+- `int32 m_X`
+- `int32 m_Y`
+- `uint32 m_Width`
+- `uint32 m_Height`
 
 ### BlendState_t
-- `m_IsEnabled`
+- `bool m_IsEnabled`
 
 ### DepthStencilState_t
-- `m_IsDepthTest`
-- `m_IsDepthWrite`
+- `bool m_IsDepthTest`
+- `bool m_IsDepthWrite`
 
 ### PipelineState_t
-- `m_hShaderProgram`
-- `m_hVertexBuffer`
-- `m_hIndexBuffer`
-- `m_pVertexLayout`
-- `m_VertexStride`
-- `m_VertexOffset`
-- `m_IndexOffset`
-- `m_BlendState`
-- `m_DepthStencilState`
+- `ShaderProgramHandle m_hShaderProgram`
+- `BufferHandle m_hVertexBuffer`
+- `BufferHandle m_hIndexBuffer`
+- `const CVertexLayout* m_pVertexLayout`
+- `uint32 m_VertexStride`
+- `uint32 m_VertexOffset`
+- `uint64 m_IndexOffset`
+- `BlendState_t m_BlendState`
+- `DepthStencilState_t m_DepthStencilState`
 
 ### UniformBlockLayout_t
-- `m_UniformNames`
-- `m_Binding`
-- `m_Size`
+- `CUtlVector<CFixedString> m_UniformNames`
+- `uint32 m_Binding`
+- `uint32 m_Size`
 
 ### VertexAttribute_t
-- `m_Name`
-- `m_Format`
-- `m_Offset`
-- `m_Location`
-- `m_Semantic`
+- `CFixedString m_Name`
+- `VertexFormat_t m_Format`
+- `uint32 m_Offset`
+- `uint32 m_Location`
+- `VertexSemantic_t m_VertexSemantic`
 
 ### Plane_t
-- `m_Normal`
-- `m_Distance`
+- `CVector3 m_Normal`
+- `float32 m_Distance`
 
-### BatchTransform_t
-- `m_Position`
-- `m_Rotation`
-- `m_Scale`
-- `ToMatrix()`
+### BatchChunkTransform_t
+- `CVector3 m_Position`
+- `CQuaternion m_Rotation`
+- `CVector3 m_Scale`
+- `CMatrix4 ToMatrix() const`
 
-### BatchData_t
-- `AddBatch(const CVector3& pos, const CQuaternion& rot, const CVector3& scale)`
-- `Clear()`
-- `GetCount()`
+### BatchChunk_t
+- `CVector3 m_Center`
+- `CUtlVector<BatchChunkTransform_t> m_BatchChunkTransforms`
+
+### CBatch
+- `CUtlVector<BatchChunk_t> m_BatchChunks`
+- `const CVector3* m_pCameraPos`
+- `void Add(const CVector3& position, const CQuaternion& rotation = CQuaternion(), const CVector3& scale = CVector3(1.0f, 1.0f, 1.0f))`
+- `void Build(float32 chunkSize = 500.0f)`
+- `void Clear()`
+- `uint32 GetCount() const`
 
 ### CVertexLayout
-- `AddAttribute(name, format, offset, location)`
-- `AddAttribute(name, format, offset, semantic, location)`
-- `SetStride(uint32 stride)`
-- `GetStride()`
-- `GetAttributes()`
+- `void AddAttribute(const CFixedString& name, uint32 format, uint32 offset, uint32 location = 0)`
+- `void AddAttribute(const CFixedString& name, uint32 format, uint32 offset, VertexSemantic_t vertexSemantic, uint32 location = 0)`
+- `void SetStride(uint32 vertexStride)`
+- `uint32 GetStride() const`
+- `const CUtlVector<VertexAttribute_t>& GetAttributes() const`
 
 ### IRenderer / CRenderer
-- `Init(const RendererDesc_t& desc)`
-- `Shutdown()`
-- `SetEnvironment()`
-- `BeginFrame()`
-- `EndFrame()`
-- `Clear(uint32 clearFlags, const CColor& color, float32 depth, uint32 stencil)`
-- `SetViewport(const Viewport_t& viewport)`
-- `SetScissor(const Rect_t& rect)`
-- `SetStencilRef(uint32 stencilRef)`
-- `CreateVertexBuffer(const void* pData, uint64 size, BufferUsage_t usage)`
-- `CreateIndexBuffer(const void* pData, uint64 size, IndexFormat_t format, BufferUsage_t usage)`
-- `CreateConstantBuffer(uint64 size, BufferUsage_t usage)`
-- `UpdateBuffer(BufferHandle hBuffer, const void* pData, uint64 size, uint64 offset)`
-- `DestroyBuffer(BufferHandle hBuffer)`
-- `MapBuffer(BufferHandle hBuffer)`
-- `UnmapBuffer(BufferHandle hBuffer)`
-- `CreateStagingBuffer(uint64 size)`
-- `CreateShaderProgram(const CFixedString& shaderName)`
-- `GetOrCreateShaderProgram(const CFixedString& shaderName)`
-- `DestroyShaderProgram(ShaderProgramHandle hProgram)`
-- `ClearShaderCache()`
-- `CreateTexture2D(uint32 width, uint32 height, TextureFormat_t format, const void* pData)`
-- `CreateTextureCube(uint32 size, TextureFormat_t format, const void** ppFaces)`
-- `SetTexture(TextureHandle hTexture, uint32 slot, ShaderStage_t stage)`
-- `SetSampler(SamplerHandle hSampler, uint32 slot, ShaderStage_t stage)`
-- `UpdateTexture(TextureHandle hTexture, const void* pData, uint32 mipLevel)`
-- `DestroyTexture(TextureHandle hTexture)`
-- `SetShaderProgram(ShaderProgramHandle hProgram)`
-- `SetVertexBuffer(BufferHandle hBuffer, uint32 slot, uint32 stride, uint32 offset, const CVertexLayout* pLayout)`
-- `SetIndexBuffer(BufferHandle hBuffer, uint64 offset)`
-- `CreateUniformBlockLayout(const UniformBlockLayout_t& layout)`
-- `SetConstantBuffer(BufferHandle hBuffer, UniformBlockLayoutHandle hLayout, uint32 slot, ShaderStage_t stage)`
-- `SetBlendState(const BlendState_t& state)`
-- `SetDepthStencilState(const DepthStencilState_t& state)`
-- `ApplyVertexConstants(ShaderProgramHandle hProgram)`
-- `ApplyFragmentConstants(ShaderProgramHandle hProgram)`
-- `Draw(uint32 vertexCount, uint32 startVertex, const CMatrix4* pViewProjection, const CVector3* pAABBCenter, const CVector3* pAABBExtent)`
-- `DrawIndexed(uint32 indexCount, uint32 startIndex, int32 baseVertex, const CMatrix4* pViewProjection, const CVector3* pAABBCenter, const CVector3* pAABBExtent)`
-- `DrawBatched(uint32 vertexCount, const BatchData_t& batchData, const CMatrix4& viewProjection, uint32 startVertex)`
-- `DrawIndexedBatched(uint32 indexCount, uint32 vertexCount, const BatchData_t& batchData, const CMatrix4& viewProjection, uint32 startIndex, int32 baseVertex)`
-- `SetPipelineState(const PipelineState_t& state)`
-- `FlushPipelineState()`
-- `ExtractFrustumPlanes(const CMatrix4& mvp, Plane_t* pPlanes)`
-- `TestAABBFrustum(const CVector3& center, const CVector3& extent, const Plane_t* pPlanes)`
+- `bool Init(const RendererDesc_t& desc)`
+- `void Shutdown()`
+- `void SetEnvironment()`
+- `void BeginFrame()`
+- `void EndFrame()`
+- `void Clear(uint32 clearFlags, const CColor& color = CColor::Black, float32 depth = 1.0f, uint32 stencil = 0)`
+- `void SetViewport(const Viewport_t& viewport)`
+- `void SetScissor(const Rect_t& rect)`
+- `void SetStencilRef(uint32 stencilRef)`
+- `BufferHandle CreateVertexBuffer(const void* pData, uint64 size, BufferUsage_t usage)`
+- `BufferHandle CreateIndexBuffer(const void* pData, uint64 size, IndexFormat_t format, BufferUsage_t usage)`
+- `BufferHandle CreateConstantBuffer(uint64 size, BufferUsage_t usage)`
+- `void UpdateBuffer(BufferHandle hBuffer, const void* pData, uint64 size, uint64 offset = 0)`
+- `void DestroyBuffer(BufferHandle hBuffer)`
+- `void* MapBuffer(BufferHandle hBuffer)`
+- `void UnmapBuffer(BufferHandle hBuffer)`
+- `BufferHandle CreateStagingBuffer(uint64 size)`
+- `ShaderProgramHandle CreateShaderProgram(const CFixedString& shaderName)`
+- `ShaderProgramHandle GetOrCreateShaderProgram(const CFixedString& shaderName)`
+- `void DestroyShaderProgram(ShaderProgramHandle hProgram)`
+- `void ClearShaderCache()`
+- `TextureHandle CreateTexture2D(uint32 width, uint32 height, TextureFormat_t format, const void* pData = nullptr)`
+- `TextureHandle CreateTextureCube(uint32 size, TextureFormat_t format, const void** ppFaces = nullptr)`
+- `void SetTexture(TextureHandle hTexture, uint32 slot, ShaderStage_t stage)`
+- `void SetSampler(SamplerHandle hSampler, uint32 slot, ShaderStage_t stage)`
+- `void UpdateTexture(TextureHandle hTexture, const void* pData, uint32 mipLevel = 0)`
+- `void DestroyTexture(TextureHandle hTexture)`
+- `void SetShaderProgram(ShaderProgramHandle hProgram)`
+- `void SetVertexBuffer(BufferHandle hBuffer, uint32 slot = 0, uint32 stride = 0, uint32 offset = 0, const CVertexLayout* pLayout = nullptr)`
+- `void SetIndexBuffer(BufferHandle hBuffer, uint64 offset = 0)`
+- `UniformBlockLayoutHandle CreateUniformBlockLayout(const UniformBlockLayout_t& layout)`
+- `void SetConstantBuffer(BufferHandle hBuffer, UniformBlockLayoutHandle hLayout, uint32 slot, ShaderStage_t stage)`
+- `void SetBlendState(const BlendState_t& state)`
+- `void SetDepthStencilState(const DepthStencilState_t& state)`
+- `void ApplyVertexConstants(ShaderProgramHandle hProgram)`
+- `void ApplyFragmentConstants(ShaderProgramHandle hProgram)`
+- `void Draw(uint32 vertexCount, uint32 startVertex = 0, const CMatrix4* pViewProjection = nullptr, const CVector3* pAABBCenter = nullptr, const CVector3* pAABBExtent = nullptr)`
+- `void DrawIndexed(uint32 indexCount, uint32 startIndex = 0, int32 baseVertex = 0, const CMatrix4* pViewProjection = nullptr, const CVector3* pAABBCenter = nullptr, const CVector3* pAABBExtent = nullptr)`
+- `void DrawBatched(uint32 vertexCount, const CBatch& batch, const CMatrix4& viewProjection, uint32 startVertex = 0)`
+- `void DrawIndexedBatched(uint32 indexCount, uint32 vertexCount, const CBatch& batch, const CMatrix4& viewProjection, uint32 startIndex = 0, int32 baseVertex = 0)`
+- `void SetPipelineState(const PipelineState_t& state)`
+- `void FlushPipelineState()`
+- `void ExtractFrustumPlanes(const CMatrix4& mvp, Plane_t* pPlanes)`
+- `bool TestAABBFrustum(const CVector3& center, const CVector3& extent, const Plane_t* pPlanes)`
 
-### CBatchRenderer
-- `DrawBatched(uint32 vertexCount, const BatchData_t& batchData, const CMatrix4& viewProjection, uint32 startVertex)`
-- `DrawIndexedBatched(uint32 indexCount, uint32 vertexCount, const BatchData_t& batchData, const CMatrix4& viewProjection, uint32 startIndex, int32 baseVertex)`
+### IBatchRenderer / CBatchRenderer
+- `void DrawBatched(uint32 vertexCount, const CBatch& batch, const CMatrix4& viewProjection, uint32 startVertex = 0)`
+- `void DrawIndexedBatched(uint32 indexCount, uint32 vertexCount, const CBatch& batch, const CMatrix4& viewProjection, uint32 startIndex = 0, int32 baseVertex = 0)`
+- `static bool ShouldUpdateChunk(float32 distanceToCamera, uint64 frameCount)`
+- `void FrustumCullBatch(const CBatch& batch, const Plane_t* pFrustumPlanes, CUtlVector<BatchChunkTransform_t>& batchChunkTransforms)`
+- `static void TransformVertices(char* pDst, uint32 vertexCount, uint32 vertexStride, uint32 vertexPosOffset, const CMatrix4& matrix)`
+- `static void ProcessBatch(char* pVertexDst, const char* pVertexSrc, uint32 vertexCount, uint32 vertexStride, uint32 vertexPosOffset, bool hasVertexPos, const CMatrix4& matrix)`
+- `static void ProcessIndexedBatch(char* pVertexDst, const char* pVertexSrc, uint32* pIndexDst, const uint32* pIndexSrc, uint32 vertexCount, uint32 indexCount, uint32 batchIndex, uint32 vertexStride, uint32 vertexPosOffset, bool hasVertexPos, const CMatrix4& matrix)`
+- `static bool FindVertexPosOffset(const CVertexLayout* pLayout, uint32& outOffset)`
 
 ## Build
 

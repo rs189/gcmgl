@@ -32,8 +32,7 @@ public:
 	CMatrix4 ToMatrix() const;
 	CMatrix4 ToTransformMatrix(
 		const CVector3& position,
-		const CVector3& scale
-	) const;
+		const CVector3& scale) const;
 	CQuaternion& Normalise();
 	float32 Length() const;
 

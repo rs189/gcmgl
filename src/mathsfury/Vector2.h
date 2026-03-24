@@ -43,6 +43,11 @@ public:
 
 	bool operator==(const CVector2& other) const;
 	bool operator!=(const CVector2& other) const;
+
+	float32 Length() const;
+	float32 LengthSq() const;
+	float32 Distance(const CVector2& other) const;
+	float32 DistanceSq(const CVector2& other) const;
 };
 
 #endif // VECTOR2_H

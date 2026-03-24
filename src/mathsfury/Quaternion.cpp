@@ -57,24 +57,26 @@ CMatrix4 CQuaternion::ToMatrix() const
 		vector float v;
 		float32 f[4];
 	}
-	qSq;
-	qSq.v = vec_madd(q, q, zero);
+	u;
+	u.v = vec_madd(q, q, zero);
 
-	xx = qSq.f[0];
-	yy = qSq.f[1];
-	zz = qSq.f[2];
-#else
+	xx = u.f[0];
+	yy = u.f[1];
+	zz = u.f[2];
+
+#else // PLATFORM_PS3
 	simde__m128 q = simde_mm_set_ps(m_W, m_Z, m_Y, m_X);
-	simde__m128 qSqVec = simde_mm_mul_ps(q, q);
+
+	simde__m128 res = simde_mm_mul_ps(q, q);
 
 	float32 temp[4];
-	simde_mm_storeu_ps(temp, qSqVec);
+	simde_mm_storeu_ps(temp, res);
 
 	xx = temp[0];
 	yy = temp[1];
 	zz = temp[2];
-#endif
 
+#endif // !PLATFORM_PS3
 	float32 xy = m_X * m_Y;
 	float32 xz = m_X * m_Z;
 	float32 yz = m_Y * m_Z;
@@ -83,6 +85,7 @@ CMatrix4 CQuaternion::ToMatrix() const
 	float32 wz = m_W * m_Z;
 
 	CMatrix4 result;
+
 	result.m_Data[0] = 1.0f - 2.0f * (yy + zz);
 	result.m_Data[1] = 2.0f * (xy + wz);
 	result.m_Data[2] = 2.0f * (xz - wy);
@@ -116,6 +119,7 @@ CMatrix4 CQuaternion::ToMatrix() const
 	float32 wz = m_W * m_Z;
 
 	CMatrix4 result;
+
 	result.m_Data[0] = 1.0f - 2.0f * (yy + zz);
 	result.m_Data[1] = 2.0f * (xy + wz);
 	result.m_Data[2] = 2.0f * (xz - wy);
@@ -156,6 +160,7 @@ CMatrix4 CQuaternion::ToTransformMatrix(
 	float32 wz = m_W * m_Z;
 
 	CMatrix4 result;
+
 	result.m_Data[0] = (1.0f - 2.0f * (yy + zz)) * scale.m_X;
 	result.m_Data[1] = (2.0f * (xy + wz)) * scale.m_X;
 	result.m_Data[2] = (2.0f * (xz - wy)) * scale.m_X;
@@ -191,43 +196,37 @@ CQuaternion& CQuaternion::Normalise()
 		vector float v;
 		float32 f[4];
 	}
-	qSq;
-	qSq.v = vec_madd(q, q, zero);
+	u;
+	u.v = vec_madd(q, q, zero);
 
-	float32 len = CMaths::Sqrt(qSq.f[0] + qSq.f[1] + qSq.f[2] + qSq.f[3]);
+	float32 len = CMaths::Sqrt(u.f[0] + u.f[1] + u.f[2] + u.f[3]);
 	if (len > 1e-8f)
 	{
 		vector float invLenVec = vec_splats(1.0f / len);
 
-		union
-		{
-			vector float v;
-			float32 f[4];
-		}
-		resultVec;
-		resultVec.v = vec_madd(q, invLenVec, zero);
+		u.v = vec_madd(q, invLenVec, zero);
 
-		m_X = resultVec.f[0];
-		m_Y = resultVec.f[1];
-		m_Z = resultVec.f[2];
-		m_W = resultVec.f[3];
+		m_X = u.f[0];
+		m_Y = u.f[1];
+		m_Z = u.f[2];
+		m_W = u.f[3];
 	}
 
 	return *this;
-#else
+#else // PLATFORM_PS3
 	simde__m128 q = simde_mm_set_ps(m_W, m_Z, m_Y, m_X);
-	simde__m128 qSqVec = simde_mm_mul_ps(q, q);
+	simde__m128 res = simde_mm_mul_ps(q, q);
 	
 	float32 temp[4];
-	simde_mm_storeu_ps(temp, qSqVec);
+	simde_mm_storeu_ps(temp, res);
 
 	float32 len = CMaths::Sqrt(temp[0] + temp[1] + temp[2] + temp[3]);
 	if (len > 1e-8f)
 	{
 		float32 invLen = 1.0f / len;
 		simde__m128 invLenVec = simde_mm_set1_ps(invLen);
-		simde__m128 resultVec = simde_mm_mul_ps(q, invLenVec);
-		simde_mm_storeu_ps(temp, resultVec);
+		res = simde_mm_mul_ps(q, invLenVec);
+		simde_mm_storeu_ps(temp, res);
 
 		m_X = temp[0];
 		m_Y = temp[1];
@@ -236,7 +235,7 @@ CQuaternion& CQuaternion::Normalise()
 	}
 
 	return *this;
-#endif
+#endif // !PLATFORM_PS3
 #else
 	float32 len = Length();
 	if (len > 1e-8f)
@@ -267,6 +266,7 @@ CQuaternion CQuaternion::FromEuler(float32 pitch, float32 yaw, float32 roll)
 	float32 sr = CMaths::Sin(roll * 0.5f);
 
 	CQuaternion result;
+
 	result.m_W = cr * cp * cy + sr * sp * sy;
 	result.m_X = sr * cp * cy - cr * sp * sy;
 	result.m_Y = cr * sp * cy + sr * cp * sy;

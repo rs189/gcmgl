@@ -17,7 +17,7 @@ CRenderer::CRenderer() :
 }
 
 CVertexLayout::CVertexLayout() :
-	m_Stride(0)
+	m_VertexStride(0)
 {
 }
 
@@ -33,7 +33,7 @@ void CVertexLayout::AddAttribute(
 	attribute.m_Format = static_cast<VertexFormat_t>(format);
 	attribute.m_Offset = offset;
 	attribute.m_Location = location;
-	attribute.m_Semantic = VertexSemantic_t::Unspecified;
+	attribute.m_VertexSemantic = VertexSemantic_t::Unspecified;
 	m_Attributes.AddToTail(attribute);
 }
 
@@ -42,7 +42,7 @@ void CVertexLayout::AddAttribute(
 	const CFixedString& name,
 	uint32 format,
 	uint32 offset,
-	VertexSemantic_t semantic,
+	VertexSemantic_t vertexSemantic,
 	uint32 location)
 {
 	VertexAttribute_t attr;
@@ -50,13 +50,13 @@ void CVertexLayout::AddAttribute(
 	attr.m_Format = static_cast<VertexFormat_t>(format);
 	attr.m_Offset = offset;
 	attr.m_Location = location;
-	attr.m_Semantic = semantic;
+	attr.m_VertexSemantic = vertexSemantic;
 	m_Attributes.AddToTail(attr);
 }
 
-void CVertexLayout::SetStride(uint32 stride)
+void CVertexLayout::SetStride(uint32 vertexStride)
 {
-	m_Stride = stride;
+	m_VertexStride = vertexStride;
 }
 
 bool PipelineState_t::operator==(const PipelineState_t& other) const
@@ -73,10 +73,6 @@ bool PipelineState_t::operator==(const PipelineState_t& other) const
 		m_DepthStencilState.m_IsDepthWrite == other.m_DepthStencilState.m_IsDepthWrite;
 }
 
-CMatrix4 BatchTransform_t::ToMatrix() const
-{
-	return m_Rotation.ToTransformMatrix(m_Position, m_Scale);
-}
 
 BufferHandle CRenderer::CreateStagingBuffer(uint64 size)
 {
@@ -97,13 +93,13 @@ void CRenderer::SetShaderProgram(ShaderProgramHandle hProgram)
 void CRenderer::SetVertexBuffer(
 	BufferHandle hBuffer,
 	uint32 slot,
-	uint32 stride,
+	uint32 vertexStride,
 	uint32 offset,
 	const CVertexLayout* pLayout)
 {
 	if (m_PipelineState.m_hVertexBuffer != hBuffer || 
 		m_PipelineState.m_pVertexLayout != pLayout || 
-		m_PipelineState.m_VertexStride != stride || 
+		m_PipelineState.m_VertexStride != vertexStride || 
 		m_PipelineState.m_VertexOffset != offset)
 	{
 		m_StateDirtyFlags = m_StateDirtyFlags | StateDirtyFlags_t::VertexBuffer;
@@ -111,7 +107,7 @@ void CRenderer::SetVertexBuffer(
 
 	m_PipelineState.m_hVertexBuffer = hBuffer;
 	m_PipelineState.m_pVertexLayout = pLayout;
-	m_PipelineState.m_VertexStride = stride;
+	m_PipelineState.m_VertexStride = vertexStride;
 	m_PipelineState.m_VertexOffset = offset;
 }
 

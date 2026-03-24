@@ -7,6 +7,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "Main.h"
+#include "Maths.h"
 #include "Vector2.h"
 #include "tier0/dbg.h"
 
@@ -146,4 +147,27 @@ bool CVector2::operator==(const CVector2& other) const
 bool CVector2::operator!=(const CVector2& other) const
 {
 	return !(*this == other);
+}
+
+float32 CVector2::Length() const
+{
+	return CMaths::Sqrt(LengthSq());
+}
+
+float32 CVector2::LengthSq() const
+{
+	return m_X * m_X + m_Y * m_Y;
+}
+
+float32 CVector2::Distance(const CVector2& other) const
+{
+	return CMaths::Sqrt(DistanceSq(other));
+}
+
+float32 CVector2::DistanceSq(const CVector2& other) const
+{
+	float32 dx = m_X - other.m_X;
+	float32 dy = m_Y - other.m_Y;
+
+	return dx * dx + dy * dy;
 }

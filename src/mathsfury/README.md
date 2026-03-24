@@ -3,7 +3,7 @@
 
 ### A C++ mathematics library for 3D graphics.
 
-mathsfury is a C++ mathematics library for 3D graphics targeting PlayStation 3 and Linux (x86_64). Mathsfury provides vectors, quaternions, and matrices as well as common mathematical functions. It covers graphics programming use cases, including transformations, camera manipulation, and projection.
+mathsfury is a C++ mathematics library for 3D graphics targeting PlayStation 3 and Linux (x86_64). mathsfury provides vectors, quaternions, and matrices as well as common mathematical functions. It covers graphics programming use cases, including transformations, camera manipulation, and projection.
 
 ## Requirements
 
@@ -24,110 +24,118 @@ mathsfury is a C++ mathematics library for 3D graphics targeting PlayStation 3 a
 ## Interface
 
 ### CMaths
-- `Sqrt(float32 f)`
-- `Tan(float32 f)`
-- `Cos(float32 f)`
-- `Sin(float32 f)`
-- `ATan2(float32 y, float32 x)`
-- `ASin(float32 f)`
-- `Abs(float32 a)`
-- `Abs(int32 a)`
-- `Min(float32 a, float32 b)`
-- `Min(int32 a, int32 b)`
-- `Min(uint32 a, uint32 b)`
-- `Max(float32 a, float32 b)`
-- `Max(int32 a, int32 b)`
-- `Max(uint32 a, uint32 b)`
-- `Clamp(float32 value, float32 minVal, float32 maxVal)`
-- `Clamp(int32 value, int32 minVal, int32 maxVal)`
-- `Clamp(uint32 value, uint32 minVal, uint32 maxVal)`
-- `Normalise(const CVector3& v)`
-- `Cross(const CVector3& a, const CVector3& b)`
-- `Dot(const CVector3& a, const CVector3& b)`
-- `Perspective(float32 fovyDeg, float32 aspect, float32 nearClip, float32 farClip)`
-- `Orthographic(float32 left, float32 right, float32 bottom, float32 top, float32 nearClip, float32 farClip)`
-- `LookAt(const CVector3& eye, const CVector3& target, const CVector3& up)`
-- `Translate(const CMatrix4& m, const CVector3& v)`
-- `Rotate(const CMatrix4& m, float32 angleDeg, const CVector3& axis)`
-- `Scale(const CMatrix4& m, const CVector3& v)`
-- `DirectionToEquirect(const CVector3& dir)`
+- `static float32 Sqrt(float32 f)`
+- `static float32 Tan(float32 f)`
+- `static float32 Cos(float32 f)`
+- `static float32 Sin(float32 f)`
+- `static float32 ATan2(float32 y, float32 x)`
+- `static float32 ASin(float32 f)`
+- `static float32 Abs(float32 a)`
+- `static int32 Abs(int32 a)`
+- `static float32 Min(float32 a, float32 b)`
+- `static int32 Min(int32 a, int32 b)`
+- `static uint32 Min(uint32 a, uint32 b)`
+- `static float32 Max(float32 a, float32 b)`
+- `static int32 Max(int32 a, int32 b)`
+- `static uint32 Max(uint32 a, uint32 b)`
+- `static float32 Clamp(float32 value, float32 minVal, float32 maxVal)`
+- `static int32 Clamp(int32 value, int32 minVal, int32 maxVal)`
+- `static uint32 Clamp(uint32 value, uint32 minVal, uint32 maxVal)`
+- `static CVector3 Normalise(const CVector3& v)`
+- `static CVector3 Cross(const CVector3& a, const CVector3& b)`
+- `static float32 Dot(const CVector3& a, const CVector3& b)`
+- `static CMatrix4 Perspective(float32 fovyDeg, float32 aspect, float32 nearClip, float32 farClip)`
+- `static CMatrix4 Orthographic(float32 left, float32 right, float32 bottom, float32 top, float32 nearClip, float32 farClip)`
+- `static CMatrix4 LookAt(const CVector3& eye, const CVector3& target, const CVector3& up)`
+- `static CMatrix4 Translate(const CMatrix4& m, const CVector3& v)`
+- `static CMatrix4 Rotate(const CMatrix4& m, float32 angleDeg, const CVector3& axis)`
+- `static CMatrix4 Scale(const CMatrix4& m, const CVector3& v)`
+- `static EquirectUV_t DirectionToEquirect(const CVector3& dir)`
 
 ### CVector2(float32 m_X, float32 m_Y)
-- `operator+(const CVector2& other)`
-- `operator-(const CVector2& other)`
-- `operator*(const CVector2& other)`
-- `operator*(float32 scalar)`
-- `operator/(const CVector2& other)`
-- `operator/(float32 scalar)`
-- `operator+=(const CVector2& other)`
-- `operator-=(const CVector2& other)`
-- `operator*=(const CVector2& other)`
-- `operator*=(float32 scalar)`
-- `operator/=(const CVector2& other)`
-- `operator/=(float32 scalar)`
-- `operator==(const CVector2& other)`
-- `operator!=(const CVector2& other)`
-- `operator[](int32 index)`
+- `CVector2 operator+(const CVector2& other) const`
+- `CVector2 operator-(const CVector2& other) const`
+- `CVector2 operator*(const CVector2& other) const`
+- `CVector2 operator*(float32 scalar) const`
+- `CVector2 operator/(const CVector2& other) const`
+- `CVector2 operator/(float32 scalar) const`
+- `CVector2& operator+=(const CVector2& other)`
+- `CVector2& operator-=(const CVector2& other)`
+- `CVector2& operator*=(const CVector2& other)`
+- `CVector2& operator*=(float32 scalar)`
+- `CVector2& operator/=(const CVector2& other)`
+- `CVector2& operator/=(float32 scalar)`
+- `bool operator==(const CVector2& other) const`
+- `bool operator!=(const CVector2& other) const`
+- `float32& operator[](int32 index)`
+- `float32 Length() const`
+- `float32 LengthSq() const`
+- `float32 Distance(const CVector2& other) const`
+- `float32 DistanceSq(const CVector2& other) const`
 
 ### CVector3(float32 m_X, float32 m_Y, float32 m_Z)
-- `operator+(const CVector3& other)`
-- `operator-(const CVector3& other)`
-- `operator*(const CVector3& other)`
-- `operator*(float32 scalar)`
-- `operator/(const CVector3& other)`
-- `operator/(float32 scalar)`
-- `operator+=(const CVector3& other)`
-- `operator-=(const CVector3& other)`
-- `operator*=(const CVector3& other)`
-- `operator*=(float32 scalar)`
-- `operator/=(const CVector3& other)`
-- `operator/=(float32 scalar)`
-- `operator==(const CVector3& other)`
-- `operator!=(const CVector3& other)`
-- `operator[](int32 index)`
-- `LengthXY()`
-- `Length()`
-- `Distance(const CVector3& other)`
-- `Distance2(const CVector3& other)`
-- `Dot(const CVector3& other)`
+- `CVector3 operator+(const CVector3& other) const`
+- `CVector3 operator-(const CVector3& other) const`
+- `CVector3 operator*(const CVector3& other) const`
+- `CVector3 operator*(float32 scalar) const`
+- `CVector3 operator/(const CVector3& other) const`
+- `CVector3 operator/(float32 scalar) const`
+- `CVector3& operator+=(const CVector3& other)`
+- `CVector3& operator-=(const CVector3& other)`
+- `CVector3& operator*=(const CVector3& other)`
+- `CVector3& operator*=(float32 scalar)`
+- `CVector3& operator/=(const CVector3& other)`
+- `CVector3& operator/=(float32 scalar)`
+- `bool operator==(const CVector3& other) const`
+- `bool operator!=(const CVector3& other) const`
+- `float32& operator[](int32 index)`
+- `float32 LengthXY() const`
+- `float32 Length() const`
+- `float32 LengthSq() const`
+- `float32 Distance(const CVector3& other) const`
+- `float32 DistanceSq(const CVector3& other) const`
+- `float32 Dot(const CVector3& other) const`
 
 ### CVector4(float32 m_X, float32 m_Y, float32 m_Z, float32 m_W)
-- `operator+(const CVector4& other)`
-- `operator-(const CVector4& other)`
-- `operator*(const CVector4& other)`
-- `operator*(float32 scalar)`
-- `operator/(const CVector4& other)`
-- `operator/(float32 scalar)`
-- `operator+=(const CVector4& other)`
-- `operator-=(const CVector4& other)`
-- `operator*=(const CVector4& other)`
-- `operator*=(float32 scalar)`
-- `operator/=(const CVector4& other)`
-- `operator/=(float32 scalar)`
-- `operator==(const CVector4& other)`
-- `operator!=(const CVector4& other)`
-- `operator[](int32 index)`
-- `Length()`
+- `CVector4 operator+(const CVector4& other) const`
+- `CVector4 operator-(const CVector4& other) const`
+- `CVector4 operator*(const CVector4& other) const`
+- `CVector4 operator*(float32 scalar) const`
+- `CVector4 operator/(const CVector4& other) const`
+- `CVector4 operator/(float32 scalar) const`
+- `CVector4& operator+=(const CVector4& other)`
+- `CVector4& operator-=(const CVector4& other)`
+- `CVector4& operator*=(const CVector4& other)`
+- `CVector4& operator*=(float32 scalar)`
+- `CVector4& operator/=(const CVector4& other)`
+- `CVector4& operator/=(float32 scalar)`
+- `bool operator==(const CVector4& other) const`
+- `bool operator!=(const CVector4& other) const`
+- `float32& operator[](int32 index)`
+- `float32 Length() const`
+- `float32 LengthSq() const`
+- `float32 Distance(const CVector4& other) const`
+- `float32 DistanceSq(const CVector4& other) const`
 
 ### CQuaternion(float32 m_X, float32 m_Y, float32 m_Z, float32 m_W)
-- `operator*(const CQuaternion& other)`
-- `ToMatrix()`
-- `ToTransformMatrix(const CVector3& position, const CVector3& scale)`
-- `Normalise()`
-- `Length()`
-- `FromEuler(float32 pitch, float32 yaw, float32 roll)`
+- `CQuaternion operator*(const CQuaternion& other) const`
+- `CMatrix4 ToMatrix() const`
+- `CMatrix4 ToTransformMatrix(const CVector3& position, const CVector3& scale) const`
+- `CQuaternion& Normalise()`
+- `float32 Length() const`
+- `static CQuaternion FromEuler(float32 pitch, float32 yaw, float32 roll)`
 
 ### CMatrix4(float32 m_Data[16])
-- `operator+(const CMatrix4& other)`
-- `operator-(const CMatrix4& other)`
-- `operator*(const CMatrix4& other)`
-- `operator+=(const CMatrix4& other)`
-- `operator-=(const CMatrix4& other)`
-- `operator*=(const CMatrix4& other)`
-- `operator*(const CVector4& v)`
-- `operator==(const CMatrix4& other)`
-- `operator!=(const CMatrix4& other)`
-- `ToTransformMatrix(const CVector3& position, const CVector3& scale)`
+- `CMatrix4 operator+(const CMatrix4& other) const`
+- `CMatrix4 operator-(const CMatrix4& other) const`
+- `CMatrix4 operator*(const CMatrix4& other) const`
+- `CMatrix4& operator+=(const CMatrix4& other)`
+- `CMatrix4& operator-=(const CMatrix4& other)`
+- `CMatrix4& operator*=(const CMatrix4& other)`
+- `CVector4 operator*(const CVector4& v) const`
+- `bool operator==(const CMatrix4& other) const`
+- `bool operator!=(const CMatrix4& other) const`
+- `CMatrix4 ToTransformMatrix(const CVector3& position, const CVector3& scale) const`
 
 ## Usage
 

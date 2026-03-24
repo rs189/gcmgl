@@ -10,6 +10,7 @@
 #include "tier0/dbg.h"
 #include "window/WindowManager.h"
 #include "renderer/Renderer.h"
+#include "renderer/BatchRenderer.h"
 #include "utils/Time.h"
 #include "mathsfury/Maths.h"
 #include "mathsfury/Quaternion.h"
@@ -46,7 +47,8 @@ int32 RunBatchExample(
 	camera.m_Position = CVector3(0.0f, 2.5f, 9.33f);
 
 	// Create shader
-	ShaderProgramHandle hShaderProgram = pRenderer->CreateShaderProgram("example_rainbow");
+	ShaderProgramHandle hShaderProgram = pRenderer->CreateShaderProgram(
+		"example_rainbow");
 	if (hShaderProgram == 0)
 	{
 		Error("[Batch] Failed to create shader program 'example_rainbow'\n");
@@ -87,34 +89,6 @@ int32 RunBatchExample(
 		4, 0, 1
 	};
 
-	// Create batch data
-	BatchData_t batchData;
-	CUtlVector<CQuaternion> baseRotations;
-	const int32 numCubesCol = 100;
-	const int32 numCubesRow = 100;
-	const float32 spacing = 3.0f;
-	const float32 halfWidth = (numCubesCol - 1) * 0.5f * spacing;
-
-	for (int32 i = 0; i < numCubesRow; i++)
-	{
-		for (int32 j = 0; j < numCubesCol; j++)
-		{
-			float32 rotX = (i * 7.0f + j * 3.0f) * 5.0f;
-			float32 rotY = (i * 11.0f + j * 13.0f) * 8.0f;
-			float32 rotZ = (i * 17.0f + j * 19.0f) * 3.0f;
-			CQuaternion rotation = CQuaternion::FromEuler(
-				rotX * CMaths::Deg2Rad,
-				rotY * CMaths::Deg2Rad,
-				rotZ * CMaths::Deg2Rad);
-			baseRotations.AddToTail(rotation);
-
-			float32 pX = (j * spacing) - halfWidth;
-			float32 pZ = (i * spacing) - halfWidth;
-			batchData.AddBatch(
-				CVector3(pX, 0.0f, pZ), rotation, CVector3(1.0f, 1.0f, 1.0f));
-		}
-	}
-
 	// Create buffers
 	BufferHandle hVertexBuffer = pRenderer->CreateVertexBuffer(
 		vertexData,
@@ -150,6 +124,36 @@ int32 RunBatchExample(
 		VertexSemantic_t::Color0);
 	vertexLayout.SetStride(sizeof(Vertex_t));
 
+	// Create batch
+	const int32 rows = 100;
+	const int32 columns = 100;
+	CUtlVector<CQuaternion> rotations;
+	const float32 spacing = 3.0f;
+	CBatch batch;
+
+	for (int32 row = 0; row < rows; row++)
+	{
+		for (int32 col = 0; col < columns; col++)
+		{
+			float32 rotX = (row * 7.0f + col * 3.0f) * 5.0f;
+			float32 rotY = (row * 11.0f + col * 13.0f) * 8.0f;
+			float32 rotZ = (row * 17.0f + col * 19.0f) * 3.0f;
+			CQuaternion rotation = CQuaternion::FromEuler(
+				rotX * CMaths::Deg2Rad,
+				rotY * CMaths::Deg2Rad,
+				rotZ * CMaths::Deg2Rad);
+			rotations.AddToTail(rotation);
+
+			float32 posX = (col * spacing) - (columns - 1) * spacing * 0.5f;
+			float32 posZ = (row * spacing) - (columns - 1) * spacing * 0.5f;
+			batch.Add(
+				CVector3(posX, 0.0f, posZ),
+				rotation,
+				CVector3(1.0f, 1.0f, 1.0f));
+		}
+	}
+	batch.Build();
+
 	while (isRunning)
 	{
 		pWindow->PollEvents();
@@ -173,82 +177,14 @@ int32 RunBatchExample(
 			float32(windowConfig.m_Height));
 		pRenderer->SetViewport(viewport);
 
-		// Set MVP matrices
+		// Set matrix
 		camera.m_Position.m_X = sinf(rotationY * CMaths::Deg2Rad * 0.5f) * 15.0f;
 		camera.m_Position.m_Z =
 			cosf(rotationY * CMaths::Deg2Rad * 0.5f) * 15.0f + 9.33f;
-		float32 aspect = windowConfig.m_AspectRatio;
+		float32 aspectRatio = windowConfig.m_AspectRatio;
 		CMatrix4 viewMatrix = camera.GetViewMatrix();
-		CMatrix4 projMatrix = camera.GetProjectionMatrix(aspect);
-
-		CMatrix4 mvp = projMatrix * viewMatrix;
-
-		// Update batch data
-		const uint32 batchCount =
-			static_cast<uint32>(batchData.m_Transforms.Count());
-
-		const CVector3 aabbExtent(0.5f, 0.5f, 0.5f);
-		Plane_t frustumPlanes[6];
-		pRenderer->ExtractFrustumPlanes(projMatrix * viewMatrix, frustumPlanes);
-
-		const float32 nearRadius = 10.0f;
-		const float32 farRadius = 500.0f;
-		const float32 nearRadiusSq = nearRadius * nearRadius;
-		const float32 farRadiusSq = farRadius * farRadius;
-
-		const float32 maxAmplitude = 20.0f;
-		const float32 frequency = 1.0f;
-
-		float32 time = static_cast<float32>(CTime::GetTime() - startTime);
-		
-		const CQuaternion animRotation = CQuaternion::FromEuler(
-			rotationX * CMaths::Deg2Rad,
-			rotationY * CMaths::Deg2Rad,
-			0.0f);
-		
-		for (uint32 i = 0; i < batchCount; i++)
-		{
-			BatchTransform_t& batchTransform = batchData.m_Transforms[i];
-
-			if (!pRenderer->TestAABBFrustum(
-				batchTransform.m_Position,
-				aabbExtent,
-				frustumPlanes))
-			{
-				continue;
-			}
-
-			batchTransform.m_Rotation = animRotation * baseRotations[i];
-
-			const float32 dx = batchTransform.m_Position.m_X - camera.m_Position.m_X;
-			const float32 dz = batchTransform.m_Position.m_Z - camera.m_Position.m_Z;
-
-			const float32 distSq = dx * dx + dz * dz;
-
-			float32 distNorm;
-			if (distSq <= nearRadiusSq)
-			{
-				distNorm = 0.0f;
-			}
-			else if (distSq >= farRadiusSq)
-			{
-				distNorm = 1.0f;
-			}
-			else
-			{
-				const float32 dist = sqrtf(distSq);
-				const float32 t = (dist - nearRadius) / (farRadius - nearRadius);
-				distNorm = t * t * (3.0f - 2.0f * t);
-			}
-			const float32 amplitude = distNorm * maxAmplitude;
-			const float32 phase =
-				batchTransform.m_Position.m_X * 0.37f +
-				batchTransform.m_Position.m_Z * 0.73f;
-			const float32 yNorm =
-				sinf((time + phase) * CMaths::TwoPI * frequency) * 0.5f +
-				0.5f;
-			batchTransform.m_Position.m_Y = yNorm * amplitude;
-		}
+		CMatrix4 projectionMatrix = camera.GetProjectionMatrix(aspectRatio);
+		CMatrix4 mvp = projectionMatrix * viewMatrix;
 
 		// Update constant buffer
 		pRenderer->UpdateBuffer(hConstantBuffer, &mvp, sizeof(CMatrix4), 0);
@@ -268,12 +204,49 @@ int32 RunBatchExample(
 			0,
 			&vertexLayout);
 		pRenderer->SetIndexBuffer(hIndexBuffer);
+		
+		// Animate cube positions and rotations based on time 
+		const CQuaternion rotation = CQuaternion::FromEuler(
+			0.0f,
+			rotationY * CMaths::Deg2Rad,
+			0.0f);
+		float32 time = static_cast<float32>(CTime::GetTime() - startTime);
+
+		for (int32 chunkIndex = 0; chunkIndex < batch.m_BatchChunks.Count(); chunkIndex++)
+		{
+			BatchChunk_t& batchChunk = batch.m_BatchChunks[chunkIndex];
+
+			const float32 batchChunkDistance = batchChunk.m_Center.Distance(
+				camera.m_Position);
+			if (!CBatchRenderer::ShouldUpdateChunk(
+				batchChunkDistance,
+				CTime::GetFrameCount()))
+			{
+				continue;
+			}
+
+			for (int32 j = 0; j < batchChunk.m_BatchChunkTransforms.Count(); j++)
+			{
+				BatchChunkTransform_t& batchChunkTransform = batchChunk.m_BatchChunkTransforms[j];
+				batchChunkTransform.m_Rotation = rotation * rotations[chunkIndex * batchChunk.m_BatchChunkTransforms.Count() + j];
+
+				const float32 chunkTransformDistance = batchChunkTransform.m_Position.Distance(
+					camera.m_Position);
+				const float32 distanceNorm = CMaths::Clamp(
+					(chunkTransformDistance - 10.0f) / 490.0f,
+					0.0f,
+					1.0f);
+				const float32 phase = batchChunkTransform.m_Position.m_X * 0.37f + batchChunkTransform.m_Position.m_Z * 0.73f;
+				batchChunkTransform.m_Position.m_Y = (sinf((time + phase) * CMaths::TwoPI) * 0.5f + 0.5f) * distanceNorm * 20.0f;
+			}
+		}
 
 		// Draw cubes
+		batch.m_pCameraPos = &camera.m_Position;
 		pRenderer->DrawIndexedBatched(
 			36,
 			8,
-			batchData,
+			batch,
 			mvp,
 			0);
 

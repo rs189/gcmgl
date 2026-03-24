@@ -15,7 +15,6 @@
 #include "mathsfury/Vector4.h"
 #include <string.h>
 #include <GLFW/glfw3.h>
-#include <thread>
 
 #ifdef SIMD_ENABLED
 #include <simde/x86/sse.h>
@@ -1111,14 +1110,14 @@ void CGlRenderer::ApplyFragmentConstants(ShaderProgramHandle hProgram)
 void CGlRenderer::Draw(
 	uint32 vertexCount,
 	uint32 startVertex,
-	const CMatrix4* pViewProj,
+	const CMatrix4* pViewProjection,
 	const CVector3* pAABBCenter,
 	const CVector3* pAABBExtent)
 {
-	if (pViewProj && pAABBCenter && pAABBExtent)
+	if (pViewProjection && pAABBCenter && pAABBExtent)
 	{
 		Plane_t frustumPlanes[6];
-		ExtractFrustumPlanes(*pViewProj, frustumPlanes);
+		ExtractFrustumPlanes(*pViewProjection, frustumPlanes);
 		if (!TestAABBFrustum(*pAABBCenter, *pAABBExtent, frustumPlanes))
 		{
 			return;
@@ -1137,7 +1136,7 @@ void CGlRenderer::DrawIndexed(
 	uint32 indexCount,
 	uint32 startIndex,
 	int32 baseVertex,
-	const CMatrix4* pViewProj,
+	const CMatrix4* pViewProjection,
 	const CVector3* pAABBCenter,
 	const CVector3* pAABBExtent)
 {
@@ -1155,10 +1154,10 @@ void CGlRenderer::DrawIndexed(
 		return;
 	}
 
-	if (pViewProj && pAABBCenter && pAABBExtent)
+	if (pViewProjection && pAABBCenter && pAABBExtent)
 	{
 		Plane_t frustumPlanes[6];
-		ExtractFrustumPlanes(*pViewProj, frustumPlanes);
+		ExtractFrustumPlanes(*pViewProjection, frustumPlanes);
 		if (!TestAABBFrustum(*pAABBCenter, *pAABBExtent, frustumPlanes))
 		{
 			return;
@@ -1190,14 +1189,15 @@ void CGlRenderer::DrawIndexed(
 		reinterpret_cast<void*>(static_cast<uintptr_t>(indexOffset)));
 }
 
-uint32 CGlRenderer::GetSemanticAttributeIndex(VertexSemantic_t semantic)
+uint32 CGlRenderer::GetVertexSemanticAttributeIndex(
+	VertexSemantic_t vertexSemantic)
 {
 	return 0xFFFFFFFFu;
 }
 
 void CGlRenderer::BindVertexAttributes(
 	const CVertexLayout* pLayout,
-	uint32 stride,
+	uint32 vertexStride,
 	uint32 offset)
 {
 	if (!pLayout)
@@ -1236,8 +1236,6 @@ void CGlRenderer::BindVertexAttributes(
 		return;
 	}
 
-	uint32 vertexStride = stride ? stride : pLayout->GetStride();
-
 	glBindBuffer(
 		GL_ARRAY_BUFFER,
 		m_BufferResources.Element(vertexBufferIndex).m_hId);
@@ -1250,7 +1248,7 @@ void CGlRenderer::BindVertexAttributes(
 		if (attribute.m_Name.IsEmpty()) continue;
 
 		GLint loc = -1;
-		if (attribute.m_Semantic != VertexSemantic_t::Unspecified)
+		if (attribute.m_VertexSemantic != VertexSemantic_t::Unspecified)
 		{
 			CUtlMap<CFixedString, int32>& attributeMap = programResource.m_AttributeLocations;
 			int32 attributeMapIndex = attributeMap.Find(attribute.m_Name);
@@ -1321,7 +1319,8 @@ void CGlRenderer::BindVertexAttributes(
 			components,
 			dataType,
 			normalized,
-			static_cast<GLsizei>(vertexStride),
+			static_cast<GLsizei>(
+				vertexStride ? vertexStride : pLayout->GetStride()),
 			reinterpret_cast<const void*>(
 				static_cast<uintptr_t>(attributeOffset)));
 	}

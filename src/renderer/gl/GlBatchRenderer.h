@@ -19,14 +19,14 @@ class CGlBatchRenderer : public CGlRenderer, public CBatchRenderer
 protected:
 	virtual void DrawBatchedChunk(
 		uint32 vertexCount,
-		const BatchData_t& batchData,
+		const CUtlVector<BatchChunkTransform_t>& batchChunkTransforms,
 		uint32 chunkStart,
 		uint32 chunkSize,
 		uint32 startVertex) GCMGL_OVERRIDE;
 	virtual void DrawIndexedBatchedChunk(
 		uint32 indexCount,
 		uint32 vertexCount,
-		const BatchData_t& batchData,
+		const CUtlVector<BatchChunkTransform_t>& batchChunkTransforms,
 		uint32 chunkStart,
 		uint32 chunkSize,
 		uint32 startIndex,

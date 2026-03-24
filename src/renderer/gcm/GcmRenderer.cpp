@@ -1237,14 +1237,14 @@ void CGcmRenderer::ApplyFragmentConstants(ShaderProgramHandle hProgram)
 void CGcmRenderer::Draw(
 	uint32 vertexCount,
 	uint32 startVertex,
-	const CMatrix4* pViewProj,
+	const CMatrix4* pViewProjection,
 	const CVector3* pAABBCenter,
 	const CVector3* pAABBExtent)
 {
-	if (pViewProj && pAABBCenter && pAABBExtent)
+	if (pViewProjection && pAABBCenter && pAABBExtent)
 	{
 		Plane_t frustumPlanes[6];
-		ExtractFrustumPlanes(*pViewProj, frustumPlanes);
+		ExtractFrustumPlanes(*pViewProjection, frustumPlanes);
 		if (!TestAABBFrustum(*pAABBCenter, *pAABBExtent, frustumPlanes))
 		{
 			return;
@@ -1263,7 +1263,7 @@ void CGcmRenderer::DrawIndexed(
 	uint32 indexCount,
 	uint32 startIndex,
 	int32 baseVertex,
-	const CMatrix4* pViewProj,
+	const CMatrix4* pViewProjection,
 	const CVector3* pAABBCenter,
 	const CVector3* pAABBExtent)
 {
@@ -1281,10 +1281,10 @@ void CGcmRenderer::DrawIndexed(
 		return;
 	}
 
-	if (pViewProj && pAABBCenter && pAABBExtent)
+	if (pViewProjection && pAABBCenter && pAABBExtent)
 	{
 		Plane_t frustumPlanes[6];
-		ExtractFrustumPlanes(*pViewProj, frustumPlanes);
+		ExtractFrustumPlanes(*pViewProjection, frustumPlanes);
 		if (!TestAABBFrustum(*pAABBCenter, *pAABBExtent, frustumPlanes))
 		{
 			return;
@@ -1317,9 +1317,10 @@ void CGcmRenderer::DrawIndexed(
 		GCM_LOCATION_RSX);
 }
 
-uint32 CGcmRenderer::GetSemanticAttributeIndex(VertexSemantic_t semantic)
+uint32 CGcmRenderer::GetVertexSemanticAttributeIndex(
+	VertexSemantic_t vertexSemantic)
 {
-	switch (semantic)
+	switch (vertexSemantic)
 	{
 		case VertexSemantic_t::Position: return GCM_VERTEX_ATTRIB_POS;
 		case VertexSemantic_t::Weight: return GCM_VERTEX_ATTRIB_WEIGHT;
@@ -1345,7 +1346,7 @@ uint32 CGcmRenderer::GetSemanticAttributeIndex(VertexSemantic_t semantic)
 
 void CGcmRenderer::BindVertexAttributes(
 	const CVertexLayout* pLayout,
-	uint32 stride,
+	uint32 vertexStride,
 	uint32 offset)
 {
 	if (!pLayout)
@@ -1389,8 +1390,6 @@ void CGcmRenderer::BindVertexAttributes(
 		return;
 	}
 
-	uint32 vertexStride = stride ? stride : pLayout->GetStride();
-
 	const CUtlVector<VertexAttribute_t>& attributes = pLayout->GetAttributes();
 	for (int32 attributeIndex = 0; attributeIndex < attributes.Count(); attributeIndex++)
 	{
@@ -1398,10 +1397,10 @@ void CGcmRenderer::BindVertexAttributes(
 		if (attribute.m_Name.IsEmpty()) continue;
 
 		uint32 attributeLocation = 0xFFFFFFFF;
-		if (attribute.m_Semantic != VertexSemantic_t::Unspecified)
+		if (attribute.m_VertexSemantic != VertexSemantic_t::Unspecified)
 		{
-			attributeLocation = GetSemanticAttributeIndex(
-				attribute.m_Semantic);
+			attributeLocation = GetVertexSemanticAttributeIndex(
+				attribute.m_VertexSemantic);
 		}
 
 		if (attributeLocation == 0xFFFFFFFF) continue;
@@ -1453,7 +1452,7 @@ void CGcmRenderer::BindVertexAttributes(
 			attributeLocation,
 			0,
 			attributeOffset,
-			uint16(vertexStride),
+			uint16(vertexStride ? vertexStride : pLayout->GetStride()),
 			uint8(components),
 			dataType,
 			GCM_LOCATION_RSX);
