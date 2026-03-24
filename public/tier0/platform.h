@@ -135,6 +135,7 @@ typedef double float64;
 
 // Feature toggles
 #define SIMD_ENABLED
+#define THREADING_ENABLED
 
 #define PS3_SPU_ENABLED
 

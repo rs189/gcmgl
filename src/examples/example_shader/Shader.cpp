@@ -153,10 +153,9 @@ int32 RunShaderExample(
 
 		// Set matrix
 		camera.m_Position = CVector3(0.0f, 0.0f, 5.0f);
-		float32 aspect = windowConfig.m_AspectRatio;
-		CMatrix4 proj = camera.GetProjectionMatrix(aspect);
-		CMatrix4 view = camera.GetViewMatrix();
-
+		float32 aspectRatio = windowConfig.m_AspectRatio;
+		CMatrix4 projectionMatrix = camera.GetProjectionMatrix(aspectRatio);
+		CMatrix4 viewMatrix = camera.GetViewMatrix();
 		CMatrix4 model =
 			CMaths::Rotate(
 				CMatrix4(1.0f),
@@ -166,7 +165,7 @@ int32 RunShaderExample(
 				CMatrix4(1.0f),
 				rotationX,
 				CVector3(1.0f, 0.0f, 0.0f));
-		CMatrix4 mvp = proj * view * model;
+		CMatrix4 mvp = projectionMatrix * viewMatrix * model;
 
 		// Update constant buffer
 		pRenderer->UpdateBuffer(hConstantBuffer, &mvp, sizeof(CMatrix4));

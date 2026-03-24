@@ -119,6 +119,7 @@ public:
 		if (UNLIKELY(index < 0 || index >= m_Count))
 		{
 			AssertMsg(false, "CUtlVector: Index out of bounds");
+
 			return;
 		}
 
@@ -136,6 +137,7 @@ public:
 		if (UNLIKELY(index < 0 || index >= m_Count))
 		{
 			AssertMsg(false, "CUtlVector: Index out of bounds");
+
 			return;
 		}
 

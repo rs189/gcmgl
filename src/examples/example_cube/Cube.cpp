@@ -40,6 +40,16 @@ int32 RunCubeExample(
 
 	CCamera camera;
 
+	// Create shader
+	ShaderProgramHandle hShaderProgram = pRenderer->CreateShaderProgram(
+		"example_rainbow");
+	if (hShaderProgram == 0)
+	{
+		Error("[Cube] Failed to create shader program 'example_rainbow'\n");
+
+		return 1;
+	}
+
 	// Create cube
 	Vertex_t vertexData[] = {
 		// front
@@ -110,16 +120,6 @@ int32 RunCubeExample(
 		VertexSemantic_t::Color0);
 	vertexLayout.SetStride(sizeof(Vertex_t));
 
-	// Create shader
-	ShaderProgramHandle hShaderProgram = pRenderer->CreateShaderProgram(
-		"example_rainbow");
-	if (hShaderProgram == 0)
-	{
-		Error("[Cube] Failed to create shader program 'example_rainbow'\n");
-
-		return 1;
-	}
-
 	while (isRunning)
 	{
 		pWindow->PollEvents();
@@ -146,10 +146,9 @@ int32 RunCubeExample(
 
 		// Set matrix
 		camera.m_Position = CVector3(0.0f, 0.0f, 5.0f);
-		float32 aspect = windowConfig.m_AspectRatio;
-		CMatrix4 proj = camera.GetProjectionMatrix(aspect);
-		CMatrix4 view = camera.GetViewMatrix();
-
+		float32 aspectRatio = windowConfig.m_AspectRatio;
+		CMatrix4 projectionMatrix = camera.GetProjectionMatrix(aspectRatio);
+		CMatrix4 viewMatrix = camera.GetViewMatrix();
 		CMatrix4 model =
 			CMaths::Rotate(
 				CMatrix4(1.0f),
@@ -159,7 +158,7 @@ int32 RunCubeExample(
 				CMatrix4(1.0f),
 				rotationX,
 				CVector3(1.0f, 0.0f, 0.0f));
-		CMatrix4 mvp = proj * view * model;
+		CMatrix4 mvp = projectionMatrix * viewMatrix * model;
 
 		// Update constant buffer
 		pRenderer->UpdateBuffer(hConstantBuffer, &mvp, sizeof(CMatrix4));

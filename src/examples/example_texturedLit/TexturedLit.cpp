@@ -304,10 +304,9 @@ int32 RunTexturedLitExample(
 
 		// Set matrix
 		camera.m_Position = CVector3(0.0f, 0.0f, 5.0f);
-		float32 aspect = windowConfig.m_AspectRatio;
-		CMatrix4 proj = camera.GetProjectionMatrix(aspect);
-		CMatrix4 view = camera.GetViewMatrix();
-
+		float32 aspectRatio = windowConfig.m_AspectRatio;
+		CMatrix4 projectionMatrix = camera.GetProjectionMatrix(aspectRatio);
+		CMatrix4 viewMatrix = camera.GetViewMatrix();
 		CMatrix4 model =
 			CMaths::Rotate(
 				CMatrix4(1.0f),
@@ -317,7 +316,14 @@ int32 RunTexturedLitExample(
 				CMatrix4(1.0f),
 				rotationX,
 				CVector3(1.0f, 0.0f, 0.0f));
-		CMatrix4 mvp = proj * view * model;
+		CMatrix4 mvp = projectionMatrix * viewMatrix * model;
+		
+		// Update constant buffers
+		pRenderer->UpdateBuffer(hMVPConstantBuffer, &mvp, sizeof(CMatrix4));
+		pRenderer->UpdateBuffer(
+			hModelConstantBuffer,
+			&model,
+			sizeof(CMatrix4));
 
 		// Set up three colored point lights rotating around the cube
 		LightData_t lightData;
@@ -353,12 +359,6 @@ int32 RunTexturedLitExample(
 				lightIntensity),
 			CVector4(0.0f, 0.0f, 1.0f, 1.0f));
 
-		// Update constant buffers
-		pRenderer->UpdateBuffer(hMVPConstantBuffer, &mvp, sizeof(CMatrix4));
-		pRenderer->UpdateBuffer(
-			hModelConstantBuffer,
-			&model,
-			sizeof(CMatrix4));
 		pRenderer->UpdateBuffer(
 			hLightConstantBuffer,
 			lightData.m_Slots,

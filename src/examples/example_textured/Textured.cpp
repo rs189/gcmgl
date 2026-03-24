@@ -49,16 +49,6 @@ int32 RunTexturedExample(
 	float32 rotationY = 0.0f;
 
 	CCamera camera;
-	
-	// Create shader
-	ShaderProgramHandle hShaderProgram =
-		pRenderer->CreateShaderProgram("example_textured");
-	if (hShaderProgram == 0)
-	{
-		Error("[Textured] Failed to create shader program 'example_textured'\n");
-
-		return 1;
-	}
 
 	// Create cube with per-face normals
 	TexturedVertex_t vertexData[] = {
@@ -150,7 +140,17 @@ int32 RunTexturedExample(
 
 		return 1;
 	}
- 
+
+	// Create shader
+	ShaderProgramHandle hShaderProgram =
+		pRenderer->CreateShaderProgram("example_textured");
+	if (hShaderProgram == 0)
+	{
+		Error("[Textured] Failed to create shader program 'example_textured'\n");
+
+		return 1;
+	}
+
 	// Create texture
 	TextureHandle hTexture = pRenderer->CreateTexture2D(
 		finalWidth,
@@ -225,16 +225,15 @@ int32 RunTexturedExample(
 
 		// Set matrix
 		camera.m_Position = CVector3(0.0f, 0.0f, 5.0f);
-		float32 aspect = windowConfig.m_AspectRatio;
-		CMatrix4 proj = camera.GetProjectionMatrix(aspect);
-		CMatrix4 view = camera.GetViewMatrix();
-
+		float32 aspectRatio = windowConfig.m_AspectRatio;
+		CMatrix4 projectionMatrix = camera.GetProjectionMatrix(aspectRatio);
+		CMatrix4 viewMatrix = camera.GetViewMatrix();
 		CMatrix4 model =
 			CMaths::Rotate(
 				CMatrix4(1.0f), rotationY, CVector3(0.0f, 1.0f, 0.0f)) *
 			CMaths::Rotate(
 				CMatrix4(1.0f), rotationX, CVector3(1.0f, 0.0f, 0.0f));
-		CMatrix4 mvp = proj * view * model;
+		CMatrix4 mvp = projectionMatrix * viewMatrix * model;
 
 		// Update constant buffer
 		pRenderer->UpdateBuffer(hConstantBuffer, &mvp, sizeof(CMatrix4));

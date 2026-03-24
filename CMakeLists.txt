@@ -127,6 +127,7 @@ if(BUILD_PS3)
 			${CMAKE_SOURCE_DIR}/assets $<TARGET_FILE_DIR:gcmgl>/assets
 	)
 else()
+	find_package(Threads REQUIRED)
 	find_package(OpenGL REQUIRED)
 	find_package(PkgConfig REQUIRED)
 	pkg_check_modules(GLFW3 glfw3)
@@ -166,6 +167,7 @@ else()
 	)
 
 	target_link_libraries(engine PUBLIC
+		Threads::Threads
 		OpenGL::GL
 		${GLFW3_LIBRARIES}
 		glad

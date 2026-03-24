@@ -204,18 +204,18 @@ gcmgl is a C++ graphics library targeting PlayStation 3 (GCM) and Linux (x86_64,
 - `SetDepthStencilState(const DepthStencilState_t& state)`
 - `ApplyVertexConstants(ShaderProgramHandle hProgram)`
 - `ApplyFragmentConstants(ShaderProgramHandle hProgram)`
-- `Draw(uint32 vertexCount, uint32 startVertex, const CMatrix4* pViewProj, const CVector3* pAABBCenter, const CVector3* pAABBExtent)`
-- `DrawIndexed(uint32 indexCount, uint32 startIndex, int32 baseVertex, const CMatrix4* pViewProj, const CVector3* pAABBCenter, const CVector3* pAABBExtent)`
-- `DrawBatched(uint32 vertexCount, const BatchData_t& batchData, const CMatrix4& viewProj, uint32 startVertex)`
-- `DrawIndexedBatched(uint32 indexCount, uint32 vertexCount, const BatchData_t& batchData, const CMatrix4& viewProj, uint32 startIndex, int32 baseVertex)`
+- `Draw(uint32 vertexCount, uint32 startVertex, const CMatrix4* pViewProjection, const CVector3* pAABBCenter, const CVector3* pAABBExtent)`
+- `DrawIndexed(uint32 indexCount, uint32 startIndex, int32 baseVertex, const CMatrix4* pViewProjection, const CVector3* pAABBCenter, const CVector3* pAABBExtent)`
+- `DrawBatched(uint32 vertexCount, const BatchData_t& batchData, const CMatrix4& viewProjection, uint32 startVertex)`
+- `DrawIndexedBatched(uint32 indexCount, uint32 vertexCount, const BatchData_t& batchData, const CMatrix4& viewProjection, uint32 startIndex, int32 baseVertex)`
 - `SetPipelineState(const PipelineState_t& state)`
 - `FlushPipelineState()`
 - `ExtractFrustumPlanes(const CMatrix4& mvp, Plane_t* pPlanes)`
 - `TestAABBFrustum(const CVector3& center, const CVector3& extent, const Plane_t* pPlanes)`
 
 ### CBatchRenderer
-- `DrawBatched(uint32 vertexCount, const BatchData_t& batchData, const CMatrix4& viewProj, uint32 startVertex)`
-- `DrawIndexedBatched(uint32 indexCount, uint32 vertexCount, const BatchData_t& batchData, const CMatrix4& viewProj, uint32 startIndex, int32 baseVertex)`
+- `DrawBatched(uint32 vertexCount, const BatchData_t& batchData, const CMatrix4& viewProjection, uint32 startVertex)`
+- `DrawIndexedBatched(uint32 indexCount, uint32 vertexCount, const BatchData_t& batchData, const CMatrix4& viewProjection, uint32 startIndex, int32 baseVertex)`
 
 ## Build
 
