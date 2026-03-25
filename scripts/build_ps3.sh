@@ -54,24 +54,23 @@ export EXAMPLE=$EXAMPLE
 export BUILD_TYPE=Release
 
 echo "Cleaning previous build..."
-rm -rf build/bin/ps3/ build/obj/ps3/ || true
+rm -rf "$BUILD_DIR/bin/ps3" "$BUILD_DIR/obj/ps3" || true
 
 echo "Compiling shaders..."
 python3 "$ROOT_DIR/shaders/compile_shaders.py"
 
-make -f Makefile.ps3
+make -C "$ROOT_DIR" -f "$ROOT_DIR/Makefile.ps3"
 
-if [ -f "build/bin/ps3/gcmgl.self" ]; then
+if [ -f "$BUILD_DIR/bin/ps3/gcmgl.self" ]; then
 	rm -rf "$BUILD_DIR/bin/ps3/shaders" "$BUILD_DIR/bin/ps3/assets" 2>/dev/null || true
 
 	mkdir -p "$BUILD_DIR/bin/ps3/USRDIR/shaders/cg"
 	mkdir -p "$BUILD_DIR/bin/ps3/USRDIR/assets"
 
-	cp -r "$ROOT_DIR/build/shaders/cg/"* "$BUILD_DIR/bin/ps3/USRDIR/shaders/cg/" 2>/dev/null || true
+	cp -r "$BUILD_DIR/shaders/cg/"* "$BUILD_DIR/bin/ps3/USRDIR/shaders/cg/" 2>/dev/null || true
 	cp -r "$ROOT_DIR/assets/"* "$BUILD_DIR/bin/ps3/USRDIR/assets/" 2>/dev/null || true
 
 	cp "$BUILD_DIR/bin/ps3/gcmgl.self" "$BUILD_DIR/bin/ps3/USRDIR/EBOOT.BIN"
-	cp "$BUILD_DIR/bin/ps3/gcmgl.elf" "$BUILD_DIR/bin/ps3/USRDIR/" 2>/dev/null || true
 
 	if [ -f "$ROOT_DIR/PARAM.SFO.xml" ]; then
 		if command -v python3 >/dev/null 2>&1 && [ -f "/usr/local/ps3dev/bin/sfo.py" ]; then

@@ -45,25 +45,20 @@ esac
 echo "Building example: $EXAMPLE"
 
 BUILD_DIR="$ROOT_DIR/build"
-mkdir -p "$BUILD_DIR"
-mkdir -p "$BUILD_DIR/bin/linux-x86_64"
-cd "$BUILD_DIR"
+CMAKE_DIR="$BUILD_DIR/cmake"
 
 echo "Cleaning previous build..."
-rm -rf build/bin/linux-x86_64/ build/obj/linux-x86_64/ cmake/ || true
+rm -rf "$BUILD_DIR/bin/linux-x86_64" "$BUILD_DIR/obj/linux-x86_64" "$CMAKE_DIR" || true
 
 export BUILD_TYPE=Release
 
 echo "Compiling shaders..."
 python3 "$ROOT_DIR/shaders/compile_shaders.py"
 
-mkdir -p cmake
-cmake -DEXAMPLE=$EXAMPLE -DBUILD_PS3=OFF -B cmake -S ..
+mkdir -p "$CMAKE_DIR"
+cmake -DEXAMPLE=$EXAMPLE -DBUILD_PS3=OFF -B "$CMAKE_DIR" -S "$ROOT_DIR"
 
-make -j$(nproc) -C cmake
-
-mkdir -p cmake
-mv CMakeCache.txt CMakeFiles cmake_install.cmake Makefile cmake/ 2>/dev/null || true
+make -j$(nproc) -C "$CMAKE_DIR"
 
 echo "Copying shaders and assets..."
 mkdir -p "$BUILD_DIR/bin/linux-x86_64/shaders/glsl"
