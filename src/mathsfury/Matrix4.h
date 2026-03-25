@@ -19,7 +19,7 @@ class CVector4;
 class CMatrix4
 {
 public:
-	float32 m_Data[16];
+	alignas(16) float32 m_Data[16];
 	
 	CMatrix4();
 	explicit CMatrix4(float32 diagonal);
