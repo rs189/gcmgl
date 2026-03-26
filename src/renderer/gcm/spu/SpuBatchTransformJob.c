@@ -96,7 +96,8 @@ static void processVertices()
 	uint32 blockBytes = (SPU_BUFFER_SIZE / strideBytesLCM) * strideBytesLCM;
 	
 	uint32 srcVertexBytes = (g_Job.m_VertexCount * g_Job.m_VertexStride + 15u) & ~15u;
-	if (srcVertexBytes > SPU_BUFFER_SIZE) {
+	if (srcVertexBytes > SPU_BUFFER_SIZE)
+	{
 		g_Job.m_Status = SPU_BATCH_STATUS_ERROR;
 
 		return;
@@ -118,13 +119,14 @@ static void processVertices()
 		const uint32 mTag = mBufIdx ? MATRIX_TAG1 : MATRIX_TAG0;
 		const uint32 nextMTag = nextMBufIdx ? MATRIX_TAG1 : MATRIX_TAG0;
 
-		if (batch + 1u < g_Job.m_BatchCount) {
+		if (batch + 1u < g_Job.m_BatchCount)
+		{
 			uint64 nextMatrixEa = g_Job.m_MatricesEffAddr + (batch + 1u) * g_Job.m_MatrixStride;
 			dmaGet(g_MatrixBuffer[nextMBufIdx], nextMatrixEa, 64, nextMTag);
 		}
 		
 		waitForTag(1u << mTag);
-		const vec_float4* matrix = g_MatrixBuffer[mBufIdx];
+		const vec_float4* pMatrix = g_MatrixBuffer[mBufIdx];
 		
 		for (uint32 v = 0; v < g_Job.m_VertexCount; v++)
 		{
@@ -136,7 +138,7 @@ static void processVertices()
 			float tmp[3];
 			memcpy(tmp, pDst + g_Job.m_VertexPosOffset, 12);
 			vec_float4 pos = { tmp[0], tmp[1], tmp[2], 1.0f };
-			vec_float4 transformed = transformVertex(pos, matrix);
+			vec_float4 transformed = transformVertex(pos, pMatrix);
 			tmp[0] = spu_extract(transformed, 0);
 			tmp[1] = spu_extract(transformed, 1);
 			tmp[2] = spu_extract(transformed, 2);
@@ -144,7 +146,8 @@ static void processVertices()
 			
 			outOffset += g_Job.m_VertexStride;
 			
-			if (outOffset == blockBytes) {
+			if (outOffset == blockBytes)
+			{
 				uint32 dstTag = outBufIdx ? DST_TAG1 : DST_TAG0;
 				waitForTag(1u << dstTag);
 				
@@ -157,14 +160,17 @@ static void processVertices()
 		}
 	}
 	
-	if (outOffset > 0) {
+	if (outOffset > 0)
+	{
 		uint32 dstTag = outBufIdx ? DST_TAG1 : DST_TAG0;
 		waitForTag(1u << dstTag);
 		
 		uint32 finalPutSize = (outOffset + 15u) & ~15u;
 		dmaPut(g_DstVertexBuffer[outBufIdx], outputEffAddr, finalPutSize, dstTag);
 		waitForTag((1u << DST_TAG0) | (1u << DST_TAG1));
-	} else {
+	}
+	else
+	{
 		waitForTag((1u << DST_TAG0) | (1u << DST_TAG1));
 	}
 }
@@ -177,7 +183,8 @@ static void processIndices()
 	uint32 indicesPerBlock = blockBytes / 4u;
 	
 	uint32 srcIndexBytes = (g_Job.m_IndexCount * 4u + 15u) & ~15u;
-	if (srcIndexBytes > SPU_BUFFER_SIZE) {
+	if (srcIndexBytes > SPU_BUFFER_SIZE)
+	{
 		g_Job.m_Status = SPU_BATCH_STATUS_ERROR;
 
 		return;
@@ -204,7 +211,8 @@ static void processIndices()
 			
 			outIdxCount++;
 			
-			if (outIdxCount == indicesPerBlock) {
+			if (outIdxCount == indicesPerBlock)
+			{
 				uint32 dstTag = outBufIdx ? DST_TAG1 : DST_TAG0;
 				waitForTag(1u << dstTag);
 				
@@ -221,7 +229,8 @@ static void processIndices()
 		}
 	}
 	
-	if (outIdxCount > 0) {
+	if (outIdxCount > 0)
+	{
 		uint32 dstTag = outBufIdx ? DST_TAG1 : DST_TAG0;
 		waitForTag(1u << dstTag);
 		
@@ -234,7 +243,9 @@ static void processIndices()
 			dstTag);
 
 		waitForTag((1u << DST_TAG0) | (1u << DST_TAG1));
-	} else {
+	}
+	else
+	{
 		waitForTag((1u << DST_TAG0) | (1u << DST_TAG1));
 	}
 }
@@ -263,11 +274,13 @@ int main(uint64 jobEffAddr, uint64 arg1, uint64 arg2, uint64 arg3)
 		{
 			g_Job.m_Status = SPU_BATCH_STATUS_BUSY;
 			processVertices();
-			if (g_Job.m_Status != SPU_BATCH_STATUS_ERROR) {
+			if (g_Job.m_Status != SPU_BATCH_STATUS_ERROR)
+			{
 				processIndices();
 			}
 			
-			if (g_Job.m_Status != SPU_BATCH_STATUS_ERROR) {
+			if (g_Job.m_Status != SPU_BATCH_STATUS_ERROR)
+			{
 				g_Job.m_Status = SPU_BATCH_STATUS_DONE;
 			}
 		}

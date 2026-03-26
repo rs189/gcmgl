@@ -24,10 +24,13 @@ extern "C"
 
 CSpuBatchTransformManager::CSpuBatchTransformManager() :
 	m_SpuGroupId(0),
-	m_SpuThreadId(0),
-	m_pBatchJob(GCMGL_NULL),
 	m_IsShuttingDown(false)
 {
+	for (uint32 i = 0; i < s_NumBatchSpus; i++)
+	{
+		m_SpuThreadIds[i] = 0;
+		m_pBatchJobs[i] = GCMGL_NULL;
+	}
 }
 
 CSpuBatchTransformManager::~CSpuBatchTransformManager()
@@ -57,7 +60,7 @@ bool CSpuBatchTransformManager::Initialize()
 
 	const int32 groupCreateResult = sysSpuThreadGroupCreate(
 		&m_SpuGroupId,
-		1,
+		s_NumBatchSpus,
 		100,
 		&groupAttr);
 	if (groupCreateResult < 0)
@@ -67,53 +70,68 @@ bool CSpuBatchTransformManager::Initialize()
 		return false;
 	}
 
-	sysSpuThreadAttribute threadAttr = { 0 };
-	threadAttr.name = const_cast<char*>("gcmBatchSpu");
-	threadAttr.option = SPU_THREAD_ATTR_NONE;
-
-	m_pBatchJob = static_cast<SpuBatchJob_t*>(
-		CUtlMemory::AlignedAlloc(sizeof(SpuBatchJob_t), 128));
-	if (!m_pBatchJob)
+	for (uint32 i = 0; i < s_NumBatchSpus; i++)
 	{
-		sysSpuThreadGroupDestroy(m_SpuGroupId);
-		sysSpuImageClose(&m_SpuImage);
+		sysSpuThreadAttribute threadAttr = { 0 };
+		threadAttr.name = const_cast<char*>("gcmBatchSpu");
+		threadAttr.option = SPU_THREAD_ATTR_NONE;
 
-		return false;
+		m_pBatchJobs[i] = static_cast<SpuBatchJob_t*>(
+			CUtlMemory::AlignedAlloc(sizeof(SpuBatchJob_t), 128));
+		if (!m_pBatchJobs[i])
+		{
+			sysSpuThreadGroupDestroy(m_SpuGroupId);
+			sysSpuImageClose(&m_SpuImage);
+
+			return false;
+		}
+		memset(m_pBatchJobs[i], 0, sizeof(SpuBatchJob_t));
+
+		m_pBatchJobs[i]->m_Command = SPU_BATCH_CMD_IDLE;
+		m_pBatchJobs[i]->m_Status = SPU_BATCH_STATUS_IDLE;
+
+		sysSpuThreadArgument threadArg = { 0 };
+		threadArg.arg0 = SpuUtils::PtrToEa(m_pBatchJobs[i]);
+
+		const int32 threadInitResult = sysSpuThreadInitialize(
+			&m_SpuThreadIds[i],
+			m_SpuGroupId,
+			i,
+			&m_SpuImage,
+			&threadAttr,
+			&threadArg);
+		if (threadInitResult < 0)
+		{
+			for (uint32 j = 0; j <= i; j++)
+			{
+				if (m_pBatchJobs[j])
+				{
+					CUtlMemory::AlignedFree(m_pBatchJobs[j]);
+					m_pBatchJobs[j] = GCMGL_NULL;
+				}
+			}
+			sysSpuThreadGroupDestroy(m_SpuGroupId);
+			sysSpuImageClose(&m_SpuImage);
+
+			return false;
+		}
+
+		sysSpuThreadSetConfiguration(
+			m_SpuThreadIds[i],
+			SPU_SIGNAL1_OVERWRITE | SPU_SIGNAL2_OVERWRITE);
 	}
-	memset(m_pBatchJob, 0, sizeof(SpuBatchJob_t));
-
-	m_pBatchJob->m_Command = SPU_BATCH_CMD_IDLE;
-	m_pBatchJob->m_Status = SPU_BATCH_STATUS_IDLE;
-
-	sysSpuThreadArgument threadArg = { 0 };
-	threadArg.arg0 = SpuUtils::PtrToEa(m_pBatchJob);
-
-	const int32 threadInitResult = sysSpuThreadInitialize(
-		&m_SpuThreadId,
-		m_SpuGroupId,
-		0,
-		&m_SpuImage,
-		&threadAttr,
-		&threadArg);
-	if (threadInitResult < 0)
-	{
-		CUtlMemory::AlignedFree(m_pBatchJob);
-		m_pBatchJob = GCMGL_NULL;
-		sysSpuThreadGroupDestroy(m_SpuGroupId);
-		sysSpuImageClose(&m_SpuImage);
-
-		return false;
-	}
-
-	sysSpuThreadSetConfiguration(
-		m_SpuThreadId,
-		SPU_SIGNAL1_OVERWRITE | SPU_SIGNAL2_OVERWRITE);
 
 	const int32 startResult = sysSpuThreadGroupStart(m_SpuGroupId);
 	if (startResult < 0)
 	{
-		CUtlMemory::AlignedFree(m_pBatchJob);
-		m_pBatchJob = GCMGL_NULL;
+		for (uint32 i = 0; i < s_NumBatchSpus; i++)
+		{
+			if (m_pBatchJobs[i])
+			{
+				CUtlMemory::AlignedFree(m_pBatchJobs[i]);
+				m_pBatchJobs[i] = GCMGL_NULL;
+			}
+		}
 		sysSpuThreadGroupDestroy(m_SpuGroupId);
 		sysSpuImageClose(&m_SpuImage);
 
@@ -127,39 +145,56 @@ void CSpuBatchTransformManager::Shutdown()
 {
 	m_IsShuttingDown = true;
 
-	if (m_pBatchJob && m_SpuGroupId != 0)
-	{
-		__sync_synchronize();
-
-		if (m_pBatchJob->m_Status != SPU_BATCH_STATUS_IDLE &&
-			m_pBatchJob->m_Status != SPU_BATCH_STATUS_DONE)
-		{
-
-			m_pBatchJob->m_Command = SPU_BATCH_CMD_TERMINATE;
-			m_pBatchJob->m_Status = SPU_BATCH_STATUS_BUSY;
-			__sync_synchronize();
-
-			if (m_SpuThreadId != 0)
-			{
-				sysSpuThreadWriteSignal(m_SpuThreadId, 0, 1);
-			}
-
-			for (int32 i = 0; i < 1000; i++)
-			{
-				__sync_synchronize();
-				if (m_pBatchJob->m_Status == SPU_BATCH_STATUS_IDLE ||
-					m_pBatchJob->m_Status == SPU_BATCH_STATUS_DONE)
-				{
-					break;
-				}
-
-				sysUsleep(1000); // 1ms
-			}
-		}
-	}
-
 	if (m_SpuGroupId != 0)
 	{
+		for (uint32 i = 0; i < s_NumBatchSpus; i++)
+		{
+			if (m_pBatchJobs[i])
+			{
+				__sync_synchronize();
+
+				if (m_pBatchJobs[i]->m_Status != SPU_BATCH_STATUS_IDLE &&
+					m_pBatchJobs[i]->m_Status != SPU_BATCH_STATUS_DONE)
+				{
+					m_pBatchJobs[i]->m_Command = SPU_BATCH_CMD_TERMINATE;
+					m_pBatchJobs[i]->m_Status = SPU_BATCH_STATUS_BUSY;
+					__sync_synchronize();
+
+					if (m_SpuThreadIds[i] != 0)
+					{
+						sysSpuThreadWriteSignal(m_SpuThreadIds[i], 0, 1);
+					}
+				}
+			}
+		}
+
+		bool hasActiveJobs = true;
+		for (int32 i = 0; i < 1000; i++)
+		{
+			__sync_synchronize();
+
+			hasActiveJobs = false;
+
+			for (uint32 j = 0; j < s_NumBatchSpus; j++)
+			{
+				if (m_pBatchJobs[j] &&
+					m_pBatchJobs[j]->m_Status != SPU_BATCH_STATUS_IDLE &&
+					m_pBatchJobs[j]->m_Status != SPU_BATCH_STATUS_DONE)
+				{
+					hasActiveJobs = true;
+
+					break;
+				}
+			}
+
+			if (!hasActiveJobs)
+			{
+				break;
+			}
+
+			sysUsleep(1000); // 1ms
+		}
+
 		sysUsleep(10000); // 10ms
 
 		sysSpuThreadGroupTerminate(m_SpuGroupId, 0);
@@ -171,15 +206,17 @@ void CSpuBatchTransformManager::Shutdown()
 		m_SpuGroupId = 0;
 	}
 
-	if (m_pBatchJob)
+	for (uint32 i = 0; i < s_NumBatchSpus; i++)
 	{
-		CUtlMemory::AlignedFree(m_pBatchJob);
-		m_pBatchJob = GCMGL_NULL;
+		if (m_pBatchJobs[i])
+		{
+			CUtlMemory::AlignedFree(m_pBatchJobs[i]);
+			m_pBatchJobs[i] = GCMGL_NULL;
+		}
+		m_SpuThreadIds[i] = 0;
 	}
 
 	sysSpuImageClose(&m_SpuImage);
-
-	m_SpuThreadId = 0;
 }
 
 SPUResult_t CSpuBatchTransformManager::ProcessBatch(
@@ -227,59 +264,105 @@ SPUResult_t CSpuBatchTransformManager::SubmitJob(
 	uint32 vertexPosOffset,
 	uint32 baseVertex)
 {
-	if (!m_pBatchJob || m_IsShuttingDown)
+	if (m_IsShuttingDown)
 	{
 		return SPUResult_t::NotUsed;
 	}
 
-	m_pBatchJob->m_VertexCount = vertexCount;
-	m_pBatchJob->m_IndexCount = indexCount;
-	m_pBatchJob->m_BatchCount = batchCount;
-	m_pBatchJob->m_VertexStride = vertexStride;
-	m_pBatchJob->m_MatrixStride = sizeof(CMatrix4);
-	m_pBatchJob->m_VertexPosOffset = vertexPosOffset;
-	m_pBatchJob->m_BaseVertex = baseVertex;
-	m_pBatchJob->m_SrcVerticesEffAddr = SpuUtils::PtrToEa(const_cast<char*>(pSrcVertices));
-	m_pBatchJob->m_SrcIndicesEffAddr = SpuUtils::PtrToEa(const_cast<uint32*>(pSrcIndices));
-	m_pBatchJob->m_MatricesEffAddr = SpuUtils::PtrToEa(const_cast<CMatrix4*>(pMatrices));
-	m_pBatchJob->m_DstVerticesEffAddr = SpuUtils::PtrToEa(pDstVertices);
-	m_pBatchJob->m_DstIndicesEffAddr = SpuUtils::PtrToEa(pDstIndices);
-	m_pBatchJob->m_Status = SPU_BATCH_STATUS_BUSY;
-	m_pBatchJob->m_Command = SPU_BATCH_CMD_TRANSFORM;
+	uint32 remainingBatches = batchCount;
+	uint32 batchIndex = 0;
+
+	for (uint32 i = 0; i < s_NumBatchSpus; i++)
+	{
+		if (!m_pBatchJobs[i])
+		{
+			continue;
+		}
+
+		uint32 chunkBatches = remainingBatches / (s_NumBatchSpus - i);
+		if (chunkBatches == 0)
+		{
+			continue;
+		}
+
+		uint64 vertexOffset = uint64(batchIndex) * vertexCount * vertexStride;
+		uint64 indexOffset = uint64(batchIndex) * indexCount * sizeof(uint32);
+		uint64 matrixOffset = uint64(batchIndex) * sizeof(CMatrix4);
+
+		m_pBatchJobs[i]->m_VertexCount = vertexCount;
+		m_pBatchJobs[i]->m_IndexCount = indexCount;
+		m_pBatchJobs[i]->m_BatchCount = chunkBatches;
+		m_pBatchJobs[i]->m_VertexStride = vertexStride;
+		m_pBatchJobs[i]->m_MatrixStride = sizeof(CMatrix4);
+		m_pBatchJobs[i]->m_VertexPosOffset = vertexPosOffset;
+		m_pBatchJobs[i]->m_BaseVertex = baseVertex + (batchIndex * vertexCount);
+		
+		m_pBatchJobs[i]->m_SrcVerticesEffAddr = SpuUtils::PtrToEa(const_cast<char*>(pSrcVertices));
+		m_pBatchJobs[i]->m_SrcIndicesEffAddr = SpuUtils::PtrToEa(const_cast<uint32*>(pSrcIndices));
+		
+		m_pBatchJobs[i]->m_MatricesEffAddr = SpuUtils::PtrToEa(const_cast<CMatrix4*>(pMatrices)) + matrixOffset;
+		m_pBatchJobs[i]->m_DstVerticesEffAddr = SpuUtils::PtrToEa(pDstVertices) + vertexOffset;
+		m_pBatchJobs[i]->m_DstIndicesEffAddr = SpuUtils::PtrToEa(pDstIndices) + indexOffset;
+		
+		m_pBatchJobs[i]->m_Status = SPU_BATCH_STATUS_BUSY;
+		m_pBatchJobs[i]->m_Command = SPU_BATCH_CMD_TRANSFORM;
+
+		batchIndex += chunkBatches;
+		remainingBatches -= chunkBatches;
+	}
 
 	__sync_synchronize();
 
-	const int32 signalResult = sysSpuThreadWriteSignal(m_SpuThreadId, 0, 1);
-	if (signalResult < 0)
+	for (uint32 i = 0; i < s_NumBatchSpus; i++)
 	{
-		m_pBatchJob->m_Command = SPU_BATCH_CMD_IDLE;
-		m_pBatchJob->m_Status = SPU_BATCH_STATUS_ERROR;
-
-		__sync_synchronize();
-
-		return SPUResult_t::Error;
+		if (m_pBatchJobs[i] && m_pBatchJobs[i]->m_Command == SPU_BATCH_CMD_TRANSFORM)
+		{
+			const int32 signalResult = sysSpuThreadWriteSignal(
+				m_SpuThreadIds[i],
+				0,
+				1);
+			if (signalResult < 0)
+			{
+				m_pBatchJobs[i]->m_Command = SPU_BATCH_CMD_IDLE;
+				m_pBatchJobs[i]->m_Status = SPU_BATCH_STATUS_ERROR;
+			}
+		}
 	}
 
-	while (true)
+	bool hasActiveJobs = true;
+	bool hasBatchError = false;
+
+	while (hasActiveJobs)
 	{
 		__sync_synchronize();
 
-		if (m_pBatchJob->m_Status == SPU_BATCH_STATUS_DONE)
+		hasActiveJobs = false;
+		for (uint32 i = 0; i < s_NumBatchSpus; i++)
 		{
-			m_pBatchJob->m_Command = SPU_BATCH_CMD_IDLE;
-			m_pBatchJob->m_Status = SPU_BATCH_STATUS_IDLE;
-
-			return SPUResult_t::Success;
+			if (m_pBatchJobs[i] && m_pBatchJobs[i]->m_Command != SPU_BATCH_CMD_IDLE)
+			{
+				if (m_pBatchJobs[i]->m_Status == SPU_BATCH_STATUS_DONE)
+				{
+					m_pBatchJobs[i]->m_Command = SPU_BATCH_CMD_IDLE;
+					m_pBatchJobs[i]->m_Status = SPU_BATCH_STATUS_IDLE;
+				}
+				else if (m_pBatchJobs[i]->m_Status == SPU_BATCH_STATUS_ERROR)
+				{
+					m_pBatchJobs[i]->m_Command = SPU_BATCH_CMD_IDLE;
+					hasBatchError = true;
+				}
+				else
+				{
+					hasActiveJobs = true;
+				}
+			}
 		}
 
-		if (m_pBatchJob->m_Status == SPU_BATCH_STATUS_ERROR)
+		if (hasActiveJobs)
 		{
-			m_pBatchJob->m_Command = SPU_BATCH_CMD_IDLE;
-
-			return SPUResult_t::Error;
+			sysUsleep(50);
 		}
-
-		// TODO
-		sysUsleep(50);
 	}
+
+	return hasBatchError ? SPUResult_t::Error : SPUResult_t::Success;
 }
