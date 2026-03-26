@@ -26,19 +26,31 @@ public:
 	bool Initialize();
 	void Shutdown();
 
-	SPUResult_t TransformPositions(
-		float32* pPositions,
+	SPUResult_t ProcessBatch(
+		const char* pSrcVertices,
+		const uint32* pSrcIndices,
 		const CMatrix4* pMatrices,
+		char* pDstVertices,
+		uint32* pDstIndices,
 		uint32 vertexCount,
+		uint32 indexCount,
 		uint32 batchCount,
-		uint32 floatsPerVertex = 4u);
+		uint32 vertexStride,
+		uint32 vertexPosOffset,
+		uint32 baseVertex);
 private:
 	SPUResult_t SubmitJob(
-		float32* pPositions,
+		const char* pSrcVertices,
+		const uint32* pSrcIndices,
 		const CMatrix4* pMatrices,
+		char* pDstVertices,
+		uint32* pDstIndices,
 		uint32 vertexCount,
+		uint32 indexCount,
 		uint32 batchCount,
-		uint32 floatsPerVertex);
+		uint32 vertexStride,
+		uint32 vertexPosOffset,
+		uint32 baseVertex);
 
 	sysSpuImage m_SpuImage;
 	uint32 m_SpuGroupId;

@@ -7,18 +7,19 @@
 //===----------------------------------------------------------------------===//
 
 #include <stdbool.h>
+#include <string.h>
 #include <spu_intrinsics.h>
 #include <spu_mfcio.h>
 #include "SpuBatchTransformJob.h"
 
 #define JOB_TAG 0u
-#define DATA_TAG0 1u
-#define DATA_TAG1 2u
-#define MATRIX_TAG0 3u
-#define MATRIX_TAG1 4u
+#define SRC_TAG 1u
+#define MATRIX_TAG0 2u
+#define MATRIX_TAG1 3u
+#define DST_TAG0 4u
+#define DST_TAG1 5u
 
-#define MAX_FLOATS_PER_VERTEX 4u
-#define MAX_VERTICES_PER_BLOCK 256u
+#define SPU_BUFFER_SIZE 16384u
 
 static const vec_uchar16 SplatXPattern = {
 	0,1,2,3, 0,1,2,3, 0,1,2,3, 0,1,2,3
@@ -29,14 +30,13 @@ static const vec_uchar16 SplatYPattern = {
 static const vec_uchar16 SplatZPattern = {
 	8,9,10,11, 8,9,10,11, 8,9,10,11, 8,9,10,11
 };
-static const vec_uchar16 SplatWPattern = {
-	12,13,14,15, 12,13,14,15, 12,13,14,15, 12,13,14,15
-};
 
-static SpuBatchJob_t g_Job __attribute__((aligned(16)));
-static float32 g_MatrixBuffer[2][16] __attribute__((aligned(16)));
-static float32 g_PositionBuffer[2][MAX_VERTICES_PER_BLOCK * MAX_FLOATS_PER_VERTEX] 
-	__attribute__((aligned(16)));
+static SpuBatchJob_t g_Job __attribute__((aligned(128)));
+static vec_float4 g_MatrixBuffer[2][4] __attribute__((aligned(128)));
+static uint8_t g_SrcVertexBuffer[SPU_BUFFER_SIZE] __attribute__((aligned(128)));
+static uint8_t g_SrcIndexBuffer[SPU_BUFFER_SIZE] __attribute__((aligned(128)));
+static uint8_t g_DstVertexBuffer[2][SPU_BUFFER_SIZE] __attribute__((aligned(128)));
+static uint8_t g_DstIndexBuffer[2][SPU_BUFFER_SIZE] __attribute__((aligned(128)));
 
 static inline void waitForTag(uint32 mask)
 {
@@ -44,237 +44,199 @@ static inline void waitForTag(uint32 mask)
 	spu_mfcstat(MFC_TAG_UPDATE_ALL);
 }
 
-static inline void dmaGetMatrix(uint32 bufIdx, uint64 addr, uint32 tag)
+static inline void dmaGet(void* ls, uint64 ea, uint32 size, uint32 tag)
 {
-	mfc_get(g_MatrixBuffer[bufIdx], addr, 64, tag, 0, 0);
+	if (size == 0) return;
+
+	mfc_get(ls, ea, size, tag, 0, 0);
 }
 
-static inline void dmaGetVertices(
-	uint32 bufIdx,
-	uint64 addr,
-	uint32 bytes,
-	uint32 tag)
+static inline void dmaPut(void* ls, uint64 ea, uint32 size, uint32 tag)
 {
-	mfc_get(g_PositionBuffer[bufIdx], addr, bytes, tag, 0, 0);
+	if (size == 0) return;
+
+	mfc_put(ls, ea, size, tag, 0, 0);
 }
 
-static inline void dmaPutVertices(
-	uint32 bufIdx,
-	uint64 addr,
-	uint32 bytes,
-	uint32 tag)
+static uint32 gcd(uint32 a, uint32 b)
 {
-	mfc_put(g_PositionBuffer[bufIdx], addr, bytes, tag, 0, 0);
+	while (b)
+	{
+		uint32 t = b;
+		b = a % b;
+		a = t;
+	}
+
+	return a;
 }
 
-static inline void transformVertex4(
-	vec_float4* pVertex,
-	const vec_float4 pMatrix[4])
+static uint32 lcm(uint32 a, uint32 b)
 {
-	vec_float4 v = *pVertex;
+	if (a == 0 || b == 0) return 0;
+	return (a * b) / gcd(a, b);
+}
 
+static inline vec_float4 transformVertex(vec_float4 v, const vec_float4 pMatrix[4])
+{
 	vec_float4 x = spu_shuffle(v, v, SplatXPattern);
 	vec_float4 y = spu_shuffle(v, v, SplatYPattern);
 	vec_float4 z = spu_shuffle(v, v, SplatZPattern);
-	vec_float4 w = spu_shuffle(v, v, SplatWPattern);
 
-	vec_float4 result = spu_mul(pMatrix[0], x);
-	result = spu_madd(pMatrix[1], y, result);
-	result = spu_madd(pMatrix[2], z, result);
-	result = spu_madd(pMatrix[3], w, result);
-
-	*pVertex = result;
-}
-
-static inline void transformVertex3(
-	vec_float4* pVertex,
-	const vec_float4 pMatrix[4])
-{
-	vec_float4 v = *pVertex;
-	
-	vec_float4 x = spu_shuffle(v, v, SplatXPattern);
-	vec_float4 y = spu_shuffle(v, v, SplatYPattern);
-	vec_float4 z = spu_shuffle(v, v, SplatZPattern);
-	
 	vec_float4 result = spu_mul(pMatrix[0], x);
 	result = spu_madd(pMatrix[1], y, result);
 	result = spu_madd(pMatrix[2], z, result);
 	result = spu_add(result, pMatrix[3]);
 
-	*pVertex = result;
+	return result;
 }
 
-static void transformBlock4Component(
-	float32* pVertexBlock,
-	uint32 count,
-	const vec_float4 pMatrix[4])
+static void processVertices()
 {
-	vec_float4* pVertices = (vec_float4*)pVertexBlock;
-
-	uint32 i = 0;
-	// Round down to a multiple of 4
-	const uint32 unrollCount = (count >> 2u) << 2u;
-
-	// Transform vertices 4 in wide unroll
-	for (; i < unrollCount; i += 4u)
-	{
-		transformVertex4(&pVertices[i + 0u], pMatrix);
-		transformVertex4(&pVertices[i + 1u], pMatrix);
-		transformVertex4(&pVertices[i + 2u], pMatrix);
-		transformVertex4(&pVertices[i + 3u], pMatrix);
-	}
-
-	// Transform remaining vertices
-	for (; i < count; i++)
-	{
-		transformVertex4(&pVertices[i], pMatrix);
-	}
-}
-
-static void transformBlock3Component(
-	float32* pVertexBlock, uint32 count, const vec_float4 pMatrix[4])
-{
-	vec_float4* pVertices = (vec_float4*)pVertexBlock;
-
-	uint32 i = 0;
-	// Round down to a multiple of 4
-	const uint32 unrollCount = (count >> 2u) << 2u;
-
-	// Transform vertices 4 in wide unroll
-	for (; i < unrollCount; i += 4u)
-	{
-		transformVertex3(&pVertices[i + 0u], pMatrix);
-		transformVertex3(&pVertices[i + 1u], pMatrix);
-		transformVertex3(&pVertices[i + 2u], pMatrix);
-		transformVertex3(&pVertices[i + 3u], pMatrix);
-	}
+	uint32 strideBytesLCM = lcm(16u, g_Job.m_VertexStride);
+	uint32 blockBytes = (SPU_BUFFER_SIZE / strideBytesLCM) * strideBytesLCM;
 	
-	// Transform remaining vertices
-	for (; i < count; i++)
-	{
-		transformVertex3(&pVertices[i], pMatrix);
-	}
-}
-
-static void processTransforms()
-{
-	const uint32 vertexCount = g_Job.m_VertexCount;
-	const uint32 batchCount = g_Job.m_BatchCount;
-	const uint32 floatsPerVertex = g_Job.m_FloatsPerVertex;
-
-	if (floatsPerVertex == 0u || floatsPerVertex > MAX_FLOATS_PER_VERTEX)
-	{
+	uint32 srcVertexBytes = (g_Job.m_VertexCount * g_Job.m_VertexStride + 15u) & ~15u;
+	if (srcVertexBytes > SPU_BUFFER_SIZE) {
 		g_Job.m_Status = SPU_BATCH_STATUS_ERROR;
 
 		return;
 	}
-
-	const uint32 floatSize = sizeof(float32);
-	const bool hasVertexW = (floatsPerVertex > 3u);
 	
-	for (uint32 batch = 0; batch < batchCount; batch++)
+	dmaGet(g_SrcVertexBuffer, g_Job.m_SrcVerticesEffAddr, srcVertexBytes, SRC_TAG);
+	waitForTag(1u << SRC_TAG);
+
+	uint32 outBufIdx = 0;
+	uint32 outOffset = 0;
+	uint64 outputEffAddr = g_Job.m_DstVerticesEffAddr;
+	
+	dmaGet(g_MatrixBuffer[0], g_Job.m_MatricesEffAddr, 64, MATRIX_TAG0);
+	
+	for (uint32 batch = 0; batch < g_Job.m_BatchCount; batch++)
 	{
-		const uint32 matrixBufIdx = batch & 1u;
-		const uint32 nextMatrixBufIdx = (batch + 1u) & 1u;
-		const uint32 matrixTag = matrixBufIdx ? MATRIX_TAG1 : MATRIX_TAG0;
-		const uint32 nextMatrixTag = nextMatrixBufIdx ? MATRIX_TAG1 : MATRIX_TAG0;
+		const uint32 mBufIdx = batch & 1u;
+		const uint32 nextMBufIdx = (batch + 1u) & 1u;
+		const uint32 mTag = mBufIdx ? MATRIX_TAG1 : MATRIX_TAG0;
+		const uint32 nextMTag = nextMBufIdx ? MATRIX_TAG1 : MATRIX_TAG0;
 
-		const uint64 matrixEffAddr = g_Job.m_MatricesEffAddr + ((uint64)batch * g_Job.m_MatrixStride);
-
-		// DMA get current matrix
-		dmaGetMatrix(matrixBufIdx, matrixEffAddr, matrixTag);
-
-		// DMA get next matrix
-		if (batch + 1u < batchCount)
-		{
-			const uint64 nextMatrixEffAddr = g_Job.m_MatricesEffAddr + ((uint64)(batch + 1u) * g_Job.m_MatrixStride);
-			dmaGetMatrix(nextMatrixBufIdx, nextMatrixEffAddr, nextMatrixTag);
-		}
-
-		// Wait for DMA get so matrix is resident
-		waitForTag(1u << matrixTag);
-
-		const vec_float4* pMatrixVec = (const vec_float4*)g_MatrixBuffer[matrixBufIdx];
-		vec_float4 matrix[4];
-		matrix[0] = pMatrixVec[0]; // [0..3]
-		matrix[1] = pMatrixVec[1]; // [4..7]
-		matrix[2] = pMatrixVec[2]; // [8..11]
-		matrix[3] = pMatrixVec[3]; // [12..15]
-
-		// Transform vertices in blocks
-		uint32 blockIdx = 0u;
-		for (uint32 v = 0; v < vertexCount; v += MAX_VERTICES_PER_BLOCK, blockIdx++)
-		{
-			const uint32 bufIdx = blockIdx & 1u;
-			const uint32 nextBufIdx = (blockIdx + 1u) & 1u;
-			const uint32 dataTag = bufIdx ? DATA_TAG1 : DATA_TAG0;
-			const uint32 nextDataTag = nextBufIdx ? DATA_TAG1 : DATA_TAG0;
-			
-			const uint32 remaining = vertexCount - v;
-			const uint32 currentCount = (remaining < MAX_VERTICES_PER_BLOCK) ? remaining : MAX_VERTICES_PER_BLOCK;
-			const uint32 currentBytes = currentCount * floatsPerVertex * floatSize;
-			
-			const uint64 baseOffset = (uint64)(batch * vertexCount + v) * floatsPerVertex * floatSize;
-			const uint64 positionsEffAddr = g_Job.m_PositionsEffAddr + baseOffset;
-
-			// Wait for previous DMA put for this vertex block
-			if (blockIdx >= 2u)
-			{
-				waitForTag(1u << dataTag);
-			}
-			
-			// DMA get current vertex block
-			dmaGetVertices(bufIdx, positionsEffAddr, currentBytes, dataTag);
-			
-			// Prefetch next vertex block
-			const uint32 nextVertex = v + MAX_VERTICES_PER_BLOCK;
-			if (nextVertex < vertexCount)
-			{
-				const uint32 nextRemaining = vertexCount - nextVertex;
-				const uint32 nextCount = (nextRemaining < MAX_VERTICES_PER_BLOCK) ? nextRemaining : MAX_VERTICES_PER_BLOCK;
-				const uint32 nextBytes = nextCount * floatsPerVertex * floatSize;
-				const uint64 nextBaseOffset = (uint64)(batch * vertexCount + nextVertex) * floatsPerVertex * floatSize;
-				const uint64 nextPositionsEffAddr = g_Job.m_PositionsEffAddr + nextBaseOffset;
-				
-				// Wait for previous DMA put for next vertex block
-				if (blockIdx >= 1u)
-				{
-					waitForTag(1u << nextDataTag);
-				}
-				
-				// DMA get next vertex block
-				dmaGetVertices(
-					nextBufIdx,
-					nextPositionsEffAddr,
-					nextBytes,
-					nextDataTag);
-			}
-			
-			// Wait for current vertex block DMA get
-			waitForTag(1u << dataTag);
-
-			float32* pVertexBlock = g_PositionBuffer[bufIdx];
-			
-			// Transform vertices
-			if (hasVertexW)
-			{
-				transformBlock4Component(pVertexBlock, currentCount, matrix);
-			}
-			else
-			{
-				transformBlock3Component(pVertexBlock, currentCount, matrix);
-			}
-
-			// DMA put transformed vertex block
-			dmaPutVertices(bufIdx, positionsEffAddr, currentBytes, dataTag);
+		if (batch + 1u < g_Job.m_BatchCount) {
+			uint64 nextMatrixEa = g_Job.m_MatricesEffAddr + (batch + 1u) * g_Job.m_MatrixStride;
+			dmaGet(g_MatrixBuffer[nextMBufIdx], nextMatrixEa, 64, nextMTag);
 		}
 		
-		// Wait for vertex blocks DMA put
-		waitForTag(1u << DATA_TAG0);
-		waitForTag(1u << DATA_TAG1);
+		waitForTag(1u << mTag);
+		const vec_float4* matrix = g_MatrixBuffer[mBufIdx];
+		
+		for (uint32 v = 0; v < g_Job.m_VertexCount; v++)
+		{
+			uint8_t* pSrc = g_SrcVertexBuffer + v * g_Job.m_VertexStride;
+			uint8_t* pDst = g_DstVertexBuffer[outBufIdx] + outOffset;
+			
+			memcpy(pDst, pSrc, g_Job.m_VertexStride);
+			
+			float tmp[3];
+			memcpy(tmp, pDst + g_Job.m_VertexPosOffset, 12);
+			vec_float4 pos = { tmp[0], tmp[1], tmp[2], 1.0f };
+			vec_float4 transformed = transformVertex(pos, matrix);
+			tmp[0] = spu_extract(transformed, 0);
+			tmp[1] = spu_extract(transformed, 1);
+			tmp[2] = spu_extract(transformed, 2);
+			memcpy(pDst + g_Job.m_VertexPosOffset, tmp, 12);
+			
+			outOffset += g_Job.m_VertexStride;
+			
+			if (outOffset == blockBytes) {
+				uint32 dstTag = outBufIdx ? DST_TAG1 : DST_TAG0;
+				waitForTag(1u << dstTag);
+				
+				dmaPut(g_DstVertexBuffer[outBufIdx], outputEffAddr, blockBytes, dstTag);
+				outputEffAddr += blockBytes;
+				
+				outBufIdx ^= 1;
+				outOffset = 0;
+			}
+		}
 	}
+	
+	if (outOffset > 0) {
+		uint32 dstTag = outBufIdx ? DST_TAG1 : DST_TAG0;
+		waitForTag(1u << dstTag);
+		
+		uint32 finalPutSize = (outOffset + 15u) & ~15u;
+		dmaPut(g_DstVertexBuffer[outBufIdx], outputEffAddr, finalPutSize, dstTag);
+		waitForTag((1u << DST_TAG0) | (1u << DST_TAG1));
+	} else {
+		waitForTag((1u << DST_TAG0) | (1u << DST_TAG1));
+	}
+}
 
-	g_Job.m_Status = SPU_BATCH_STATUS_DONE;
+static void processIndices()
+{
+	if (g_Job.m_IndexCount == 0) return;
+	
+	uint32 blockBytes = SPU_BUFFER_SIZE;
+	uint32 indicesPerBlock = blockBytes / 4u;
+	
+	uint32 srcIndexBytes = (g_Job.m_IndexCount * 4u + 15u) & ~15u;
+	if (srcIndexBytes > SPU_BUFFER_SIZE) {
+		g_Job.m_Status = SPU_BATCH_STATUS_ERROR;
+
+		return;
+	}
+	
+	dmaGet(g_SrcIndexBuffer, g_Job.m_SrcIndicesEffAddr, srcIndexBytes, SRC_TAG);
+
+	waitForTag(1u << SRC_TAG);
+	
+	uint32* pSrcIndices = (uint32*)g_SrcIndexBuffer;
+	
+	uint32 outBufIdx = 0;
+	uint32 outIdxCount = 0;
+	uint64 outputEffAddr = g_Job.m_DstIndicesEffAddr;
+	
+	for (uint32 batch = 0; batch < g_Job.m_BatchCount; batch++)
+	{
+		uint32 indexOffset = g_Job.m_BaseVertex + (batch * g_Job.m_VertexCount);
+		
+		for (uint32 i = 0; i < g_Job.m_IndexCount; i++)
+		{
+			uint32* pDstIndices = (uint32*)g_DstIndexBuffer[outBufIdx];
+			pDstIndices[outIdxCount] = pSrcIndices[i] + indexOffset;
+			
+			outIdxCount++;
+			
+			if (outIdxCount == indicesPerBlock) {
+				uint32 dstTag = outBufIdx ? DST_TAG1 : DST_TAG0;
+				waitForTag(1u << dstTag);
+				
+				dmaPut(
+					g_DstIndexBuffer[outBufIdx],
+					outputEffAddr,
+					blockBytes,
+					dstTag);
+				outputEffAddr += blockBytes;
+				
+				outBufIdx ^= 1;
+				outIdxCount = 0;
+			}
+		}
+	}
+	
+	if (outIdxCount > 0) {
+		uint32 dstTag = outBufIdx ? DST_TAG1 : DST_TAG0;
+		waitForTag(1u << dstTag);
+		
+		uint32 finalBytes = outIdxCount * 4u;
+		uint32 finalPutSize = (finalBytes + 15u) & ~15u;
+		dmaPut(
+			g_DstIndexBuffer[outBufIdx],
+			outputEffAddr,
+			finalPutSize,
+			dstTag);
+
+		waitForTag((1u << DST_TAG0) | (1u << DST_TAG1));
+	} else {
+		waitForTag((1u << DST_TAG0) | (1u << DST_TAG1));
+	}
 }
 
 int main(uint64 jobEffAddr, uint64 arg1, uint64 arg2, uint64 arg3)
@@ -293,14 +255,21 @@ int main(uint64 jobEffAddr, uint64 arg1, uint64 arg2, uint64 arg3)
 			mfc_put(&g_Job, jobEffAddr, sizeof(SpuBatchJob_t), JOB_TAG, 0, 0);
 
 			waitForTag(1u << JOB_TAG);
-			
+
 			break;
 		}
 
 		if (g_Job.m_Command == SPU_BATCH_CMD_TRANSFORM)
 		{
 			g_Job.m_Status = SPU_BATCH_STATUS_BUSY;
-			processTransforms();
+			processVertices();
+			if (g_Job.m_Status != SPU_BATCH_STATUS_ERROR) {
+				processIndices();
+			}
+			
+			if (g_Job.m_Status != SPU_BATCH_STATUS_ERROR) {
+				g_Job.m_Status = SPU_BATCH_STATUS_DONE;
+			}
 		}
 		else
 		{

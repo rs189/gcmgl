@@ -32,13 +32,18 @@ struct SpuBatchJob_t
 	uint32 m_Command;
 	uint32 m_Status;
 	uint32 m_VertexCount;
+	uint32 m_IndexCount;
 	uint32 m_BatchCount;
-	uint32 m_FloatsPerVertex;
+	uint32 m_VertexStride;
 	uint32 m_MatrixStride;
-	uint32 m_Reserved0;
-	uint32 m_Reserved1;
-	uint64 m_PositionsEffAddr;
+	uint32 m_VertexPosOffset;
+	uint64 m_SrcVerticesEffAddr;
+	uint64 m_SrcIndicesEffAddr;
 	uint64 m_MatricesEffAddr;
+	uint64 m_DstVerticesEffAddr;
+	uint64 m_DstIndicesEffAddr;
+	uint32 m_BaseVertex;
+	uint32 m_Reserved0;
 };
 
 #ifndef __cplusplus

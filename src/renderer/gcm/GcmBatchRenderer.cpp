@@ -102,84 +102,6 @@ static void BatchTransforms(void* pArg)
 }
 #endif // !PS3_SPU_ENABLED
 
-void CGcmBatchRenderer::SpuTransformChunk(
-	char* pDstVertexData,
-	uint32 chunkSize,
-	uint32 vertexCount,
-	uint32 vertexStride,
-	uint32 vertexPosOffset,
-	const CUtlVector<BatchChunkTransform_t>& batchChunkTransforms)
-{
-#ifdef PS3_SPU_ENABLED
-	uint32 requiredPositions = chunkSize * vertexCount * 4u;
-	if (requiredPositions > uint32(m_ScratchPositions.Count()))
-	{
-		m_ScratchPositions.SetCount(int32(requiredPositions));
-	}
-	if (m_ScratchPositions.Count() == 0) return;
-
-	float32* pScratchPositions = m_ScratchPositions.Base();
-
-	for (uint32 i = 0; i < chunkSize; i++)
-	{
-		const char* pBatchVertex = pDstVertexData + uint64(i) * vertexCount * vertexStride;
-		float32* pBatchPositions = pScratchPositions + uint64(i) * vertexCount * 4u;
-		for (uint32 j = 0; j < vertexCount; j++)
-		{
-			const float32* pPos = reinterpret_cast<const float32*>(
-				pBatchVertex + uint64(j) * vertexStride + vertexPosOffset);
-			float32* pOut = pBatchPositions + j * 4u;
-			pOut[0] = pPos[0];
-			pOut[1] = pPos[1];
-			pOut[2] = pPos[2];
-			pOut[3] = 1.0f;
-		}
-	}
-
-	if (chunkSize > uint32(m_ScratchMatrices.Count()))
-	{
-		m_ScratchMatrices.SetCount(int32(chunkSize));
-	}
-	if (m_ScratchMatrices.Count() == 0) return;
-
-	CMatrix4* pScratchMatrices = m_ScratchMatrices.Base();
-	for (uint32 i = 0; i < chunkSize; i++)
-	{
-		pScratchMatrices[i] = batchChunkTransforms[i].ToMatrix();
-	}
-
-	SPUResult_t spuResult = SPUResult_t::NotUsed;
-	CSpuBatchTransformManager* pSpuBtm = m_pSpuBtm;
-	if (pSpuBtm)
-	{
-		spuResult = pSpuBtm->TransformPositions(
-			pScratchPositions,
-			pScratchMatrices,
-			vertexCount,
-			chunkSize,
-			4u);
-	}
-
-	if (spuResult == SPUResult_t::Success)
-	{
-		for (uint32 i = 0; i < chunkSize; i++)
-		{
-			char* pBatchVertex = pDstVertexData + uint64(i) * vertexCount * vertexStride;
-			const float32* pBatchPositions = pScratchPositions + uint64(i) * vertexCount * 4u;
-			for (uint32 j = 0; j < vertexCount; j++)
-			{
-				float32* pPos = reinterpret_cast<float32*>(
-					pBatchVertex + uint64(j) * vertexStride + vertexPosOffset);
-				const float32* pIn = pBatchPositions + j * 4u;
-				pPos[0] = pIn[0];
-				pPos[1] = pIn[1];
-				pPos[2] = pIn[2];
-			}
-		}
-	}
-#endif // PS3_SPU_ENABLED
-}
-
 void CGcmBatchRenderer::DrawBatchedChunk(
 	uint32 vertexCount,
 	const CUtlVector<BatchChunkTransform_t>& batchChunkTransforms,
@@ -232,23 +154,41 @@ void CGcmBatchRenderer::DrawBatchedChunk(
 	bool hasVertexPos = FindVertexPosOffset(pVertexLayout, vertexPosOffset);
 
 #ifdef PS3_SPU_ENABLED
-	for (uint32 i = 0; i < chunkSize; i++)
+	if (hasVertexPos && m_pSpuBtm)
 	{
-		memcpy(
-			pDstVertexData + uint64(i) * vertexCount * vertexStride,
-			pSrcVertexData,
-			uint64(vertexCount) * vertexStride);
-	}
+		if (chunkSize > uint32(m_ScratchMatrices.Count()))
+		{
+			m_ScratchMatrices.SetCount(int32(chunkSize));
+		}
 
-	if (hasVertexPos)
-	{
-		SpuTransformChunk(
+		CMatrix4* pScratchMatrices = m_ScratchMatrices.Base();
+		for (uint32 i = 0; i < chunkSize; i++)
+		{
+			pScratchMatrices[i] = batchChunkTransforms[chunkStart + i].ToMatrix();
+		}
+
+		m_pSpuBtm->ProcessBatch(
+			pSrcVertexData,
+			GCMGL_NULL,
+			pScratchMatrices,
 			pDstVertexData,
-			chunkSize,
+			GCMGL_NULL,
 			vertexCount,
+			0,
+			chunkSize,
 			vertexStride,
 			vertexPosOffset,
-			batchChunkTransforms);
+			0);
+	}
+	else
+	{
+		for (uint32 i = 0; i < chunkSize; i++)
+		{
+			memcpy(
+				pDstVertexData + uint64(i) * vertexCount * vertexStride,
+				pSrcVertexData,
+				uint64(vertexCount) * vertexStride);
+		}
 	}
 #else // PS3_SPU_ENABLED
 #ifdef THREADING_ENABLED
@@ -486,29 +426,47 @@ void CGcmBatchRenderer::DrawIndexedBatchedChunk(
 	bool hasVertexPos = FindVertexPosOffset(pVertexLayout, vertexPosOffset);
 
 #ifdef PS3_SPU_ENABLED
-	for (uint32 i = 0; i < chunkSize; i++)
+	if (hasVertexPos && m_pSpuBtm)
 	{
-		memcpy(
-			pDstVertexData + uint64(i) * vertexCount * vertexStride,
-			pSrcVertexData,
-			uint64(vertexCount) * vertexStride);
-
-		for (uint32 j = 0; j < indexCount; j++)
+		if (chunkSize > uint32(m_ScratchMatrices.Count()))
 		{
-			pDstIndexData[i * indexCount + j] =
-				pSrcIndices[j] + uint32(baseVertex + int32(i * vertexCount));
+			m_ScratchMatrices.SetCount(int32(chunkSize));
 		}
-	}
 
-	if (hasVertexPos)
-	{
-		SpuTransformChunk(
+		CMatrix4* pScratchMatrices = m_ScratchMatrices.Base();
+		for (uint32 i = 0; i < chunkSize; i++)
+		{
+			pScratchMatrices[i] = batchChunkTransforms[chunkStart + i].ToMatrix();
+		}
+
+		m_pSpuBtm->ProcessBatch(
+			pSrcVertexData,
+			pSrcIndices,
+			pScratchMatrices,
 			pDstVertexData,
-			chunkSize,
+			pDstIndexData,
 			vertexCount,
+			indexCount,
+			chunkSize,
 			vertexStride,
 			vertexPosOffset,
-			batchChunkTransforms);
+			baseVertex);
+	}
+	else
+	{
+		for (uint32 i = 0; i < chunkSize; i++)
+		{
+			memcpy(
+				pDstVertexData + uint64(i) * vertexCount * vertexStride,
+				pSrcVertexData,
+				uint64(vertexCount) * vertexStride);
+
+			for (uint32 j = 0; j < indexCount; j++)
+			{
+				pDstIndexData[i * indexCount + j] =
+					pSrcIndices[j] + uint32(baseVertex + int32(i * vertexCount));
+			}
+		}
 	}
 #else // PS3_SPU_ENABLED
 #ifdef THREADING_ENABLED

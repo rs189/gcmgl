@@ -182,12 +182,18 @@ void CSpuBatchTransformManager::Shutdown()
 	m_SpuThreadId = 0;
 }
 
-SPUResult_t CSpuBatchTransformManager::TransformPositions(
-	float32* pPositions,
+SPUResult_t CSpuBatchTransformManager::ProcessBatch(
+	const char* pSrcVertices,
+	const uint32* pSrcIndices,
 	const CMatrix4* pMatrices,
+	char* pDstVertices,
+	uint32* pDstIndices,
 	uint32 vertexCount,
+	uint32 indexCount,
 	uint32 batchCount,
-	uint32 floatsPerVertex)
+	uint32 vertexStride,
+	uint32 vertexPosOffset,
+	uint32 baseVertex)
 {
 	if (batchCount == 0 || vertexCount == 0)
 	{
@@ -195,19 +201,31 @@ SPUResult_t CSpuBatchTransformManager::TransformPositions(
 	}
 
 	return SubmitJob(
-		pPositions,
+		pSrcVertices,
+		pSrcIndices,
 		pMatrices,
+		pDstVertices,
+		pDstIndices,
 		vertexCount,
+		indexCount,
 		batchCount,
-		floatsPerVertex);
+		vertexStride,
+		vertexPosOffset,
+		baseVertex);
 }
 
 SPUResult_t CSpuBatchTransformManager::SubmitJob(
-	float32* pPositions,
+	const char* pSrcVertices,
+	const uint32* pSrcIndices,
 	const CMatrix4* pMatrices,
+	char* pDstVertices,
+	uint32* pDstIndices,
 	uint32 vertexCount,
+	uint32 indexCount,
 	uint32 batchCount,
-	uint32 floatsPerVertex)
+	uint32 vertexStride,
+	uint32 vertexPosOffset,
+	uint32 baseVertex)
 {
 	if (!m_pBatchJob || m_IsShuttingDown)
 	{
@@ -215,12 +233,17 @@ SPUResult_t CSpuBatchTransformManager::SubmitJob(
 	}
 
 	m_pBatchJob->m_VertexCount = vertexCount;
+	m_pBatchJob->m_IndexCount = indexCount;
 	m_pBatchJob->m_BatchCount = batchCount;
-	m_pBatchJob->m_FloatsPerVertex = floatsPerVertex;
+	m_pBatchJob->m_VertexStride = vertexStride;
 	m_pBatchJob->m_MatrixStride = sizeof(CMatrix4);
-	m_pBatchJob->m_PositionsEffAddr = SpuUtils::PtrToEa(pPositions);
-	m_pBatchJob->m_MatricesEffAddr = SpuUtils::PtrToEa(
-		const_cast<CMatrix4*>(pMatrices));
+	m_pBatchJob->m_VertexPosOffset = vertexPosOffset;
+	m_pBatchJob->m_BaseVertex = baseVertex;
+	m_pBatchJob->m_SrcVerticesEffAddr = SpuUtils::PtrToEa(const_cast<char*>(pSrcVertices));
+	m_pBatchJob->m_SrcIndicesEffAddr = SpuUtils::PtrToEa(const_cast<uint32*>(pSrcIndices));
+	m_pBatchJob->m_MatricesEffAddr = SpuUtils::PtrToEa(const_cast<CMatrix4*>(pMatrices));
+	m_pBatchJob->m_DstVerticesEffAddr = SpuUtils::PtrToEa(pDstVertices);
+	m_pBatchJob->m_DstIndicesEffAddr = SpuUtils::PtrToEa(pDstIndices);
 	m_pBatchJob->m_Status = SPU_BATCH_STATUS_BUSY;
 	m_pBatchJob->m_Command = SPU_BATCH_CMD_TRANSFORM;
 

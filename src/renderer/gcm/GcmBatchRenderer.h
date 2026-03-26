@@ -17,14 +17,6 @@
 class CGcmBatchRenderer : public CGcmRenderer, public CBatchRenderer
 {
 protected:
-	virtual void SpuTransformChunk(
-		char* pDstVertexData,
-		uint32 chunkSize,
-		uint32 vertexCount,
-		uint32 vertexStride,
-		uint32 vertexPosOffset,
-		const CUtlVector<BatchChunkTransform_t>& batchChunkTransforms);
-
 	virtual void DrawBatchedChunk(
 		uint32 vertexCount,
 		const CUtlVector<BatchChunkTransform_t>& batchChunkTransforms,
