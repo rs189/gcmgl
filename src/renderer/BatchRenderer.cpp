@@ -185,7 +185,14 @@ void CBatchRenderer::ProcessBatch(
 {
 	memcpy(pVertexDst, pVertexSrc, uint64(vertexCount) * vertexStride);
 	if (hasVertexPos)
-		TransformVertices(pVertexDst, vertexCount, vertexStride, vertexPosOffset, matrix);
+	{
+		TransformVertices(
+			pVertexDst,
+			vertexCount,
+			vertexStride,
+			vertexPosOffset,
+			matrix);
+	}
 }
 
 void CBatchRenderer::ProcessIndexedBatch(

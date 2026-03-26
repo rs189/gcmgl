@@ -133,10 +133,6 @@ void CGlBatchRenderer::DrawBatchedChunk(
 		stagingVertexBufferResource.m_Target = GL_ARRAY_BUFFER;
 	}
 
-	memset(
-		stagingVertexBuffer.m_Data.Base(),
-		0,
-		size_t(stagingVertexBuffer.m_Data.Count()));
 	char* pDstVertexData = reinterpret_cast<char*>(
 		stagingVertexBuffer.m_Data.Base());
 
@@ -334,10 +330,6 @@ void CGlBatchRenderer::DrawIndexedBatchedChunk(
 		stagingVertexBufferResource.m_Target = GL_ARRAY_BUFFER;
 	}
 
-	memset(
-		stagingVertexBuffer.m_Data.Base(),
-		0,
-		size_t(stagingVertexBuffer.m_Data.Count()));
 	char* pDstVertexData = reinterpret_cast<char*>(
 		stagingVertexBuffer.m_Data.Base());
 
@@ -358,10 +350,6 @@ void CGlBatchRenderer::DrawIndexedBatchedChunk(
 		stagingIndexBufferResource.m_Target = GL_ELEMENT_ARRAY_BUFFER;
 	}
 
-	memset(
-		stagingIndexBuffer.m_Data.Base(),
-		0,
-		size_t(stagingIndexBuffer.m_Data.Count()));
 	uint32* pDstIndexData = reinterpret_cast<uint32*>(
 		stagingIndexBuffer.m_Data.Base());
 

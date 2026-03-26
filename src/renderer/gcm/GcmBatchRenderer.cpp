@@ -226,7 +226,6 @@ void CGcmBatchRenderer::DrawBatchedChunk(
 		}
 	}
 
-	memset(stagingVertexBuffer.m_pPtr, 0, alignedVertexSize);
 	char* pDstVertexData = reinterpret_cast<char*>(stagingVertexBuffer.m_pPtr);
 
 	uint32 vertexPosOffset = 0;
@@ -451,7 +450,6 @@ void CGcmBatchRenderer::DrawIndexedBatchedChunk(
 		}
 	}
 
-	memset(stagingVertexBuffer.m_pPtr, 0, alignedVertexSize);
 	char* pDstVertexData = reinterpret_cast<char*>(stagingVertexBuffer.m_pPtr);
 
 	StagingBuffer_t& stagingIndexBuffer = m_StagingIndexBuffer[m_StagingIndex];
@@ -481,7 +479,6 @@ void CGcmBatchRenderer::DrawIndexedBatchedChunk(
 		}
 	}
 
-	memset(stagingIndexBuffer.m_pPtr, 0, alignedIndexSize);
 	uint32* pDstIndexData = reinterpret_cast<uint32*>(
 		stagingIndexBuffer.m_pPtr);
 
