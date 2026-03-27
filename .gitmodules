@@ -1,5 +1,5 @@
-[submodule "src/mathsfury"]
-	path = src/mathsfury
+[submodule "thirdparty/mathsfury"]
+	path = thirdparty/mathsfury
 	url = ../mathsfury
 [submodule "thirdparty/glad"]
 	path = thirdparty/glad

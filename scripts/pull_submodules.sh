@@ -16,7 +16,7 @@ done
 
 echo "Updating submodules..."
 
-MATHSFURY_DIR="$(cd "$ROOT_DIR/../mathsfury" && pwd)"
+MATHSFURY_DIR="$ROOT_DIR/thirdparty/mathsfury"
 if [ -d "$MATHSFURY_DIR/.git" ]; then
 	echo "Pushing mathsfury submodule..."
 
@@ -24,9 +24,9 @@ if [ -d "$MATHSFURY_DIR/.git" ]; then
 fi
 
 git submodule update --init
-git -C src/mathsfury fetch
-git -C src/mathsfury checkout origin/main
-git add src/mathsfury
+git -C thirdparty/mathsfury fetch
+git -C thirdparty/mathsfury checkout origin/main
+git add thirdparty/mathsfury
 
 if [ "$PULL_GLAD" -eq 1 ]; then
 	echo "Updating glad submodule..."

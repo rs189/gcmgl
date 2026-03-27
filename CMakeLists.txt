@@ -23,12 +23,12 @@ set(ENGINE_SRCS
 	src/window/WindowManager.cpp
 	src/renderer/Renderer.cpp
 	src/renderer/BatchRenderer.cpp
-	src/mathsfury/Maths.cpp
-	src/mathsfury/Vector2.cpp
-	src/mathsfury/Vector3.cpp
-	src/mathsfury/Vector4.cpp
-	src/mathsfury/Matrix4.cpp
-	src/mathsfury/Quaternion.cpp
+	thirdparty/mathsfury/Maths.cpp
+	thirdparty/mathsfury/Vector2.cpp
+	thirdparty/mathsfury/Vector3.cpp
+	thirdparty/mathsfury/Vector4.cpp
+	thirdparty/mathsfury/Matrix4.cpp
+	thirdparty/mathsfury/Quaternion.cpp
 	src/utils/Utils.cpp
 	src/utils/Color.cpp
 	src/utils/Time.cpp

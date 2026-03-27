@@ -9,7 +9,7 @@ include $(PSL1GHT)/ppu_rules
 TARGET := gcmgl
 BUILD := build/bin/ps3
 OBJDIR := build/obj/ps3
-SOURCES := src src/mathsfury src/utils src/renderer src/renderer/gcm src/renderer/gcm/spu thirdparty/rsxutil src/window src/window/ps3
+SOURCES := src thirdparty/mathsfury src/utils src/renderer src/renderer/gcm src/renderer/gcm/spu thirdparty/rsxutil src/window src/window/ps3
 INCLUDES := src include public thirdparty src/renderer/gcm/spu
 
 SPU_SRCDIR := src/renderer/gcm/spu
