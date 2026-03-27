@@ -219,7 +219,7 @@ void CSpuBatchTransformManager::Shutdown()
 	sysSpuImageClose(&m_SpuImage);
 }
 
-SPUResult_t CSpuBatchTransformManager::ProcessBatch(
+SPUResult_t CSpuBatchTransformManager::BeginBatch(
 	const char* pSrcVertices,
 	const uint32* pSrcIndices,
 	const CMatrix4* pMatrices,
@@ -237,33 +237,6 @@ SPUResult_t CSpuBatchTransformManager::ProcessBatch(
 		return SPUResult_t::NotUsed;
 	}
 
-	return SubmitJob(
-		pSrcVertices,
-		pSrcIndices,
-		pMatrices,
-		pDstVertices,
-		pDstIndices,
-		vertexCount,
-		indexCount,
-		batchCount,
-		vertexStride,
-		vertexPosOffset,
-		baseVertex);
-}
-
-SPUResult_t CSpuBatchTransformManager::SubmitJob(
-	const char* pSrcVertices,
-	const uint32* pSrcIndices,
-	const CMatrix4* pMatrices,
-	char* pDstVertices,
-	uint32* pDstIndices,
-	uint32 vertexCount,
-	uint32 indexCount,
-	uint32 batchCount,
-	uint32 vertexStride,
-	uint32 vertexPosOffset,
-	uint32 baseVertex)
-{
 	if (m_IsShuttingDown)
 	{
 		return SPUResult_t::NotUsed;
@@ -313,6 +286,8 @@ SPUResult_t CSpuBatchTransformManager::SubmitJob(
 
 	__sync_synchronize();
 
+	bool hasError = false;
+
 	for (uint32 i = 0; i < s_NumBatchSpus; i++)
 	{
 		if (m_pBatchJobs[i] && m_pBatchJobs[i]->m_Command == SPU_BATCH_CMD_TRANSFORM)
@@ -325,12 +300,18 @@ SPUResult_t CSpuBatchTransformManager::SubmitJob(
 			{
 				m_pBatchJobs[i]->m_Command = SPU_BATCH_CMD_IDLE;
 				m_pBatchJobs[i]->m_Status = SPU_BATCH_STATUS_ERROR;
+				hasError = true;
 			}
 		}
 	}
 
+	return hasError ? SPUResult_t::Error : SPUResult_t::Success;
+}
+
+SPUResult_t CSpuBatchTransformManager::WaitBatch()
+{
 	bool hasActiveJobs = true;
-	bool hasBatchError = false;
+	bool hasError = false;
 
 	while (hasActiveJobs)
 	{
@@ -349,7 +330,7 @@ SPUResult_t CSpuBatchTransformManager::SubmitJob(
 				else if (m_pBatchJobs[i]->m_Status == SPU_BATCH_STATUS_ERROR)
 				{
 					m_pBatchJobs[i]->m_Command = SPU_BATCH_CMD_IDLE;
-					hasBatchError = true;
+					hasError = true;
 				}
 				else
 				{
@@ -364,5 +345,5 @@ SPUResult_t CSpuBatchTransformManager::SubmitJob(
 		}
 	}
 
-	return hasBatchError ? SPUResult_t::Error : SPUResult_t::Success;
+	return hasError ? SPUResult_t::Error : SPUResult_t::Success;
 }

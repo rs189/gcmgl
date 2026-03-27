@@ -28,7 +28,7 @@ public:
 	bool Initialize();
 	void Shutdown();
 
-	SPUResult_t ProcessBatch(
+	SPUResult_t BeginBatch(
 		const char* pSrcVertices,
 		const uint32* pSrcIndices,
 		const CMatrix4* pMatrices,
@@ -40,19 +40,10 @@ public:
 		uint32 vertexStride,
 		uint32 vertexPosOffset,
 		uint32 baseVertex);
+
+	SPUResult_t WaitBatch();
+
 private:
-	SPUResult_t SubmitJob(
-		const char* pSrcVertices,
-		const uint32* pSrcIndices,
-		const CMatrix4* pMatrices,
-		char* pDstVertices,
-		uint32* pDstIndices,
-		uint32 vertexCount,
-		uint32 indexCount,
-		uint32 batchCount,
-		uint32 vertexStride,
-		uint32 vertexPosOffset,
-		uint32 baseVertex);
 
 	sysSpuImage m_SpuImage;
 	uint32 m_SpuGroupId;

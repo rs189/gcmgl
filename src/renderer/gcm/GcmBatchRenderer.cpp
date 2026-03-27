@@ -16,6 +16,69 @@
 #include "spu/SpuBatchTransformManager.h"
 #endif
 
+CGcmBatchRenderer::CGcmBatchRenderer() :
+	m_HasPendingBatch(false),
+	m_IsPendingBatchIndexed(false),
+	m_PendingVertexCount(0),
+	m_PendingIndexCount(0),
+	m_PendingVertexBuffer(0),
+	m_PendingIndexBuffer(0),
+	m_PendingTotalVertices(0),
+	m_PendingTotalIndices(0),
+	m_PendingBaseVertex(0),
+	m_PendingStartIndex(0)
+{
+}
+
+CGcmBatchRenderer::~CGcmBatchRenderer()
+{
+}
+
+void CGcmBatchRenderer::FlushPendingBatches()
+{
+	if (!m_HasPendingBatch)
+	{
+		return;
+	}
+
+#ifdef PS3_SPU_ENABLED
+	if (m_pSpuBtm)
+	{
+		m_pSpuBtm->WaitBatch();
+	}
+#endif
+
+	BufferHandle hOriginalVertexBuffer = m_PipelineState.m_hVertexBuffer;
+	BufferHandle hOriginalIndexBuffer = m_PipelineState.m_hIndexBuffer;
+	uint32 originalVertexOffset = m_PipelineState.m_VertexOffset;
+
+	m_PipelineState.m_hVertexBuffer = m_PendingVertexBuffer;
+	m_PipelineState.m_VertexOffset = 0;
+	m_StateDirtyFlags = m_StateDirtyFlags | StateDirtyFlags_t::VertexBuffer;
+
+	if (m_IsPendingBatchIndexed)
+	{
+		m_PipelineState.m_hIndexBuffer = m_PendingIndexBuffer;
+		m_StateDirtyFlags = m_StateDirtyFlags | StateDirtyFlags_t::IndexBuffer;
+
+		DrawIndexed(
+			m_PendingTotalIndices,
+			m_PendingStartIndex,
+			m_PendingBaseVertex);
+	}
+	else
+	{
+		Draw(m_PendingTotalVertices);
+	}
+
+	m_PipelineState.m_hVertexBuffer = hOriginalVertexBuffer;
+	m_PipelineState.m_hIndexBuffer = hOriginalIndexBuffer;
+	m_PipelineState.m_VertexOffset = originalVertexOffset;
+	m_StateDirtyFlags = m_StateDirtyFlags | StateDirtyFlags_t::VertexBuffer | StateDirtyFlags_t::IndexBuffer;
+
+	m_HasPendingBatch = false;
+}
+
 #ifndef PS3_SPU_ENABLED
 #include <lv2/thread.h>
 
@@ -102,6 +165,40 @@ static void BatchTransforms(void* pArg)
 }
 #endif // !PS3_SPU_ENABLED
 
+void CGcmBatchRenderer::DrawBatched(
+	uint32 vertexCount,
+	const CBatch& batch,
+	const CMatrix4& viewProjection,
+	uint32 startVertex)
+{
+	CBatchRenderer::DrawBatched(
+		vertexCount,
+		batch,
+		viewProjection,
+		startVertex);
+
+	FlushPendingBatches();
+}
+
+void CGcmBatchRenderer::DrawIndexedBatched(
+	uint32 indexCount,
+	uint32 vertexCount,
+	const CBatch& batch,
+	const CMatrix4& viewProjection,
+	uint32 startIndex,
+	int32 baseVertex)
+{
+	CBatchRenderer::DrawIndexedBatched(
+		indexCount,
+		vertexCount,
+		batch,
+		viewProjection,
+		startIndex,
+		baseVertex);
+
+	FlushPendingBatches();
+}
+
 void CGcmBatchRenderer::DrawBatchedChunk(
 	uint32 vertexCount,
 	const CUtlVector<BatchChunkTransform_t>& batchChunkTransforms,
@@ -109,6 +206,8 @@ void CGcmBatchRenderer::DrawBatchedChunk(
 	uint32 chunkSize,
 	uint32 startVertex)
 {
+	FlushPendingBatches();
+
 	int32 vertexBufferIndex = m_BufferResources.Find(
 		m_PipelineState.m_hVertexBuffer);
 	if (vertexBufferIndex == m_BufferResources.InvalidIndex()) return;
@@ -167,7 +266,7 @@ void CGcmBatchRenderer::DrawBatchedChunk(
 			pScratchMatrices[i] = batchChunkTransforms[chunkStart + i].ToMatrix();
 		}
 
-		m_pSpuBtm->ProcessBatch(
+		m_pSpuBtm->BeginBatch(
 			pSrcVertexData,
 			GCMGL_NULL,
 			pScratchMatrices,
@@ -273,21 +372,10 @@ void CGcmBatchRenderer::DrawBatchedChunk(
 		stagingVertexBuffer.m_hBuffer,
 		stagingVertexBufferResource);
 
-	BufferHandle hOriginalVertexBuffer = m_PipelineState.m_hVertexBuffer;
-	uint32 originalVertexOffset = m_PipelineState.m_VertexOffset;
-
-	m_PipelineState.m_hVertexBuffer = stagingVertexBuffer.m_hBuffer;
-	m_PipelineState.m_VertexOffset = 0;
-	m_StateDirtyFlags = m_StateDirtyFlags | StateDirtyFlags_t::VertexBuffer;
-
-	Draw(totalVertices);
-
-	rsxFlushBuffer(context);
-	waitFinish();
-
-	m_PipelineState.m_hVertexBuffer = hOriginalVertexBuffer;
-	m_PipelineState.m_VertexOffset = originalVertexOffset;
-	m_StateDirtyFlags = m_StateDirtyFlags | StateDirtyFlags_t::VertexBuffer;
+	m_HasPendingBatch = true;
+	m_IsPendingBatchIndexed = false;
+	m_PendingTotalVertices = totalVertices;
+	m_PendingVertexBuffer = stagingVertexBuffer.m_hBuffer;
 
 	m_StagingIndex = (m_StagingIndex + 1) & 1;
 }
@@ -340,6 +428,8 @@ void CGcmBatchRenderer::DrawIndexedBatchedChunk(
 	uint32 startIndex,
 	int32 baseVertex)
 {
+	FlushPendingBatches();
+
 	int32 vertexBufferIndex = m_BufferResources.Find(
 		m_PipelineState.m_hVertexBuffer);
 	int32 indexBufferIndex = m_BufferResources.Find(
@@ -439,7 +529,7 @@ void CGcmBatchRenderer::DrawIndexedBatchedChunk(
 			pScratchMatrices[i] = batchChunkTransforms[chunkStart + i].ToMatrix();
 		}
 
-		m_pSpuBtm->ProcessBatch(
+		m_pSpuBtm->BeginBatch(
 			pSrcVertexData,
 			pSrcIndices,
 			pScratchMatrices,
@@ -568,31 +658,14 @@ void CGcmBatchRenderer::DrawIndexedBatchedChunk(
 		stagingIndexBuffer.m_hBuffer,
 		stagingIndexBufferResource);
 
-	BufferHandle hOriginalVertexBuffer = m_PipelineState.m_hVertexBuffer;
-	BufferHandle hOriginalIndexBuffer = m_PipelineState.m_hIndexBuffer;
-	uint32 originalVertexOffset = m_PipelineState.m_VertexOffset;
-	uint64 originalIndexOffset = m_PipelineState.m_IndexOffset;
-
-	m_PipelineState.m_hVertexBuffer = stagingVertexBuffer.m_hBuffer;
-	m_PipelineState.m_hIndexBuffer = stagingIndexBuffer.m_hBuffer;
-	m_PipelineState.m_VertexOffset = 0;
-	m_PipelineState.m_IndexOffset = 0;
-	m_StateDirtyFlags = m_StateDirtyFlags |
-		StateDirtyFlags_t::VertexBuffer |
-		StateDirtyFlags_t::IndexBuffer;
-
-	DrawIndexed(totalIndices);
-
-	rsxFlushBuffer(context);
-	waitFinish();
-
-	m_PipelineState.m_hVertexBuffer = hOriginalVertexBuffer;
-	m_PipelineState.m_hIndexBuffer = hOriginalIndexBuffer;
-	m_PipelineState.m_VertexOffset = originalVertexOffset;
-	m_PipelineState.m_IndexOffset = originalIndexOffset;
-	m_StateDirtyFlags = m_StateDirtyFlags |
-		StateDirtyFlags_t::VertexBuffer |
-		StateDirtyFlags_t::IndexBuffer;
+	m_HasPendingBatch = true;
+	m_IsPendingBatchIndexed = true;
+	m_PendingTotalVertices = totalVertices;
+	m_PendingTotalIndices = totalIndices;
+	m_PendingStartIndex = 0;
+	m_PendingBaseVertex = 0;
+	m_PendingVertexBuffer = stagingVertexBuffer.m_hBuffer;
+	m_PendingIndexBuffer = stagingIndexBuffer.m_hBuffer;
 
 	m_StagingIndex = (m_StagingIndex + 1) & 1;
 }

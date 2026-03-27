@@ -16,6 +16,22 @@
 
 class CGcmBatchRenderer : public CGcmRenderer, public CBatchRenderer
 {
+public:
+	CGcmBatchRenderer();
+	virtual ~CGcmBatchRenderer();
+
+	virtual void DrawBatched(
+		uint32 vertexCount,
+		const CBatch& batch,
+		const CMatrix4& viewProjection,
+		uint32 startVertex = 0) GCMGL_OVERRIDE;
+	virtual void DrawIndexedBatched(
+		uint32 indexCount,
+		uint32 vertexCount,
+		const CBatch& batch,
+		const CMatrix4& viewProjection,
+		uint32 startIndex = 0,
+		int32 baseVertex = 0) GCMGL_OVERRIDE;
 protected:
 	virtual void DrawBatchedChunk(
 		uint32 vertexCount,
@@ -31,6 +47,19 @@ protected:
 		uint32 chunkSize,
 		uint32 startIndex,
 		int32 baseVertex) GCMGL_OVERRIDE;
+private:
+	void FlushPendingBatches();
+
+	bool m_HasPendingBatch;
+	bool m_IsPendingBatchIndexed;
+	uint32 m_PendingVertexCount;
+	uint32 m_PendingIndexCount;
+	BufferHandle m_PendingVertexBuffer;
+	BufferHandle m_PendingIndexBuffer;
+	uint32 m_PendingTotalVertices;
+	uint32 m_PendingTotalIndices;
+	int32 m_PendingBaseVertex;
+	uint32 m_PendingStartIndex;
 };
 
 #endif // GCM_BATCH_RENDERER_H
