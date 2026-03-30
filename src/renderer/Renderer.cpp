@@ -10,7 +10,7 @@
 #include "mathsfury/Maths.h"
 
 CRenderer::CRenderer() :
-	m_PipelineState({ 0, 0, 0, GCMGL_NULL, 0, 0, 0, { false }, { true, true } }),
+	m_PipelineState({ 0, GCMGL_NULL, 0, 0, 0, 0, 0, { true, true }, { false } }),
 	m_StateDirtyFlags(StateDirtyFlags_t::All),
 	m_NextHandle(1)
 {
@@ -28,12 +28,13 @@ void CVertexLayout::AddAttribute(
 	uint32 offset,
 	uint32 location)
 {
-	VertexAttribute_t attribute;
-	attribute.m_Name = name;
-	attribute.m_Format = static_cast<VertexFormat_t>(format);
-	attribute.m_Offset = offset;
-	attribute.m_Location = location;
-	attribute.m_VertexSemantic = VertexSemantic_t::Unspecified;
+	const VertexAttribute_t attribute = {
+		name,
+		static_cast<VertexFormat_t>(format),
+		offset,
+		location,
+		VertexSemantic_t::Unspecified
+	};
 	m_Attributes.AddToTail(attribute);
 }
 
@@ -45,13 +46,14 @@ void CVertexLayout::AddAttribute(
 	VertexSemantic_t vertexSemantic,
 	uint32 location)
 {
-	VertexAttribute_t attr;
-	attr.m_Name = name;
-	attr.m_Format = static_cast<VertexFormat_t>(format);
-	attr.m_Offset = offset;
-	attr.m_Location = location;
-	attr.m_VertexSemantic = vertexSemantic;
-	m_Attributes.AddToTail(attr);
+	const VertexAttribute_t attribute = {
+		name,
+		static_cast<VertexFormat_t>(format),
+		offset,
+		location,
+		vertexSemantic
+	};
+	m_Attributes.AddToTail(attribute);
 }
 
 void CVertexLayout::SetStride(uint32 vertexStride)
@@ -61,16 +63,16 @@ void CVertexLayout::SetStride(uint32 vertexStride)
 
 bool PipelineState_t::operator==(const PipelineState_t& other) const
 {
-	return m_hShaderProgram == other.m_hShaderProgram &&
+	return m_IndexOffset == other.m_IndexOffset &&
+		m_pVertexLayout == other.m_pVertexLayout &&
+		m_hShaderProgram == other.m_hShaderProgram &&
 		m_hVertexBuffer == other.m_hVertexBuffer &&
 		m_hIndexBuffer == other.m_hIndexBuffer &&
-		m_pVertexLayout == other.m_pVertexLayout &&
 		m_VertexStride == other.m_VertexStride &&
 		m_VertexOffset == other.m_VertexOffset &&
-		m_IndexOffset == other.m_IndexOffset &&
-		m_BlendState.m_IsEnabled == other.m_BlendState.m_IsEnabled &&
 		m_DepthStencilState.m_IsDepthTest == other.m_DepthStencilState.m_IsDepthTest &&
-		m_DepthStencilState.m_IsDepthWrite == other.m_DepthStencilState.m_IsDepthWrite;
+		m_DepthStencilState.m_IsDepthWrite == other.m_DepthStencilState.m_IsDepthWrite &&
+		m_BlendState.m_IsEnabled == other.m_BlendState.m_IsEnabled;
 }
 
 
@@ -133,34 +135,42 @@ UniformBlockLayoutHandle CRenderer::CreateUniformBlockLayout(
 
 void CRenderer::SetPipelineState(const PipelineState_t& state)
 {
-	if (m_PipelineState.m_hShaderProgram != state.m_hShaderProgram)
+	if (m_PipelineState.m_IndexOffset != state.m_IndexOffset)
 	{
-		m_StateDirtyFlags = m_StateDirtyFlags | StateDirtyFlags_t::Program | StateDirtyFlags_t::Uniforms;
+		m_StateDirtyFlags = m_StateDirtyFlags | StateDirtyFlags_t::IndexBuffer;
 	}
 
-	if (m_PipelineState.m_hVertexBuffer != state.m_hVertexBuffer ||
-		m_PipelineState.m_pVertexLayout != state.m_pVertexLayout ||
+	if (m_PipelineState.m_pVertexLayout != state.m_pVertexLayout ||
 		m_PipelineState.m_VertexStride != state.m_VertexStride ||
 		m_PipelineState.m_VertexOffset != state.m_VertexOffset)
 	{
 		m_StateDirtyFlags = m_StateDirtyFlags | StateDirtyFlags_t::VertexBuffer;
 	}
 
-	if (m_PipelineState.m_hIndexBuffer != state.m_hIndexBuffer ||
-		m_PipelineState.m_IndexOffset != state.m_IndexOffset)
+	if (m_PipelineState.m_hShaderProgram != state.m_hShaderProgram)
 	{
-		m_StateDirtyFlags = m_StateDirtyFlags | StateDirtyFlags_t::IndexBuffer;
+		m_StateDirtyFlags = m_StateDirtyFlags | StateDirtyFlags_t::Program | StateDirtyFlags_t::Uniforms;
 	}
 
-	if (m_PipelineState.m_BlendState.m_IsEnabled != state.m_BlendState.m_IsEnabled)
+	if (m_PipelineState.m_hVertexBuffer != state.m_hVertexBuffer)
 	{
-		m_StateDirtyFlags = m_StateDirtyFlags | StateDirtyFlags_t::BlendState;
+		m_StateDirtyFlags = m_StateDirtyFlags | StateDirtyFlags_t::VertexBuffer;
+	}
+
+	if (m_PipelineState.m_hIndexBuffer != state.m_hIndexBuffer)
+	{
+		m_StateDirtyFlags = m_StateDirtyFlags | StateDirtyFlags_t::IndexBuffer;
 	}
 
 	if (m_PipelineState.m_DepthStencilState.m_IsDepthTest != state.m_DepthStencilState.m_IsDepthTest ||
 		m_PipelineState.m_DepthStencilState.m_IsDepthWrite != state.m_DepthStencilState.m_IsDepthWrite)
 	{
 		m_StateDirtyFlags = m_StateDirtyFlags | StateDirtyFlags_t::DepthStencilState;
+	}
+
+	if (m_PipelineState.m_BlendState.m_IsEnabled != state.m_BlendState.m_IsEnabled)
+	{
+		m_StateDirtyFlags = m_StateDirtyFlags | StateDirtyFlags_t::BlendState;
 	}
 
 	m_PipelineState = state;

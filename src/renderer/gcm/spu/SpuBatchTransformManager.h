@@ -40,15 +40,13 @@ public:
 		uint32 vertexStride,
 		uint32 vertexPosOffset,
 		uint32 baseVertex);
-
 	SPUResult_t WaitBatch();
-
 private:
 
 	sysSpuImage m_SpuImage;
-	uint32 m_SpuGroupId;
-	uint32 m_SpuThreadIds[s_NumBatchSpus];
 	SpuBatchJob_t* m_pBatchJobs[s_NumBatchSpus];
+	uint32 m_SpuThreadIds[s_NumBatchSpus];
+	uint32 m_SpuGroupId;
 	bool m_IsShuttingDown;
 };
 

@@ -31,11 +31,11 @@ typedef uint32 UniformBlockLayoutHandle;
 
 struct RendererDesc_t
 {
+	void* m_pWindow;
 	uint32 m_Width;
 	uint32 m_Height;
 	bool m_IsFullscreen;
 	bool m_IsVSync;
-	void* m_pWindow;
 };
 
 enum ClearFlags_t
@@ -223,15 +223,15 @@ struct DepthStencilState_t
 
 struct PipelineState_t
 {
+	uint64 m_IndexOffset;
+	const CVertexLayout* m_pVertexLayout;
 	ShaderProgramHandle m_hShaderProgram;
 	BufferHandle m_hVertexBuffer;
 	BufferHandle m_hIndexBuffer;
-	const CVertexLayout* m_pVertexLayout;
 	uint32 m_VertexStride;
 	uint32 m_VertexOffset;
-	uint64 m_IndexOffset;
-	BlendState_t m_BlendState;
 	DepthStencilState_t m_DepthStencilState;
+	BlendState_t m_BlendState;
 
 	bool operator==(const PipelineState_t& other) const;
 };
@@ -245,13 +245,13 @@ struct UniformBlockLayout_t
 
 struct BatchChunkTransform_t
 {
-	CVector3 m_Position;
 	CQuaternion m_Rotation;
+	CVector3 m_Position;
 	CVector3 m_Scale;
 
 	BatchChunkTransform_t() :
-		m_Position(0.0f, 0.0f, 0.0f),
 		m_Rotation(),
+		m_Position(0.0f, 0.0f, 0.0f),
 		m_Scale(1.0f, 1.0f, 1.0f)
 	{
 	}
@@ -260,8 +260,8 @@ struct BatchChunkTransform_t
 		const CVector3& position,
 		const CQuaternion& rotation,
 		const CVector3& scale) :
-		m_Position(position),
 		m_Rotation(rotation),
+		m_Position(position),
 		m_Scale(scale)
 	{
 	}
@@ -274,15 +274,14 @@ struct BatchChunkTransform_t
 
 struct BatchChunk_t
 {
-	CVector3 m_Center;
 	CUtlVector<BatchChunkTransform_t> m_BatchChunkTransforms;
+	CVector3 m_Center;
 };
 
 class CBatch
 {
 public:
 	CUtlVector<BatchChunk_t> m_BatchChunks;
-	const CVector3* m_pCameraPos;
 
 	CBatch() :
 		m_pCameraPos(GCMGL_NULL)
@@ -373,10 +372,17 @@ public:
 	}
 private:
 	CUtlVector<BatchChunkTransform_t> m_BatchChunkTransforms;
+public:
+	const CVector3* m_pCameraPos;
 };
 
 struct BatchThreadData_t
 {
+	char* m_pDstVertexData;
+	uint32* m_pDstIndexData;
+	const char* m_pSrcVertexData;
+	const uint32* m_pSrcIndices;
+	const CUtlVector<BatchChunkTransform_t>* m_pBatchChunkTransforms;
 	uint32 m_ThreadStart;
 	uint32 m_ThreadEnd;
 	uint32 m_ChunkStart;
@@ -385,11 +391,6 @@ struct BatchThreadData_t
 	uint32 m_VertexLayoutStride;
 	uint32 m_VertexPosOffset;
 	bool m_HasVertexPos;
-	char* m_pDstVertexData;
-	uint32* m_pDstIndexData;
-	const char* m_pSrcVertexData;
-	const uint32* m_pSrcIndices;
-	const CUtlVector<BatchChunkTransform_t>* m_pBatchChunkTransforms;
 };
 
 struct Plane_t
@@ -616,10 +617,9 @@ protected:
 	}
 
 	PipelineState_t m_PipelineState;
-	StateDirtyFlags_t m_StateDirtyFlags;
-
 	CUtlMap<CFixedString, ShaderProgramHandle> m_ShaderCache;
 	CUtlMap<UniformBlockLayoutHandle, UniformBlockLayout_t> m_UniformBlockLayouts;
+	StateDirtyFlags_t m_StateDirtyFlags;
 	uint32 m_NextHandle;
 };
 

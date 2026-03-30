@@ -19,6 +19,7 @@ bool CBatchRenderer::ShouldUpdateChunk(
 	const int32 updateInterval = CMaths::Max(
 		1,
 		int32(distanceToCamera / s_IntervalStep));
+
 	return (frameCount % updateInterval) == 0;
 }
 
@@ -33,9 +34,10 @@ void CBatchRenderer::FrustumCullBatch(
 
 		if (batch.m_pCameraPos)
 		{
-			const CVector3 chunkOffset = batchChunk.m_Center - *batch.m_pCameraPos;
 			static const float32 s_ChunkCullRadius = 20000.0f;
-			if (chunkOffset.LengthSq() > s_ChunkCullRadius * s_ChunkCullRadius) 
+			static const float32 s_ChunkCullRadiusSq = s_ChunkCullRadius * s_ChunkCullRadius;
+			const CVector3 chunkOffset = batchChunk.m_Center - *batch.m_pCameraPos;
+			if (chunkOffset.LengthSq() > s_ChunkCullRadiusSq) 
 			{
 				continue;
 			}
@@ -78,15 +80,16 @@ void CBatchRenderer::DrawBatched(
 	}
 
 	Plane_t frustumPlanes[6];
-	ExtractFrustumPlanes(viewProjection, frustumPlanes);
-
 	CUtlVector<BatchChunkTransform_t> batchChunkTransforms;
+	ExtractFrustumPlanes(viewProjection, frustumPlanes);
 	FrustumCullBatch(batch, frustumPlanes, batchChunkTransforms);
+
 	if (batchChunkTransforms.Count() == 0) return;
 
 	const uint32 vertexStride = m_PipelineState.m_pVertexLayout->GetStride();
 	const uint32 maxPerSubmit = CMaths::Max(
-		1u, uint32(s_DrawChunkSize / (vertexCount * vertexStride)));
+		1u,
+		uint32(s_DrawChunkSize / (vertexCount * vertexStride)));
 	const uint32 visibleCount = uint32(batchChunkTransforms.Count());
 
 	for (uint32 i = 0; i < visibleCount; i += maxPerSubmit)
@@ -132,15 +135,17 @@ void CBatchRenderer::DrawIndexedBatched(
 	}
 
 	Plane_t frustumPlanes[6];
-	ExtractFrustumPlanes(viewProjection, frustumPlanes);
-
 	CUtlVector<BatchChunkTransform_t> batchChunkTransforms;
+	ExtractFrustumPlanes(viewProjection, frustumPlanes);
 	FrustumCullBatch(batch, frustumPlanes, batchChunkTransforms);
+
 	if (batchChunkTransforms.Count() == 0) return;
 
 	const uint32 vertexStride = m_PipelineState.m_pVertexLayout->GetStride();
 	const uint32 bytesPerInstance = (vertexCount * vertexStride) + (indexCount * sizeof(uint32));
-	const uint32 maxPerSubmit = CMaths::Max(1u, uint32(s_DrawChunkSize / bytesPerInstance));
+	const uint32 maxPerSubmit = CMaths::Max(
+		1u,
+		uint32(s_DrawChunkSize / bytesPerInstance));
 	const uint32 visibleCount = uint32(batchChunkTransforms.Count());
 
 	for (uint32 i = 0; i < visibleCount; i += maxPerSubmit)
@@ -167,7 +172,11 @@ void CBatchRenderer::TransformVertices(
 	{
 		float32* pPos = reinterpret_cast<float32*>(
 			pDst + uint64(i) * vertexStride + vertexPosOffset);
-		CVector4 result = matrix * CVector4(pPos[0], pPos[1], pPos[2], 1.0f);
+		const CVector4 result = matrix * CVector4(
+			pPos[0],
+			pPos[1],
+			pPos[2],
+			1.0f);
 		pPos[0] = result.m_X;
 		pPos[1] = result.m_Y;
 		pPos[2] = result.m_Z;

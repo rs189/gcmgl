@@ -31,6 +31,7 @@ CFixedString CUtils::ReadFile(const CFixedString& path)
 	{
 		result = reinterpret_cast<const char*>(bytes.Base());
 	}
+
 	return result;
 }
 
@@ -58,6 +59,7 @@ CUtlVector<uint8> CUtils::ReadBinaryFile(const CFixedString& path)
 	if (size <= 0)
 	{
 		fclose(pFile);
+
 		return CUtlVector<uint8>();
 	}
 

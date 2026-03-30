@@ -33,7 +33,7 @@ static void TransformVerticesSSE(
 		float32* pPos = reinterpret_cast<float32*>(
 			pDst + uint64(i) * vertexStride + vertexPosOffset);
 
-		simde__m128 result = simde_mm_add_ps(
+		const simde__m128 result = simde_mm_add_ps(
 			simde_mm_add_ps(
 				simde_mm_mul_ps(simde_mm_set1_ps(pPos[0]), col0),
 				simde_mm_mul_ps(simde_mm_set1_ps(pPos[1]), col1)),
@@ -58,7 +58,12 @@ static void TransformVertices(
 	const CMatrix4& matrix)
 {
 #ifdef SIMD_ENABLED
-	TransformVerticesSSE(pDst, vertexCount, vertexStride, vertexPosOffset, matrix);
+	TransformVerticesSSE(
+		pDst,
+		vertexCount,
+		vertexStride,
+		vertexPosOffset,
+		matrix);
 #else
 	CBatchRenderer::TransformVertices(
 		pDst,
@@ -72,7 +77,6 @@ static void TransformVertices(
 static void* BatchTransforms(void* pArg)
 {
 	BatchThreadData_t* pBatchThreadData = static_cast<BatchThreadData_t*>(pArg);
-
 	for (uint32 i = pBatchThreadData->m_ThreadStart; i < pBatchThreadData->m_ThreadEnd; i++)
 	{
 		const uint32 dstIndex = i - pBatchThreadData->m_ChunkStart;
@@ -104,17 +108,16 @@ void CGlBatchRenderer::DrawBatchedChunk(
 	uint32 chunkSize,
 	uint32 startVertex)
 {
+	const CVertexLayout* pVertexLayout = m_PipelineState.m_pVertexLayout;
+	const char* pSrcVertexData = reinterpret_cast<const char*>(
+		m_BufferResources.Element(
+			m_BufferResources.Find(m_PipelineState.m_hVertexBuffer)).m_pPtr) + (uint64(startVertex) * pVertexLayout->GetStride());
+	uint32 vertexStride = pVertexLayout->GetStride();
+	uint32 totalVertices = vertexCount * chunkSize;
+	uint32 totalVertexDataSize = totalVertices * vertexStride;
 	int32 vertexBufferIndex = m_BufferResources.Find(
 		m_PipelineState.m_hVertexBuffer);
 	if (vertexBufferIndex == m_BufferResources.InvalidIndex()) return;
-
-	const CVertexLayout* pVertexLayout = m_PipelineState.m_pVertexLayout;
-	uint32 vertexStride = pVertexLayout->GetStride();
-	const char* pSrcVertexData = reinterpret_cast<const char*>(
-		m_BufferResources.Element(vertexBufferIndex).m_pPtr) + (uint64(startVertex) * vertexStride);
-
-	uint32 totalVertices = vertexCount * chunkSize;
-	uint32 totalVertexDataSize = totalVertices * vertexStride;
 
 	StagingBuffer_t& stagingVertexBuffer = m_StagingVertexBuffer[m_StagingIndex];
 	if (uint32(stagingVertexBuffer.m_Data.Count()) < totalVertexDataSize)
@@ -125,19 +128,25 @@ void CGlBatchRenderer::DrawBatchedChunk(
 			stagingVertexBuffer.m_hBuffer = m_NextHandle++;
 		}
 
-		BufferResource_t& stagingVertexBufferResource = m_BufferResources[stagingVertexBuffer.m_hBuffer];
-		stagingVertexBufferResource.m_pPtr = stagingVertexBuffer.m_Data.Base();
-		stagingVertexBufferResource.m_hId = stagingVertexBuffer.m_hId;
-		stagingVertexBufferResource.m_Size = uint64(
-			stagingVertexBuffer.m_Data.Count());
-		stagingVertexBufferResource.m_Target = GL_ARRAY_BUFFER;
+		const BufferResource_t stagingVertexBufferResource = {
+			uint64(stagingVertexBuffer.m_Data.Count()),
+			stagingVertexBuffer.m_Data.Base(),
+			stagingVertexBuffer.m_hId,
+			GL_ARRAY_BUFFER,
+			false
+		};
+		m_BufferResources.Insert(
+			stagingVertexBuffer.m_hBuffer,
+			stagingVertexBufferResource);
 	}
 
 	char* pDstVertexData = reinterpret_cast<char*>(
 		stagingVertexBuffer.m_Data.Base());
 
-	uint32 vertexPosOffset = 0;
-	bool hasVertexPos = FindVertexPosOffset(pVertexLayout, vertexPosOffset);
+	uint32 vertexPosOffset;
+	const bool hasVertexPos = FindVertexPosOffset(
+		pVertexLayout,
+		vertexPosOffset);
 
 #ifdef THREADING_ENABLED
 	const uint32 numThreads = CMaths::Min((chunkSize > 1) ? 2u : 1u, chunkSize);
@@ -145,8 +154,8 @@ void CGlBatchRenderer::DrawBatchedChunk(
 	//numThread = 2; // match PS3
 	if (numThreads > 1)
 	{
-		pthread_t threads[2];
 		BatchThreadData_t batchThreadData[2];
+		pthread_t threads[2];
 		const uint32 batchesPerThread = (chunkSize + numThreads - 1) / numThreads;
 
 		for (uint32 i = 0; i < numThreads; i++)
@@ -157,6 +166,11 @@ void CGlBatchRenderer::DrawBatchedChunk(
 				chunkStart + chunkSize);
 			if (threadStart >= chunkStart + chunkSize) break;
 
+			batchThreadData[i].m_pDstVertexData = pDstVertexData;
+			batchThreadData[i].m_pDstIndexData = GCMGL_NULL;
+			batchThreadData[i].m_pSrcVertexData = pSrcVertexData;
+			batchThreadData[i].m_pSrcIndices = GCMGL_NULL;
+			batchThreadData[i].m_pBatchChunkTransforms = &batchChunkTransforms;
 			batchThreadData[i].m_ThreadStart = threadStart;
 			batchThreadData[i].m_ThreadEnd = threadEnd;
 			batchThreadData[i].m_ChunkStart = chunkStart;
@@ -165,11 +179,6 @@ void CGlBatchRenderer::DrawBatchedChunk(
 			batchThreadData[i].m_VertexLayoutStride = vertexStride;
 			batchThreadData[i].m_VertexPosOffset = vertexPosOffset;
 			batchThreadData[i].m_HasVertexPos = hasVertexPos;
-			batchThreadData[i].m_pDstVertexData = pDstVertexData;
-			batchThreadData[i].m_pDstIndexData = GCMGL_NULL;
-			batchThreadData[i].m_pSrcVertexData = pSrcVertexData;
-			batchThreadData[i].m_pSrcIndices = GCMGL_NULL;
-			batchThreadData[i].m_pBatchChunkTransforms = &batchChunkTransforms;
 
 			int32 threadResult = pthread_create(
 				&threads[i],
@@ -200,6 +209,7 @@ void CGlBatchRenderer::DrawBatchedChunk(
 				pBatchVertexDst,
 				pSrcVertexData,
 				uint64(vertexCount) * vertexStride);
+
 			if (hasVertexPos)
 			{
 				TransformVertices(
@@ -224,11 +234,16 @@ void CGlBatchRenderer::DrawBatchedChunk(
 		stagingVertexBuffer.m_Data.Base(),
 		GL_STREAM_DRAW);
 
-	BufferResource_t& stagingVertexBufferResource = m_BufferResources[stagingVertexBuffer.m_hBuffer];
-	stagingVertexBufferResource.m_pPtr = stagingVertexBuffer.m_Data.Base();
-	stagingVertexBufferResource.m_hId = stagingVertexBuffer.m_hId;
-	stagingVertexBufferResource.m_Size = uint64(totalVertexDataSize);
-	stagingVertexBufferResource.m_Target = GL_ARRAY_BUFFER;
+	const BufferResource_t stagingVertexBufferResource = {
+		uint64(totalVertexDataSize),
+		stagingVertexBuffer.m_Data.Base(),
+		stagingVertexBuffer.m_hId,
+		GL_ARRAY_BUFFER,
+		false
+	};
+	m_BufferResources.Insert(
+		stagingVertexBuffer.m_hBuffer,
+		stagingVertexBufferResource);
 
 	BufferHandle hOriginalVertexBuffer = m_PipelineState.m_hVertexBuffer;
 	uint32 originalVertexOffset = m_PipelineState.m_VertexOffset;
@@ -253,6 +268,8 @@ static void* BatchIndexedTransforms(void* pArg)
 	{
 		const uint32 dstIndex = i - pBatchThreadData->m_ChunkStart;
 		char* pDstVertexData = pBatchThreadData->m_pDstVertexData + uint64(dstIndex) * pBatchThreadData->m_VertexCount * pBatchThreadData->m_VertexLayoutStride;
+		uint32* pDstIndexData = pBatchThreadData->m_pDstIndexData + uint64(dstIndex) * pBatchThreadData->m_IndexCount;
+		const uint32 vertexBase = dstIndex * pBatchThreadData->m_VertexCount;
 
 		memcpy(
 			pDstVertexData,
@@ -270,8 +287,6 @@ static void* BatchIndexedTransforms(void* pArg)
 				(*pBatchThreadData->m_pBatchChunkTransforms)[i].ToMatrix());
 		}
 
-		uint32* pDstIndexData = pBatchThreadData->m_pDstIndexData + uint64(dstIndex) * pBatchThreadData->m_IndexCount;
-		const uint32 vertexBase = dstIndex * pBatchThreadData->m_VertexCount;
 		for (uint32 j = 0; j < pBatchThreadData->m_IndexCount; j++)
 		{
 			pDstIndexData[j] = pBatchThreadData->m_pSrcIndices[j] + vertexBase;
@@ -290,28 +305,27 @@ void CGlBatchRenderer::DrawIndexedBatchedChunk(
 	uint32 startIndex,
 	int32 baseVertex)
 {
-	int32 vertexBufferIndex = m_BufferResources.Find(
-		m_PipelineState.m_hVertexBuffer);
-	int32 indexBufferIndex = m_BufferResources.Find(
-		m_PipelineState.m_hIndexBuffer);
+	const CVertexLayout* pVertexLayout = m_PipelineState.m_pVertexLayout;
+	const char* pSrcVertexData = reinterpret_cast<const char*>(
+		m_BufferResources.Element(
+			m_BufferResources.Find(m_PipelineState.m_hVertexBuffer)).m_pPtr);
+	const uint32* pSrcIndices = reinterpret_cast<const uint32*>(
+		reinterpret_cast<const char*>(
+			m_BufferResources.Element(
+				m_BufferResources.Find(m_PipelineState.m_hIndexBuffer)).m_pPtr) +
+		(uint64(startIndex) * sizeof(uint32)));
+	uint32 vertexStride = pVertexLayout->GetStride();
+	uint32 totalVertices = vertexCount * chunkSize;
+	uint32 totalIndices = indexCount * chunkSize;
+	const uint64 totalVertexDataSize = uint64(totalVertices) * vertexStride;
+	const uint64 totalIndexDataSize = uint64(totalIndices) * sizeof(uint32);
+	int32 vertexBufferIndex = m_BufferResources.Find(m_PipelineState.m_hVertexBuffer);
+	int32 indexBufferIndex = m_BufferResources.Find(m_PipelineState.m_hIndexBuffer);
+
 	if (vertexBufferIndex == m_BufferResources.InvalidIndex() || indexBufferIndex == m_BufferResources.InvalidIndex())
 	{
 		return;
 	}
-
-	const CVertexLayout* pVertexLayout = m_PipelineState.m_pVertexLayout;
-	uint32 vertexStride = pVertexLayout->GetStride();
-	const char* pSrcVertexData = reinterpret_cast<const char*>(
-		m_BufferResources.Element(vertexBufferIndex).m_pPtr);
-	const uint32* pSrcIndices = reinterpret_cast<const uint32*>(
-		reinterpret_cast<const char*>(
-			m_BufferResources.Element(indexBufferIndex).m_pPtr) +
-		(uint64(startIndex) * sizeof(uint32)));
-
-	uint32 totalVertices = vertexCount * chunkSize;
-	uint32 totalIndices = indexCount * chunkSize;
-	uint64 totalVertexDataSize = uint64(totalVertices) * vertexStride;
-	uint64 totalIndexDataSize = uint64(totalIndices) * sizeof(uint32);
 
 	StagingBuffer_t& stagingVertexBuffer = m_StagingVertexBuffer[m_StagingIndex];
 	if (uint64(stagingVertexBuffer.m_Data.Count()) < totalVertexDataSize)
@@ -322,12 +336,16 @@ void CGlBatchRenderer::DrawIndexedBatchedChunk(
 			stagingVertexBuffer.m_hBuffer = m_NextHandle++;
 		}
 
-		BufferResource_t& stagingVertexBufferResource = m_BufferResources[stagingVertexBuffer.m_hBuffer];
-		stagingVertexBufferResource.m_pPtr = stagingVertexBuffer.m_Data.Base();
-		stagingVertexBufferResource.m_hId = stagingVertexBuffer.m_hId;
-		stagingVertexBufferResource.m_Size = uint64(
-			stagingVertexBuffer.m_Data.Count());
-		stagingVertexBufferResource.m_Target = GL_ARRAY_BUFFER;
+		const BufferResource_t stagingVertexBufferResource = {
+			uint64(stagingVertexBuffer.m_Data.Count()),
+			stagingVertexBuffer.m_Data.Base(),
+			stagingVertexBuffer.m_hId,
+			GL_ARRAY_BUFFER,
+			false
+		};
+		m_BufferResources.Insert(
+			stagingVertexBuffer.m_hBuffer,
+			stagingVertexBufferResource);
 	}
 
 	char* pDstVertexData = reinterpret_cast<char*>(
@@ -342,19 +360,25 @@ void CGlBatchRenderer::DrawIndexedBatchedChunk(
 			stagingIndexBuffer.m_hBuffer = m_NextHandle++;
 		}
 
-		BufferResource_t& stagingIndexBufferResource = m_BufferResources[stagingIndexBuffer.m_hBuffer];
-		stagingIndexBufferResource.m_pPtr = stagingIndexBuffer.m_Data.Base();
-		stagingIndexBufferResource.m_hId = stagingIndexBuffer.m_hId;
-		stagingIndexBufferResource.m_Size = uint64(
-			stagingIndexBuffer.m_Data.Count());
-		stagingIndexBufferResource.m_Target = GL_ELEMENT_ARRAY_BUFFER;
+		const BufferResource_t stagingIndexBufferResource = {
+			uint64(stagingIndexBuffer.m_Data.Count()),
+			stagingIndexBuffer.m_Data.Base(),
+			stagingIndexBuffer.m_hId,
+			GL_ELEMENT_ARRAY_BUFFER,
+			false
+		};
+		m_BufferResources.Insert(
+			stagingIndexBuffer.m_hBuffer,
+			stagingIndexBufferResource);
 	}
 
 	uint32* pDstIndexData = reinterpret_cast<uint32*>(
 		stagingIndexBuffer.m_Data.Base());
 
-	uint32 vertexPosOffset = 0;
-	bool hasVertexPos = FindVertexPosOffset(pVertexLayout, vertexPosOffset);
+	uint32 vertexPosOffset;
+	const bool hasVertexPos = FindVertexPosOffset(
+		pVertexLayout,
+		vertexPosOffset);
 
 #ifdef THREADING_ENABLED
 	const uint32 numThreads = CMaths::Min((chunkSize > 1) ? 2u : 1u, chunkSize);
@@ -362,8 +386,8 @@ void CGlBatchRenderer::DrawIndexedBatchedChunk(
 	//numThread = 2; // match PS3
 	if (numThreads > 1)
 	{
-		pthread_t threads[2];
 		BatchThreadData_t batchThreadData[2];
+		pthread_t threads[2];
 		const uint32 batchesPerThread = (chunkSize + numThreads - 1) / numThreads;
 
 		for (uint32 i = 0; i < numThreads; i++)
@@ -374,6 +398,11 @@ void CGlBatchRenderer::DrawIndexedBatchedChunk(
 				chunkStart + chunkSize);
 			if (threadStart >= chunkStart + chunkSize) break;
 
+			batchThreadData[i].m_pDstVertexData = pDstVertexData;
+			batchThreadData[i].m_pDstIndexData = pDstIndexData;
+			batchThreadData[i].m_pSrcVertexData = pSrcVertexData;
+			batchThreadData[i].m_pSrcIndices = pSrcIndices;
+			batchThreadData[i].m_pBatchChunkTransforms = &batchChunkTransforms;
 			batchThreadData[i].m_ThreadStart = threadStart;
 			batchThreadData[i].m_ThreadEnd = threadEnd;
 			batchThreadData[i].m_ChunkStart = chunkStart;
@@ -382,11 +411,6 @@ void CGlBatchRenderer::DrawIndexedBatchedChunk(
 			batchThreadData[i].m_VertexLayoutStride = vertexStride;
 			batchThreadData[i].m_VertexPosOffset = vertexPosOffset;
 			batchThreadData[i].m_HasVertexPos = hasVertexPos;
-			batchThreadData[i].m_pDstVertexData = pDstVertexData;
-			batchThreadData[i].m_pDstIndexData = pDstIndexData;
-			batchThreadData[i].m_pSrcVertexData = pSrcVertexData;
-			batchThreadData[i].m_pSrcIndices = pSrcIndices;
-			batchThreadData[i].m_pBatchChunkTransforms = &batchChunkTransforms;
 
 			int32 threadResult = pthread_create(
 				&threads[i],
@@ -418,6 +442,7 @@ void CGlBatchRenderer::DrawIndexedBatchedChunk(
 				pBatchVertexDst,
 				pSrcVertexData,
 				uint64(vertexCount) * vertexStride);
+
 			if (hasVertexPos)
 			{
 				TransformVertices(
@@ -427,6 +452,7 @@ void CGlBatchRenderer::DrawIndexedBatchedChunk(
 					vertexPosOffset,
 					batchChunkTransforms[chunkStart + i].ToMatrix());
 			}
+
 			const uint32 vertexBase = i * vertexCount;
 			for (uint32 j = 0; j < indexCount; j++)
 			{
@@ -459,37 +485,47 @@ void CGlBatchRenderer::DrawIndexedBatchedChunk(
 		stagingIndexBuffer.m_Data.Base(),
 		GL_STREAM_DRAW);
 
-	BufferResource_t& stagingVertexBufferResource = m_BufferResources[stagingVertexBuffer.m_hBuffer];
-	stagingVertexBufferResource.m_pPtr = stagingVertexBuffer.m_Data.Base();
-	stagingVertexBufferResource.m_hId = stagingVertexBuffer.m_hId;
-	stagingVertexBufferResource.m_Size = totalVertexDataSize;
-	stagingVertexBufferResource.m_Target = GL_ARRAY_BUFFER;
+	const BufferResource_t stagingVertexBufferResource = {
+		totalVertexDataSize,
+		stagingVertexBuffer.m_Data.Base(),
+		stagingVertexBuffer.m_hId,
+		GL_ARRAY_BUFFER,
+		false
+	};
+	m_BufferResources.Insert(
+		stagingVertexBuffer.m_hBuffer,
+		stagingVertexBufferResource);
 
-	BufferResource_t& stagingIndexBufferResource = m_BufferResources[stagingIndexBuffer.m_hBuffer];
-	stagingIndexBufferResource.m_pPtr = stagingIndexBuffer.m_Data.Base();
-	stagingIndexBufferResource.m_hId = stagingIndexBuffer.m_hId;
-	stagingIndexBufferResource.m_Size = totalIndexDataSize;
-	stagingIndexBufferResource.m_Target = GL_ELEMENT_ARRAY_BUFFER;
+	const BufferResource_t stagingIndexBufferResource = {
+		totalIndexDataSize,
+		stagingIndexBuffer.m_Data.Base(),
+		stagingIndexBuffer.m_hId,
+		GL_ELEMENT_ARRAY_BUFFER,
+		false
+	};
+	m_BufferResources.Insert(
+		stagingIndexBuffer.m_hBuffer,
+		stagingIndexBufferResource);
 
+	uint64 originalIndexOffset = m_PipelineState.m_IndexOffset;
 	BufferHandle hOriginalVertexBuffer = m_PipelineState.m_hVertexBuffer;
 	BufferHandle hOriginalIndexBuffer = m_PipelineState.m_hIndexBuffer;
 	uint32 originalVertexOffset = m_PipelineState.m_VertexOffset;
-	uint64 originalIndexOffset = m_PipelineState.m_IndexOffset;
 
+	m_PipelineState.m_IndexOffset = 0;
 	m_PipelineState.m_hVertexBuffer = stagingVertexBuffer.m_hBuffer;
 	m_PipelineState.m_hIndexBuffer = stagingIndexBuffer.m_hBuffer;
 	m_PipelineState.m_VertexOffset = 0;
-	m_PipelineState.m_IndexOffset = 0;
 	m_StateDirtyFlags = m_StateDirtyFlags |
 		StateDirtyFlags_t::VertexBuffer |
 		StateDirtyFlags_t::IndexBuffer;
 
 	DrawIndexed(totalIndices);
 
+	m_PipelineState.m_IndexOffset = originalIndexOffset;
 	m_PipelineState.m_hVertexBuffer = hOriginalVertexBuffer;
 	m_PipelineState.m_hIndexBuffer = hOriginalIndexBuffer;
 	m_PipelineState.m_VertexOffset = originalVertexOffset;
-	m_PipelineState.m_IndexOffset = originalIndexOffset;
 	m_StateDirtyFlags = m_StateDirtyFlags |
 		StateDirtyFlags_t::VertexBuffer |
 		StateDirtyFlags_t::IndexBuffer;

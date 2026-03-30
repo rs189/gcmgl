@@ -134,9 +134,9 @@ public:
 protected:
 	struct BufferResource_t
 	{
+		uint64 m_Size;
 		void* m_pPtr;
 		uint32 m_hId;
-		uint64 m_Size;
 		uint32 m_Target;
 		bool m_IsAligned;
 	};
@@ -154,17 +154,16 @@ protected:
 		BufferHandle m_hBuffer;
 	};
 
-	CUtlMap<BufferHandle, BufferResource_t> m_BufferResources;
-
 	StagingBuffer_t m_StagingVertexBuffer[2];
 	StagingBuffer_t m_StagingIndexBuffer[2];
+	CUtlMap<BufferHandle, BufferResource_t> m_BufferResources;
 	int32 m_StagingIndex;
 private:
 	struct ProgramResource_t
 	{
-		uint32 m_hId;
 		CUtlMap<CFixedString, int32> m_AttributeLocations;
 		CUtlMap<CFixedString, int32> m_UniformLocations;
+		uint32 m_hId;
 	};
 
 	struct TextureResource_t
@@ -189,18 +188,17 @@ private:
 		CUtlVector<uint8> m_Data;
 		bool m_IsDirty;
 	};
-private:
-	GLFWwindow* m_pWindow;
 
+	CUtlMap<ShaderProgramHandle, ProgramResource_t> m_ProgramResources;
+	CUtlMap<ShaderProgramHandle, CUtlMap<uint32, UniformShadow_t>> m_ProgramUniformShadows;
+	CUtlMap<ShaderProgramHandle, CUtlMap<uint32, BoundUniform_t>> m_ProgramUniformBuffers;
+	CUtlMap<TextureHandle, TextureResource_t> m_TextureResources;
+	
 	Viewport_t m_Viewport;
 	float32 m_ViewportScale[4];
 	float32 m_ViewportOffset[4];
 
-	CUtlMap<ShaderProgramHandle, ProgramResource_t> m_ProgramResources;
-	CUtlMap<TextureHandle, TextureResource_t> m_TextureResources;
-
-	CUtlMap<ShaderProgramHandle, CUtlMap<uint32, BoundUniform_t>> m_ProgramUniformBuffers;
-	CUtlMap<ShaderProgramHandle, CUtlMap<uint32, UniformShadow_t>> m_ProgramUniformShadows;
+	GLFWwindow* m_pWindow;
 };
 
 #endif // GL_RENDERER_H

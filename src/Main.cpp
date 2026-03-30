@@ -90,11 +90,11 @@ int main(int argc, char* argv[])
 	}
 
 	RendererDesc_t rendererDesc = {
+		pWindow->GetNativeHandle(),
 		uint32(windowConfig.m_Width),
 		uint32(windowConfig.m_Height),
 		false,
-		true,
-		pWindow->GetNativeHandle()
+		true
 	};
 	if (!pRenderer->Init(rendererDesc))
 	{

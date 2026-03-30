@@ -18,7 +18,9 @@
 #include <rsx/commands.h>
 #include <rsx/rsx_program.h>
 
+#ifdef PS3_SPU_ENABLED
 class CSpuBatchTransformManager;
+#endif
 
 class CGcmRenderer : public virtual CRenderer
 {
@@ -149,7 +151,7 @@ protected:
 			m_pPtr(GCMGL_NULL), 
 			m_Offset(0), 
 			m_Size(0), 
-			m_hBuffer(0) 
+			m_hBuffer(0)
 		{
 		}
 
@@ -159,31 +161,29 @@ protected:
 		BufferHandle m_hBuffer;
 	};
 
-	CUtlMap<BufferHandle, BufferResource_t> m_BufferResources;
-
 	StagingBuffer_t m_StagingVertexBuffer[2];
 	StagingBuffer_t m_StagingIndexBuffer[2];
-	int32 m_StagingIndex;
-
+	CUtlMap<BufferHandle, BufferResource_t> m_BufferResources;
 #ifdef PS3_SPU_ENABLED
-	CUtlVector<float32> m_ScratchPositions;
-	CUtlVector<CMatrix4> m_ScratchMatrices;
-	CSpuBatchTransformManager* m_pSpuBtm;
+	CSpuBatchTransformManager* m_pSpuBatchTransformManager;
+	CMatrix4* m_pScratchMatrices;
+	uint32 m_ScratchMatricesCapacity;
 #endif
+	int32 m_StagingIndex;
 private:
 	struct ProgramResource_t
 	{
+		CUtlMap<CFixedString, rsxProgramConst*> m_VertexProgramConstCache;
+		CUtlMap<CFixedString, rsxProgramConst*> m_FragmentProgramConstCache;
 		void* m_pVertexProgramAligned;
 		const rsxVertexProgram* m_pVertexProgram;
 		void* m_pVertexProgramUCode;
-		uint32 m_VertexProgramSize;
 		void* m_pFragmentProgramAligned;
 		const rsxFragmentProgram* m_pFragmentProgram;
 		void* m_pFragmentProgramBuffer;
+		uint32 m_VertexProgramSize;
 		uint32 m_FragmentProgramOffset;
 		uint32 m_FragmentProgramSize;
-		CUtlMap<CFixedString, rsxProgramConst*> m_VertexProgramConstCache;
-		CUtlMap<CFixedString, rsxProgramConst*> m_FragmentProgramConstCache;
 	};
 
 	struct TextureResource_t
@@ -209,18 +209,17 @@ private:
 		bool m_IsDirty;
 	};
 
-	void* m_pHostAddr;
-	uint32 m_HostSize;
+	CUtlMap<ShaderProgramHandle, ProgramResource_t> m_ProgramResources;
+	CUtlMap<ShaderProgramHandle, CUtlMap<uint32, UniformShadow_t>> m_ProgramUniformShadows;
+	CUtlMap<ShaderProgramHandle, CUtlMap<uint32, BoundUniform_t>> m_ProgramUniformBuffers;
+	CUtlMap<TextureHandle, TextureResource_t> m_TextureResources;
 
 	Viewport_t m_Viewport;
 	float32 m_ViewportScale[4];
 	float32 m_ViewportOffset[4];
 
-	CUtlMap<ShaderProgramHandle, ProgramResource_t> m_ProgramResources;
-	CUtlMap<TextureHandle, TextureResource_t> m_TextureResources;
-
-	CUtlMap<ShaderProgramHandle, CUtlMap<uint32, BoundUniform_t>> m_ProgramUniformBuffers;
-	CUtlMap<ShaderProgramHandle, CUtlMap<uint32, UniformShadow_t>> m_ProgramUniformShadows;
+	void* m_pHostAddr;
+	uint32 m_HostSize;
 };
 
 #endif // GCM_RENDERER_H

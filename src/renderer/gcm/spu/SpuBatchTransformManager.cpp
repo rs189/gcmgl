@@ -22,15 +22,15 @@ extern "C"
 	extern uint8_t _binary_SpuBatchTransformJob_elf_size[];
 }
 
-CSpuBatchTransformManager::CSpuBatchTransformManager() :
-	m_SpuGroupId(0),
-	m_IsShuttingDown(false)
+CSpuBatchTransformManager::CSpuBatchTransformManager()
 {
 	for (uint32 i = 0; i < s_NumBatchSpus; i++)
 	{
-		m_SpuThreadIds[i] = 0;
 		m_pBatchJobs[i] = GCMGL_NULL;
+		m_SpuThreadIds[i] = 0;
 	}
+	m_SpuGroupId = 0;
+	m_IsShuttingDown = false;
 }
 
 CSpuBatchTransformManager::~CSpuBatchTransformManager()
@@ -40,17 +40,17 @@ CSpuBatchTransformManager::~CSpuBatchTransformManager()
 
 bool CSpuBatchTransformManager::Initialize()
 {
-	const int32 spuResult = sysSpuInitialize(6, 0);
-	if (spuResult < 0)
+	const int32 spuInitializeResult = sysSpuInitialize(6, 0);
+	if (spuInitializeResult < 0)
 	{
 		return false;
 	}
 
-	const int32 importResult = sysSpuImageImport(
+	const int32 spuImageImportResult = sysSpuImageImport(
 		&m_SpuImage,
 		_binary_SpuBatchTransformJob_elf_start,
 		0);
-	if (importResult < 0)
+	if (spuImageImportResult < 0)
 	{
 		return false;
 	}
@@ -58,12 +58,12 @@ bool CSpuBatchTransformManager::Initialize()
 	sysSpuThreadGroupAttribute groupAttr = { 0 };
 	groupAttr.name = const_cast<char*>("gcmBatchGroup");
 
-	const int32 groupCreateResult = sysSpuThreadGroupCreate(
+	const int32 spuThreadGroupCreateResult = sysSpuThreadGroupCreate(
 		&m_SpuGroupId,
 		s_NumBatchSpus,
 		100,
 		&groupAttr);
-	if (groupCreateResult < 0)
+	if (spuThreadGroupCreateResult < 0)
 	{
 		sysSpuImageClose(&m_SpuImage);
 
@@ -72,9 +72,9 @@ bool CSpuBatchTransformManager::Initialize()
 
 	for (uint32 i = 0; i < s_NumBatchSpus; i++)
 	{
-		sysSpuThreadAttribute threadAttr = { 0 };
-		threadAttr.name = const_cast<char*>("gcmBatchSpu");
-		threadAttr.option = SPU_THREAD_ATTR_NONE;
+		sysSpuThreadAttribute spuThreadAttribute = { 0 };
+		spuThreadAttribute.name = const_cast<char*>("gcmBatchSpu");
+		spuThreadAttribute.option = SPU_THREAD_ATTR_NONE;
 
 		m_pBatchJobs[i] = static_cast<SpuBatchJob_t*>(
 			CUtlMemory::AlignedAlloc(sizeof(SpuBatchJob_t), 128));
@@ -90,17 +90,17 @@ bool CSpuBatchTransformManager::Initialize()
 		m_pBatchJobs[i]->m_Command = SPU_BATCH_CMD_IDLE;
 		m_pBatchJobs[i]->m_Status = SPU_BATCH_STATUS_IDLE;
 
-		sysSpuThreadArgument threadArg = { 0 };
-		threadArg.arg0 = SpuUtils::PtrToEa(m_pBatchJobs[i]);
+		sysSpuspuThreadArgumentument spuThreadArgument = { 0 };
+		spuThreadArgument.arg0 = SpuUtils::PtrToEa(m_pBatchJobs[i]);
 
-		const int32 threadInitResult = sysSpuThreadInitialize(
+		const int32 spuThreadInitializeResult = sysSpuThreadInitialize(
 			&m_SpuThreadIds[i],
 			m_SpuGroupId,
 			i,
 			&m_SpuImage,
-			&threadAttr,
-			&threadArg);
-		if (threadInitResult < 0)
+			&spuThreadAttribute,
+			&spuThreadArgument);
+		if (spuThreadInitializeResult < 0)
 		{
 			for (uint32 j = 0; j <= i; j++)
 			{
@@ -110,6 +110,7 @@ bool CSpuBatchTransformManager::Initialize()
 					m_pBatchJobs[j] = GCMGL_NULL;
 				}
 			}
+
 			sysSpuThreadGroupDestroy(m_SpuGroupId);
 			sysSpuImageClose(&m_SpuImage);
 
@@ -121,8 +122,9 @@ bool CSpuBatchTransformManager::Initialize()
 			SPU_SIGNAL1_OVERWRITE | SPU_SIGNAL2_OVERWRITE);
 	}
 
-	const int32 startResult = sysSpuThreadGroupStart(m_SpuGroupId);
-	if (startResult < 0)
+	const int32 spuThreadGroupStartResult = sysSpuThreadGroupStart(
+		m_SpuGroupId);
+	if (spuThreadGroupStartResult < 0)
 	{
 		for (uint32 i = 0; i < s_NumBatchSpus; i++)
 		{
@@ -132,6 +134,7 @@ bool CSpuBatchTransformManager::Initialize()
 				m_pBatchJobs[i] = GCMGL_NULL;
 			}
 		}
+
 		sysSpuThreadGroupDestroy(m_SpuGroupId);
 		sysSpuImageClose(&m_SpuImage);
 
@@ -158,6 +161,7 @@ void CSpuBatchTransformManager::Shutdown()
 				{
 					m_pBatchJobs[i]->m_Command = SPU_BATCH_CMD_TERMINATE;
 					m_pBatchJobs[i]->m_Status = SPU_BATCH_STATUS_BUSY;
+
 					__sync_synchronize();
 
 					if (m_SpuThreadIds[i] != 0)
@@ -199,8 +203,8 @@ void CSpuBatchTransformManager::Shutdown()
 
 		sysSpuThreadGroupTerminate(m_SpuGroupId, 0);
 
-		uint32 cause = 0;
-		uint32 status = 0;
+		uint32 cause;
+		uint32 status;
 		sysSpuThreadGroupJoin(m_SpuGroupId, &cause, &status);
 		sysSpuThreadGroupDestroy(m_SpuGroupId);
 		m_SpuGroupId = 0;
@@ -219,7 +223,7 @@ void CSpuBatchTransformManager::Shutdown()
 	sysSpuImageClose(&m_SpuImage);
 }
 
-SPUResult_t CSpuBatchTransformManager::BeginBatch(
+spuInitializeResult_t CSpuBatchTransformManager::BeginBatch(
 	const char* pSrcVertices,
 	const uint32* pSrcIndices,
 	const CMatrix4* pMatrices,
@@ -234,12 +238,12 @@ SPUResult_t CSpuBatchTransformManager::BeginBatch(
 {
 	if (batchCount == 0 || vertexCount == 0)
 	{
-		return SPUResult_t::NotUsed;
+		return spuInitializeResult_t::NotUsed;
 	}
 
 	if (m_IsShuttingDown)
 	{
-		return SPUResult_t::NotUsed;
+		return spuInitializeResult_t::NotUsed;
 	}
 
 	uint32 remainingBatches = batchCount;
@@ -252,33 +256,29 @@ SPUResult_t CSpuBatchTransformManager::BeginBatch(
 			continue;
 		}
 
+		uint64 vertexOffset = uint64(batchIndex) * vertexCount * vertexStride;
+		uint64 indexOffset = uint64(batchIndex) * indexCount * sizeof(uint32);
+		uint64 matrixOffset = uint64(batchIndex) * sizeof(CMatrix4);
 		uint32 chunkBatches = remainingBatches / (s_NumBatchSpus - i);
 		if (chunkBatches == 0)
 		{
 			continue;
 		}
 
-		uint64 vertexOffset = uint64(batchIndex) * vertexCount * vertexStride;
-		uint64 indexOffset = uint64(batchIndex) * indexCount * sizeof(uint32);
-		uint64 matrixOffset = uint64(batchIndex) * sizeof(CMatrix4);
-
+		m_pBatchJobs[i]->m_SrcVerticesEffAddr = SpuUtils::PtrToEa(const_cast<char*>(pSrcVertices));
+		m_pBatchJobs[i]->m_SrcIndicesEffAddr = SpuUtils::PtrToEa(const_cast<uint32*>(pSrcIndices));
+		m_pBatchJobs[i]->m_MatricesEffAddr = SpuUtils::PtrToEa(const_cast<CMatrix4*>(pMatrices)) + matrixOffset;
+		m_pBatchJobs[i]->m_DstVerticesEffAddr = SpuUtils::PtrToEa(pDstVertices) + vertexOffset;
+		m_pBatchJobs[i]->m_DstIndicesEffAddr = SpuUtils::PtrToEa(pDstIndices) + indexOffset;
+		m_pBatchJobs[i]->m_Command = SPU_BATCH_CMD_TRANSFORM;
+		m_pBatchJobs[i]->m_Status = SPU_BATCH_STATUS_BUSY;
 		m_pBatchJobs[i]->m_VertexCount = vertexCount;
 		m_pBatchJobs[i]->m_IndexCount = indexCount;
 		m_pBatchJobs[i]->m_BatchCount = chunkBatches;
 		m_pBatchJobs[i]->m_VertexStride = vertexStride;
 		m_pBatchJobs[i]->m_MatrixStride = sizeof(CMatrix4);
 		m_pBatchJobs[i]->m_VertexPosOffset = vertexPosOffset;
-		m_pBatchJobs[i]->m_BaseVertex = baseVertex + (batchIndex * vertexCount);
-		
-		m_pBatchJobs[i]->m_SrcVerticesEffAddr = SpuUtils::PtrToEa(const_cast<char*>(pSrcVertices));
-		m_pBatchJobs[i]->m_SrcIndicesEffAddr = SpuUtils::PtrToEa(const_cast<uint32*>(pSrcIndices));
-		
-		m_pBatchJobs[i]->m_MatricesEffAddr = SpuUtils::PtrToEa(const_cast<CMatrix4*>(pMatrices)) + matrixOffset;
-		m_pBatchJobs[i]->m_DstVerticesEffAddr = SpuUtils::PtrToEa(pDstVertices) + vertexOffset;
-		m_pBatchJobs[i]->m_DstIndicesEffAddr = SpuUtils::PtrToEa(pDstIndices) + indexOffset;
-		
-		m_pBatchJobs[i]->m_Status = SPU_BATCH_STATUS_BUSY;
-		m_pBatchJobs[i]->m_Command = SPU_BATCH_CMD_TRANSFORM;
+		m_pBatchJobs[i]->m_BaseVertex = (batchIndex * vertexCount);
 
 		batchIndex += chunkBatches;
 		remainingBatches -= chunkBatches;
@@ -292,23 +292,24 @@ SPUResult_t CSpuBatchTransformManager::BeginBatch(
 	{
 		if (m_pBatchJobs[i] && m_pBatchJobs[i]->m_Command == SPU_BATCH_CMD_TRANSFORM)
 		{
-			const int32 signalResult = sysSpuThreadWriteSignal(
+			const int32 spuThreadWriteSignalResult = sysSpuThreadWriteSignal(
 				m_SpuThreadIds[i],
 				0,
 				1);
-			if (signalResult < 0)
+			if (spuThreadWriteSignalResult < 0)
 			{
 				m_pBatchJobs[i]->m_Command = SPU_BATCH_CMD_IDLE;
 				m_pBatchJobs[i]->m_Status = SPU_BATCH_STATUS_ERROR;
+
 				hasError = true;
 			}
 		}
 	}
 
-	return hasError ? SPUResult_t::Error : SPUResult_t::Success;
+	return hasError ? spuInitializeResult_t::Error : spuInitializeResult_t::Success;
 }
 
-SPUResult_t CSpuBatchTransformManager::WaitBatch()
+spuInitializeResult_t CSpuBatchTransformManager::WaitBatch()
 {
 	bool hasActiveJobs = true;
 	bool hasError = false;
@@ -330,6 +331,7 @@ SPUResult_t CSpuBatchTransformManager::WaitBatch()
 				else if (m_pBatchJobs[i]->m_Status == SPU_BATCH_STATUS_ERROR)
 				{
 					m_pBatchJobs[i]->m_Command = SPU_BATCH_CMD_IDLE;
+
 					hasError = true;
 				}
 				else
@@ -345,5 +347,5 @@ SPUResult_t CSpuBatchTransformManager::WaitBatch()
 		}
 	}
 
-	return hasError ? SPUResult_t::Error : SPUResult_t::Success;
+	return hasError ? spuInitializeResult_t::Error : spuInitializeResult_t::Success;
 }

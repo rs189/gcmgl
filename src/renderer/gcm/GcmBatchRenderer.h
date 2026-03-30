@@ -48,18 +48,18 @@ protected:
 		uint32 startIndex,
 		int32 baseVertex) GCMGL_OVERRIDE;
 private:
+#ifdef PS3_SPU_ENABLED
 	void FlushPendingBatches();
 
-	bool m_HasPendingBatch;
-	bool m_IsPendingBatchIndexed;
-	uint32 m_PendingVertexCount;
-	uint32 m_PendingIndexCount;
 	BufferHandle m_PendingVertexBuffer;
 	BufferHandle m_PendingIndexBuffer;
 	uint32 m_PendingTotalVertices;
 	uint32 m_PendingTotalIndices;
-	int32 m_PendingBaseVertex;
 	uint32 m_PendingStartIndex;
+	int32 m_PendingBaseVertex;
+	bool m_HasPendingBatch;
+	bool m_IsPendingBatchIndexed;
+#endif // PS3_SPU_ENABLED
 };
 
 #endif // GCM_BATCH_RENDERER_H

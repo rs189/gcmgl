@@ -101,11 +101,11 @@ gcmgl is a C++ graphics library targeting PlayStation 3 (GCM) and Linux (x86_64,
 - `Binormal`
 
 ### RendererDesc_t
+- `void* m_pWindow`
 - `uint32 m_Width`
 - `uint32 m_Height`
 - `bool m_IsFullscreen`
 - `bool m_IsVSync`
-- `void* m_pWindow`
 
 ### Viewport_t
 - `float32 m_X`
@@ -129,15 +129,15 @@ gcmgl is a C++ graphics library targeting PlayStation 3 (GCM) and Linux (x86_64,
 - `bool m_IsDepthWrite`
 
 ### PipelineState_t
+- `uint64 m_IndexOffset`
+- `const CVertexLayout* m_pVertexLayout`
 - `ShaderProgramHandle m_hShaderProgram`
 - `BufferHandle m_hVertexBuffer`
 - `BufferHandle m_hIndexBuffer`
-- `const CVertexLayout* m_pVertexLayout`
 - `uint32 m_VertexStride`
 - `uint32 m_VertexOffset`
-- `uint64 m_IndexOffset`
-- `BlendState_t m_BlendState`
 - `DepthStencilState_t m_DepthStencilState`
+- `BlendState_t m_BlendState`
 
 ### UniformBlockLayout_t
 - `CUtlVector<CFixedString> m_UniformNames`
@@ -156,14 +156,14 @@ gcmgl is a C++ graphics library targeting PlayStation 3 (GCM) and Linux (x86_64,
 - `float32 m_Distance`
 
 ### BatchChunkTransform_t
-- `CVector3 m_Position`
 - `CQuaternion m_Rotation`
+- `CVector3 m_Position`
 - `CVector3 m_Scale`
 - `CMatrix4 ToMatrix() const`
 
 ### BatchChunk_t
-- `CVector3 m_Center`
 - `CUtlVector<BatchChunkTransform_t> m_BatchChunkTransforms`
+- `CVector3 m_Center`
 
 ### CBatch
 - `CUtlVector<BatchChunk_t> m_BatchChunks`
@@ -249,11 +249,11 @@ Build using the provided scripts:
 
 - Linux (x86_64):
 ```bash
-./build_linux_x86_64.sh
+./scripts/build_linux_x86_64.sh
 ```
 - PlayStation 3:
 ```bash
-./build_ps3.sh
+./scripts/build_ps3.sh
 ```
 
 ## Examples

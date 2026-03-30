@@ -21,19 +21,9 @@
 #endif
 
 CGlRenderer::CGlRenderer() :
-	m_pWindow(GCMGL_NULL),
-	m_StagingIndex(0)
+	m_StagingIndex(0),
+	m_pWindow(GCMGL_NULL)
 {
-	m_NextHandle = 1;
-
-	m_PipelineState.m_hShaderProgram = 0;
-	m_PipelineState.m_hVertexBuffer = 0;
-	m_PipelineState.m_hIndexBuffer = 0;
-	m_PipelineState.m_VertexOffset = 0;
-	m_PipelineState.m_IndexOffset = 0;
-	m_PipelineState.m_pVertexLayout = GCMGL_NULL;
-
-	m_StateDirtyFlags = StateDirtyFlags_t::All;
 }
 
 CGlRenderer::~CGlRenderer()
@@ -131,26 +121,63 @@ bool CGlRenderer::Init(const RendererDesc_t& rendererDesc)
 
 void CGlRenderer::Shutdown()
 {
+	for (uint32 i = 0; i < 2; i++)
+	{
+		if (m_StagingVertexBuffer[i].m_hId)
+		{
+			glDeleteBuffers(1, &m_StagingVertexBuffer[i].m_hId);
+			m_StagingVertexBuffer[i].m_hId = 0;
+		}
+
+		if (m_StagingIndexBuffer[i].m_hId)
+		{
+			glDeleteBuffers(1, &m_StagingIndexBuffer[i].m_hId);
+			m_StagingIndexBuffer[i].m_hId = 0;
+		}
+
+		m_StagingVertexBuffer[i].m_Data.RemoveAll();
+		m_StagingIndexBuffer[i].m_Data.RemoveAll();
+
+		if (m_StagingVertexBuffer[i].m_hBuffer)
+		{
+			m_BufferResources.Remove(m_StagingVertexBuffer[i].m_hBuffer);
+			m_StagingVertexBuffer[i].m_hBuffer = 0;
+		}
+
+		if (m_StagingIndexBuffer[i].m_hBuffer)
+		{
+			m_BufferResources.Remove(m_StagingIndexBuffer[i].m_hBuffer);
+			m_StagingIndexBuffer[i].m_hBuffer = 0;
+		}
+	}
+
+	for (int32 i = m_TextureResources.FirstInorder(); m_TextureResources.IsValidIndex(i); i = m_TextureResources.NextInorder(i))
+	{
+		TextureResource_t& textureResource = m_TextureResources.Element(i);
+		if (textureResource.m_hId)
+		{
+			GLuint id = textureResource.m_hId;
+			glDeleteTextures(1, &id);
+		}
+	}
+	m_TextureResources.RemoveAll();
+
+	for (int32 i = m_ProgramResources.FirstInorder(); m_ProgramResources.IsValidIndex(i); i = m_ProgramResources.NextInorder(i))
+	{
+		ProgramResource_t& programResource = m_ProgramResources.Element(i);
+		if (programResource.m_hId)
+		{
+			glDeleteProgram(programResource.m_hId);
+		}
+	}
+	m_ProgramResources.RemoveAll();
+
+	m_ProgramUniformShadows.RemoveAll();
+	m_ProgramUniformBuffers.RemoveAll();
+
 	for (int32 i = m_BufferResources.FirstInorder(); m_BufferResources.IsValidIndex(i); i = m_BufferResources.NextInorder(i))
 	{
 		BufferResource_t& bufferResource = m_BufferResources.Element(i);
-
-		bool isStaging = false;
-		for (int32 j = 0; j < 2; j++)
-		{
-			if (bufferResource.m_pPtr == m_StagingVertexBuffer[j].m_Data.Base() ||
-				bufferResource.m_pPtr == m_StagingIndexBuffer[j].m_Data.Base())
-			{
-				isStaging = true;
-
-				break;
-			}
-		}
-
-		if (isStaging)
-		{
-			continue;
-		}
 
 		if (bufferResource.m_hId)
 		{
@@ -175,65 +202,6 @@ void CGlRenderer::Shutdown()
 	}
 	m_BufferResources.RemoveAll();
 
-	for (int32 i = m_ProgramResources.FirstInorder(); m_ProgramResources.IsValidIndex(i); i = m_ProgramResources.NextInorder(i))
-	{
-		ProgramResource_t& programResource = m_ProgramResources.Element(i);
-		if (programResource.m_hId)
-		{
-			glDeleteProgram(programResource.m_hId);
-		}
-	}
-	m_ProgramResources.RemoveAll();
-
-	for (int32 i = m_TextureResources.FirstInorder(); m_TextureResources.IsValidIndex(i); i = m_TextureResources.NextInorder(i))
-	{
-		TextureResource_t& textureResource = m_TextureResources.Element(i);
-		if (textureResource.m_hId)
-		{
-			GLuint id = textureResource.m_hId;
-			glDeleteTextures(1, &id);
-		}
-	}
-	m_TextureResources.RemoveAll();
-
-	for (uint32 i = 0; i < 2; i++)
-	{
-		bool isStaging = false;
-		if (m_StagingVertexBuffer[i].m_hId)
-		{
-			glDeleteBuffers(1, &m_StagingVertexBuffer[i].m_hId);
-			m_StagingVertexBuffer[i].m_hId = 0;
-			isStaging = true;
-		}
-
-		if (m_StagingIndexBuffer[i].m_hId)
-		{
-			glDeleteBuffers(1, &m_StagingIndexBuffer[i].m_hId);
-			m_StagingIndexBuffer[i].m_hId = 0;
-			isStaging = true;
-		}
-
-		if (!isStaging && (m_StagingVertexBuffer[i].m_Data.Count() > 0 || m_StagingIndexBuffer[i].m_Data.Count() > 0))
-		{
-			Warning("[GLRenderer] Staging buffers already deleted\n");
-		}
-
-		m_StagingVertexBuffer[i].m_Data.RemoveAll();
-		m_StagingIndexBuffer[i].m_Data.RemoveAll();
-
-		if (m_StagingVertexBuffer[i].m_hBuffer)
-		{
-			m_BufferResources.Remove(m_StagingVertexBuffer[i].m_hBuffer);
-			m_StagingVertexBuffer[i].m_hBuffer = 0;
-		}
-
-		if (m_StagingIndexBuffer[i].m_hBuffer)
-		{
-			m_BufferResources.Remove(m_StagingIndexBuffer[i].m_hBuffer);
-			m_StagingIndexBuffer[i].m_hBuffer = 0;
-		}
-	}
-	
 	ClearShaderCache();
 }
 
@@ -319,6 +287,7 @@ BufferHandle CGlRenderer::CreateVertexBuffer(
 	if (!pPtr)
 	{
 		Error("[GLRenderer] Failed to allocate vertex buffer memory\n");
+
 		return 0;
 	}
 
@@ -331,7 +300,7 @@ BufferHandle CGlRenderer::CreateVertexBuffer(
 		memset(pPtr, 0, static_cast<size_t>(size));
 	}
 
-	uint32 id = 0;
+	uint32 id;
 	glGenBuffers(1, &id);
 	glBindBuffer(GL_ARRAY_BUFFER, id);
 	glBufferData(
@@ -340,13 +309,15 @@ BufferHandle CGlRenderer::CreateVertexBuffer(
 		pPtr,
 		usage == BufferUsage_t::Static ? GL_STATIC_DRAW : GL_DYNAMIC_DRAW);
 	
-	BufferHandle hBuffer = AllocHandle();
-	BufferResource_t& bufferResource = m_BufferResources[hBuffer];
-	bufferResource.m_pPtr = pPtr;
-	bufferResource.m_hId = id;
-	bufferResource.m_Size = size;
-	bufferResource.m_Target = GL_ARRAY_BUFFER;
-	bufferResource.m_IsAligned = true;
+	const BufferHandle hBuffer = AllocHandle();
+	const BufferResource_t bufferResource = {
+		size,
+		pPtr,
+		id,
+		GL_ARRAY_BUFFER,
+		true
+	};
+	m_BufferResources.Insert(hBuffer, bufferResource);
 	
 	return hBuffer;
 }
@@ -374,7 +345,7 @@ BufferHandle CGlRenderer::CreateIndexBuffer(
 		memset(pPtr, 0, static_cast<size_t>(size));
 	}
 
-	uint32 id = 0;
+	uint32 id;
 	glGenBuffers(1, &id);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, id);
 	glBufferData(
@@ -383,13 +354,15 @@ BufferHandle CGlRenderer::CreateIndexBuffer(
 		pPtr,
 		usage == BufferUsage_t::Static ? GL_STATIC_DRAW : GL_DYNAMIC_DRAW);
 	
-	BufferHandle hBuffer = AllocHandle();
-	BufferResource_t& bufferResource = m_BufferResources[hBuffer];
-	bufferResource.m_pPtr = pPtr;
-	bufferResource.m_hId = id;
-	bufferResource.m_Size = size;
-	bufferResource.m_Target = GL_ELEMENT_ARRAY_BUFFER;
-	bufferResource.m_IsAligned = true;
+	const BufferHandle hBuffer = AllocHandle();
+	const BufferResource_t bufferResource = {
+		size,
+		pPtr,
+		id,
+		GL_ELEMENT_ARRAY_BUFFER,
+		true
+	};
+	m_BufferResources.Insert(hBuffer, bufferResource);
 	
 	return hBuffer;
 }
@@ -406,13 +379,15 @@ BufferHandle CGlRenderer::CreateConstantBuffer(uint64 size, BufferUsage_t usage)
 
 	memset(pPtr, 0, static_cast<size_t>(size));
 
-	BufferHandle hBuffer = AllocHandle();
-	BufferResource_t& bufferResource = m_BufferResources[hBuffer];
-	bufferResource.m_pPtr = pPtr;
-	bufferResource.m_hId = 0;
-	bufferResource.m_Size = size;
-	bufferResource.m_Target = 0;
-	bufferResource.m_IsAligned = false;
+	const BufferHandle hBuffer = AllocHandle();
+	const BufferResource_t bufferResource = {
+		size,
+		pPtr,
+		0,
+		0,
+		false
+	};
+	m_BufferResources.Insert(hBuffer, bufferResource);
 	
 	return hBuffer;
 }
@@ -432,7 +407,7 @@ void CGlRenderer::UpdateBuffer(
 	}
 
 	BufferResource_t& bufferResource = m_BufferResources.Element(bufferIndex);
-	char* pDst = reinterpret_cast<char*>(bufferResource.m_pPtr) + offset;
+	void* pDst = reinterpret_cast<uint8*>(bufferResource.m_pPtr) + offset;
 	memcpy(pDst, pData, static_cast<size_t>(size));
 
 	if (bufferResource.m_hId)
@@ -496,6 +471,7 @@ void CGlRenderer::UnmapBuffer(BufferHandle hBuffer)
 	if (bufferIndex == m_BufferResources.InvalidIndex())
 	{
 		Warning("[GLRenderer] Invalid buffer handle: %d\n", hBuffer);
+
 		return;
 	}
 
@@ -515,12 +491,12 @@ static uint32 CompileShaderFromSource(
 	GLenum shaderType,
 	const CFixedString& source)
 {
-	GLuint hShader = glCreateShader(shaderType);
 	const char* pShaderSource = source.AsCharPtr();
+	GLuint hShader = glCreateShader(shaderType);
 	glShaderSource(hShader, 1, &pShaderSource, GCMGL_NULL);
 	glCompileShader(hShader);
 
-	GLint compileStatus = 0;
+	GLint compileStatus;
 	glGetShaderiv(hShader, GL_COMPILE_STATUS, &compileStatus);
 	if (!compileStatus)
 	{
@@ -585,7 +561,7 @@ ShaderProgramHandle CGlRenderer::CreateShaderProgram(
 	glAttachShader(glProgram, fragmentShader);
 	glLinkProgram(glProgram);
 
-	GLint linkStatus = 0;
+	GLint linkStatus;
 	glGetProgramiv(glProgram, GL_LINK_STATUS, &linkStatus);
 	if (!linkStatus)
 	{
@@ -604,9 +580,13 @@ ShaderProgramHandle CGlRenderer::CreateShaderProgram(
 	glDetachShader(glProgram, fragmentShader);
 	glDeleteShader(fragmentShader);
 
-	ShaderProgramHandle hProgram = AllocHandle();
-	ProgramResource_t& programResource = m_ProgramResources[hProgram];
-	programResource.m_hId = glProgram;
+	const ShaderProgramHandle hProgram = AllocHandle();
+	const ProgramResource_t programResource = {
+		{},
+		{},
+		glProgram
+	};
+	m_ProgramResources.Insert(hProgram, programResource);
 
 	return hProgram;
 }
@@ -632,7 +612,7 @@ TextureHandle CGlRenderer::CreateTexture2D(
 	TextureFormat_t format,
 	const void* pData)
 {
-	GLuint id = 0; 
+	GLuint id;
 	glGenTextures(1, &id);
 	glBindTexture(GL_TEXTURE_2D, id);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -683,14 +663,16 @@ TextureHandle CGlRenderer::CreateTexture2D(
 		glType,
 		pData);
 	
-	TextureHandle hTexture = AllocHandle();
-	TextureResource_t& textureResource = m_TextureResources[hTexture];
-	textureResource.m_hId = id;
-	textureResource.m_Target = GL_TEXTURE_2D;
-	textureResource.m_Width = width;
-	textureResource.m_Height = height;
-	textureResource.m_Format = format;
-	textureResource.m_IsCubemap = false;
+	const TextureHandle hTexture = AllocHandle();
+	const TextureResource_t textureResource = {
+		id,
+		GL_TEXTURE_2D,
+		width,
+		height,
+		format,
+		false
+	};
+	m_TextureResources.Insert(hTexture, textureResource);
 	
 	return hTexture;
 }
@@ -700,7 +682,7 @@ TextureHandle CGlRenderer::CreateTextureCube(
 	TextureFormat_t format,
 	const void** pFaces)
 {
-	GLuint id = 0; 
+	GLuint id;
 	glGenTextures(1, &id);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, id);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -723,14 +705,16 @@ TextureHandle CGlRenderer::CreateTextureCube(
 			pFaces ? pFaces[i] : GCMGL_NULL);
 	}
 	
-	TextureHandle hTexture = AllocHandle();
-	TextureResource_t& textureResource = m_TextureResources[hTexture];
-	textureResource.m_hId = id;
-	textureResource.m_Target = GL_TEXTURE_CUBE_MAP;
-	textureResource.m_Width = size;
-	textureResource.m_Height = size;
-	textureResource.m_Format = format;
-	textureResource.m_IsCubemap = true;
+	const TextureHandle hTexture = AllocHandle();
+	const TextureResource_t textureResource = {
+		id,
+		GL_TEXTURE_CUBE_MAP,
+		size,
+		size,
+		format,
+		true
+	};
+	m_TextureResources.Insert(hTexture, textureResource);
 
 	return hTexture;
 }
@@ -1164,6 +1148,7 @@ void CGlRenderer::DrawIndexed(
 		}
 	}
 
+	uint64 indexOffset = m_PipelineState.m_IndexOffset + uint64(startIndex) * sizeof(uint32);
 	int32 indexBufferIndex = m_BufferResources.Find(
 		m_PipelineState.m_hIndexBuffer);
 	if (indexBufferIndex == m_BufferResources.InvalidIndex())
@@ -1181,7 +1166,6 @@ void CGlRenderer::DrawIndexed(
 
 	FlushPipelineState();
 
-	uint64 indexOffset = m_PipelineState.m_IndexOffset + uint64(startIndex) * sizeof(uint32);
 	glDrawElements(
 		GL_TRIANGLES,
 		static_cast<GLsizei>(indexCount),
@@ -1242,6 +1226,7 @@ void CGlRenderer::BindVertexAttributes(
 
 	const CUtlVector<VertexAttribute_t>& attributes = pLayout->GetAttributes();
 	ProgramResource_t& programResource = m_ProgramResources.Element(programIndex);
+
 	for (int32 attributeIndex = 0; attributeIndex < attributes.Count(); attributeIndex++)
 	{
 		const VertexAttribute_t& attribute = attributes[attributeIndex];
@@ -1269,9 +1254,9 @@ void CGlRenderer::BindVertexAttributes(
 
 		glEnableVertexAttribArray(static_cast<GLuint>(loc));
 
-		GLint components = 3;
-		GLenum dataType = GL_FLOAT;
-		GLboolean normalized = GL_FALSE;
+		GLint components;
+		GLenum dataType;
+		GLboolean normalized;
 
 		switch (attribute.m_Format)
 		{

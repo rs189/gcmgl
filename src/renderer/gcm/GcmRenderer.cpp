@@ -27,24 +27,16 @@
 #include "spu/SpuBatchTransformManager.h"
 #endif
 
-CGcmRenderer::CGcmRenderer() :
-	m_pHostAddr(GCMGL_NULL),
-	m_HostSize(0),
-	m_StagingIndex(0)
+ CGcmRenderer::CGcmRenderer() :
 #ifdef PS3_SPU_ENABLED
-	,m_pSpuBtm(GCMGL_NULL)
+	m_pSpuBatchTransformManager(GCMGL_NULL),
+	m_pScratchMatrices(GCMGL_NULL),
+	m_ScratchMatricesCapacity(0),
 #endif
+	m_StagingIndex(0),
+	m_pHostAddr(GCMGL_NULL),
+	m_HostSize(0)
 {
-	m_NextHandle = 1;
-
-	m_PipelineState.m_hShaderProgram = 0;
-	m_PipelineState.m_hVertexBuffer = 0;
-	m_PipelineState.m_hIndexBuffer = 0;
-	m_PipelineState.m_VertexOffset = 0;
-	m_PipelineState.m_IndexOffset = 0;
-	m_PipelineState.m_pVertexLayout = GCMGL_NULL;
-
-	m_StateDirtyFlags = StateDirtyFlags_t::All;
 }
 
 CGcmRenderer::~CGcmRenderer()
@@ -55,15 +47,15 @@ CGcmRenderer::~CGcmRenderer()
 bool CGcmRenderer::Init(const RendererDesc_t& rendererDesc)
 {
 	m_HostSize = 1024 * 1024 * 128; // 128MB
-	sys_mem_addr_t hostAddr = 0;
+	sys_mem_addr_t hostAddr;
 	if (sysMemoryAllocate(m_HostSize, SYS_MEMORY_PAGE_SIZE_1M, &hostAddr) != 0)
 	{
 		Error("[GCMRenderer] Failed to allocate host memory\n");
 
 		return false;
 	}
-	m_pHostAddr = reinterpret_cast<void*>(hostAddr);
 
+	m_pHostAddr = reinterpret_cast<void*>(hostAddr);
 	initScreen(m_pHostAddr, m_HostSize);
 
 	rsxSetColorMask(
@@ -141,15 +133,16 @@ bool CGcmRenderer::Init(const RendererDesc_t& rendererDesc)
 	setRenderTarget(curr_fb);
 
 #ifdef PS3_SPU_ENABLED
-	void* pSpuBtmMemory = CUtlMemory::Alloc(sizeof(CSpuBatchTransformManager));
-	if (pSpuBtmMemory)
+	void* pSpuBatchTransformManagerMemory = CUtlMemory::Alloc(
+		sizeof(CSpuBatchTransformManager));
+	if (pSpuBatchTransformManagerMemory)
 	{
-		m_pSpuBtm = new(pSpuBtmMemory) CSpuBatchTransformManager();
-		if (!m_pSpuBtm->Initialize())
+		m_pSpuBatchTransformManager = new(pSpuBatchTransformManagerMemory) CSpuBatchTransformManager();
+		if (!m_pSpuBatchTransformManager->Initialize())
 		{
-			m_pSpuBtm->~CSpuBatchTransformManager();
-			CUtlMemory::Free(pSpuBtmMemory);
-			m_pSpuBtm = GCMGL_NULL;
+			m_pSpuBatchTransformManager->~CSpuBatchTransformManager();
+			CUtlMemory::Free(pSpuBatchTransformManagerMemory);
+			m_pSpuBatchTransformManager = GCMGL_NULL;
 		}
 	}
 #endif // PS3_SPU_ENABLED
@@ -162,17 +155,66 @@ void CGcmRenderer::Shutdown()
 	if (!m_pHostAddr) return;
 
 #ifdef PS3_SPU_ENABLED
-	if (m_pSpuBtm)
+	if (m_pSpuBatchTransformManager)
 	{
-		m_pSpuBtm->Shutdown();
-		m_pSpuBtm->~CSpuBatchTransformManager();
-		CUtlMemory::Free(m_pSpuBtm);
-		m_pSpuBtm = GCMGL_NULL;
+		m_pSpuBatchTransformManager->Shutdown();
+		m_pSpuBatchTransformManager->~CSpuBatchTransformManager();
+		CUtlMemory::Free(m_pSpuBatchTransformManager);
+		m_pSpuBatchTransformManager = GCMGL_NULL;
+	}
+
+	if (m_pScratchMatrices)
+	{
+		free(m_pScratchMatrices);
+		m_pScratchMatrices = GCMGL_NULL;
+		m_ScratchMatricesCapacity = 0;
 	}
 #endif
 
 	rsxFlushBuffer(context);
 	waitFinish();
+
+	for (uint32 i = 0; i < 2; i++)
+	{
+		if (m_StagingVertexBuffer[i].m_pPtr)
+		{
+			rsxFree(m_StagingVertexBuffer[i].m_pPtr);
+			m_StagingVertexBuffer[i].m_pPtr = GCMGL_NULL;
+		}
+		if (m_StagingIndexBuffer[i].m_pPtr)
+		{
+			rsxFree(m_StagingIndexBuffer[i].m_pPtr);
+			m_StagingIndexBuffer[i].m_pPtr = GCMGL_NULL;
+		}
+	}
+
+	for (int32 i = m_TextureResources.FirstInorder(); m_TextureResources.IsValidIndex(i); i = m_TextureResources.NextInorder(i))
+	{
+		TextureResource_t& textureResource = m_TextureResources.Element(i);
+		if (textureResource.m_pBuffer) rsxFree(textureResource.m_pBuffer);
+	}
+	m_TextureResources.RemoveAll();
+
+	for (int32 i = m_ProgramResources.FirstInorder(); m_ProgramResources.IsValidIndex(i); i = m_ProgramResources.NextInorder(i))
+	{
+		ProgramResource_t& programResource = m_ProgramResources.Element(i);
+		if (programResource.m_pVertexProgramAligned) 
+		{
+			rsxFree(programResource.m_pVertexProgramAligned);
+		}
+		if (programResource.m_pFragmentProgramAligned) 
+		{
+			rsxFree(programResource.m_pFragmentProgramAligned);
+		}
+		if (programResource.m_pFragmentProgramBuffer) 
+		{
+			rsxFree(programResource.m_pFragmentProgramBuffer);
+		}
+	}
+	m_ProgramResources.RemoveAll();
+
+	m_ProgramUniformShadows.RemoveAll();
+	m_ProgramUniformBuffers.RemoveAll();
 
 	for (int32 i = m_BufferResources.FirstInorder(); m_BufferResources.IsValidIndex(i); i = m_BufferResources.NextInorder(i))
 	{
@@ -203,48 +245,10 @@ void CGcmRenderer::Shutdown()
 	}
 	m_BufferResources.RemoveAll();
 
-	for (int32 i = m_ProgramResources.FirstInorder(); m_ProgramResources.IsValidIndex(i); i = m_ProgramResources.NextInorder(i))
-	{
-		ProgramResource_t& programResource = m_ProgramResources.Element(i);
-		if (programResource.m_pVertexProgramAligned) 
-		{
-			rsxFree(programResource.m_pVertexProgramAligned);
-		}
-		if (programResource.m_pFragmentProgramAligned) 
-		{
-			rsxFree(programResource.m_pFragmentProgramAligned);
-		}
-		if (programResource.m_pFragmentProgramBuffer) 
-		{
-			rsxFree(programResource.m_pFragmentProgramBuffer);
-		}
-	}
-	m_ProgramResources.RemoveAll();
-
-	for (int32 i = m_TextureResources.FirstInorder(); m_TextureResources.IsValidIndex(i); i = m_TextureResources.NextInorder(i))
-	{
-		TextureResource_t& textureResource = m_TextureResources.Element(i);
-		if (textureResource.m_pBuffer) rsxFree(textureResource.m_pBuffer);
-	}
-	m_TextureResources.RemoveAll();
-
-	for (uint32 i = 0; i < 2; i++)
-	{
-		if (m_StagingVertexBuffer[i].m_pPtr)
-		{
-			rsxFree(m_StagingVertexBuffer[i].m_pPtr);
-			m_StagingVertexBuffer[i].m_pPtr = GCMGL_NULL;
-		}
-		if (m_StagingIndexBuffer[i].m_pPtr)
-		{
-			rsxFree(m_StagingIndexBuffer[i].m_pPtr);
-			m_StagingIndexBuffer[i].m_pPtr = GCMGL_NULL;
-		}
-	}
-
 	ClearShaderCache();
 
 	m_pHostAddr = GCMGL_NULL;
+	m_HostSize = 0;
 }
 
 void CGcmRenderer::SetEnvironment()
@@ -387,14 +391,15 @@ BufferHandle CGcmRenderer::CreateVertexBuffer(
 		memset(pPtr, 0, uint32(size));
 	}
 
-	uint32 offset = 0;
+	uint32 offset;
 	rsxAddressToOffset(pPtr, &offset);
 
 	BufferHandle hBuffer = m_NextHandle++;
-	BufferResource_t bufferResource;
-	bufferResource.m_pPtr = pPtr;
-	bufferResource.m_Offset = offset;
-	bufferResource.m_Size = uint32(size);
+	const BufferResource_t bufferResource = {
+		pPtr,
+		offset,
+		uint32(size)
+	};
 	m_BufferResources.Insert(hBuffer, bufferResource);
 
 	return hBuffer;
@@ -423,14 +428,15 @@ BufferHandle CGcmRenderer::CreateIndexBuffer(
 		memset(pPtr, 0, uint32(size));
 	}
 
-	uint32 offset = 0;
+	uint32 offset;
 	rsxAddressToOffset(pPtr, &offset);
 
 	BufferHandle hBuffer = m_NextHandle++;
-	BufferResource_t bufferResource;
-	bufferResource.m_pPtr = pPtr;
-	bufferResource.m_Offset = offset;
-	bufferResource.m_Size = uint32(size);
+	const BufferResource_t bufferResource = {
+		pPtr,
+		offset,
+		uint32(size)
+	};
 	m_BufferResources.Insert(hBuffer, bufferResource);
 
 	return hBuffer;
@@ -448,14 +454,15 @@ BufferHandle CGcmRenderer::CreateConstantBuffer(
 		return 0;
 	}
 
-	uint32 offset = 0;
+	uint32 offset;
 	rsxAddressToOffset(pPtr, &offset);
 
 	BufferHandle hBuffer = m_NextHandle++;
-	BufferResource_t bufferResource;
-	bufferResource.m_pPtr = pPtr;
-	bufferResource.m_Offset = offset;
-	bufferResource.m_Size = uint32(size);
+	const BufferResource_t bufferResource = {
+		pPtr,
+		offset,
+		uint32(size)
+	};
 	m_BufferResources.Insert(hBuffer, bufferResource);
 
 	return hBuffer;
@@ -539,10 +546,10 @@ ShaderProgramHandle CGcmRenderer::CreateShaderProgram(const CFixedString& shader
 		vertexProgramBin.Base(),
 		uint32(vertexProgramBin.Count()));
 
-	void* pVertexProgramUCode = GCMGL_NULL;
-	uint32 vertexProgramSize = 0;
 	const rsxVertexProgram* pVertexProgram = reinterpret_cast<const rsxVertexProgram*>(
 		pVertexProgramAligned);
+	void* pVertexProgramUCode;
+	uint32 vertexProgramSize;
 	rsxVertexProgramGetUCode(
 		const_cast<rsxVertexProgram*>(pVertexProgram),
 		&pVertexProgramUCode,
@@ -570,31 +577,34 @@ ShaderProgramHandle CGcmRenderer::CreateShaderProgram(const CFixedString& shader
 		fragmentProgramBin.Base(),
 		uint32(fragmentProgramBin.Count()));
 
-	void* pFragmentProgramCode = GCMGL_NULL;
-	uint32 fragmentProgramSize = 0;
 	const rsxFragmentProgram* pFragmentProgram = reinterpret_cast<const rsxFragmentProgram*>(
 		pFragmentProgramAligned);
+	void* pFragmentProgramCode;
+	uint32 fragmentProgramSize;
 	rsxFragmentProgramGetUCode(
 		const_cast<rsxFragmentProgram*>(pFragmentProgram),
 		&pFragmentProgramCode,
 		&fragmentProgramSize);
 
-	uint32 fragmentProgramOffset = 0;
+	uint32 fragmentProgramOffset;
 	void* pFragmentProgramBuffer = rsxMemalign(64, fragmentProgramSize);
 	memcpy(pFragmentProgramBuffer, pFragmentProgramCode, fragmentProgramSize);
 	rsxAddressToOffset(pFragmentProgramBuffer, &fragmentProgramOffset);
 
 	ShaderProgramHandle hProgram = m_NextHandle++;
-	ProgramResource_t programResource;
-	programResource.m_pVertexProgramAligned = pVertexProgramAligned;
-	programResource.m_pVertexProgram = pVertexProgram;
-	programResource.m_pVertexProgramUCode = pVertexProgramUCode;
-	programResource.m_VertexProgramSize = vertexProgramSize;
-	programResource.m_pFragmentProgramAligned = pFragmentProgramAligned;
-	programResource.m_pFragmentProgram = pFragmentProgram;
-	programResource.m_pFragmentProgramBuffer = pFragmentProgramBuffer;
-	programResource.m_FragmentProgramOffset = fragmentProgramOffset;
-	programResource.m_FragmentProgramSize = fragmentProgramSize;
+	const ProgramResource_t programResource = {
+		{},
+		{},
+		pVertexProgramAligned,
+		pVertexProgram,
+		pVertexProgramUCode,
+		pFragmentProgramAligned,
+		pFragmentProgram,
+		pFragmentProgramBuffer,
+		vertexProgramSize,
+		fragmentProgramOffset,
+		fragmentProgramSize
+	};
 	m_ProgramResources.Insert(hProgram, programResource);
 
 	return hProgram;
@@ -629,7 +639,7 @@ TextureHandle CGcmRenderer::CreateTexture2D(
 	const void* pData)
 {
 	// 4 bytes per pixel (ARGB8)
-	uint32 textureBufferSize = width * height * 4;
+	const uint32 textureBufferSize = width * height * 4;
 	void* pTextureBuffer = rsxMemalign(128, textureBufferSize);
 	if (!pTextureBuffer)
 	{
@@ -695,15 +705,15 @@ TextureHandle CGcmRenderer::CreateTexture2D(
 	uint32 textureOffset;
 	rsxAddressToOffset(pTextureBuffer, &textureOffset);
 
-	TextureResource_t textureResource;
-	textureResource.m_pBuffer = pTextureBuffer;
-	textureResource.m_Offset = textureOffset;
-	textureResource.m_Width = width;
-	textureResource.m_Height = height;
-	textureResource.m_Format = format;
-	textureResource.m_IsCubemap = false;
-
-	TextureHandle hTexture = m_NextHandle++;
+	const TextureResource_t textureResource = {
+		pTextureBuffer,
+		textureOffset,
+		width,
+		height,
+		format,
+		false
+	};
+	const TextureHandle hTexture = m_NextHandle++;
 	m_TextureResources.Insert(hTexture, textureResource);
 
 	return hTexture;
@@ -715,7 +725,7 @@ TextureHandle CGcmRenderer::CreateTextureCube(
 	const void** pFaces)
 {
 	// 6 faces, 4 bytes per pixel (ARGB8)
-	uint32 textureBufferSize = size * size * 4 * 6;
+	const uint32 textureBufferSize = size * size * 4 * 6;
 	void* pTextureBuffer = rsxMemalign(128, textureBufferSize);
 	if (!pTextureBuffer)
 	{
@@ -783,15 +793,15 @@ TextureHandle CGcmRenderer::CreateTextureCube(
 	uint32 textureOffset;
 	rsxAddressToOffset(pTextureBuffer, &textureOffset);
 
-	TextureResource_t textureResource;
-	textureResource.m_pBuffer = pTextureBuffer;
-	textureResource.m_Offset = textureOffset;
-	textureResource.m_Width = size;
-	textureResource.m_Height = size;
-	textureResource.m_Format = format;
-	textureResource.m_IsCubemap = true;
-
-	TextureHandle hTexture = m_NextHandle++;
+	const TextureResource_t textureResource = {
+		pTextureBuffer,
+		textureOffset,
+		size,
+		size,
+		format,
+		true
+	};
+	const TextureHandle hTexture = m_NextHandle++;
 	m_TextureResources.Insert(hTexture, textureResource);
 
 	return hTexture;
@@ -818,8 +828,8 @@ void CGcmRenderer::SetTexture(
 	const TextureResource_t& textureResource = m_TextureResources.Element(
 		textureIndex);
 
-	uint32 gcmTextureFormat = GCM_TEXTURE_FORMAT_A8R8G8B8 | GCM_TEXTURE_FORMAT_LIN;
-	uint32 texturePitch = textureResource.m_Width * 4;
+	uint32 gcmTextureFormat;
+	uint32 texturePitch;
 
 	switch (textureResource.m_Format)
 	{
@@ -845,25 +855,26 @@ void CGcmRenderer::SetTexture(
 	rsxInvalidateTextureCache(context, GCM_INVALIDATE_TEXTURE);
 
 	gcmTexture gcmTex;
-	gcmTex.format = gcmTextureFormat;
+	memset(&gcmTex, 0, sizeof(gcmTexture));
+	gcmTex.format = static_cast<uint8>(gcmTextureFormat);
 	gcmTex.mipmap = 1;
 	gcmTex.dimension = GCM_TEXTURE_DIMS_2D;
-	gcmTex.cubemap = textureResource.m_IsCubemap ? GCM_TRUE : GCM_FALSE;
-	gcmTex.remap = 
-		((GCM_TEXTURE_REMAP_TYPE_REMAP << GCM_TEXTURE_REMAP_TYPE_B_SHIFT) |
-		(GCM_TEXTURE_REMAP_TYPE_REMAP << GCM_TEXTURE_REMAP_TYPE_G_SHIFT) |
-		(GCM_TEXTURE_REMAP_TYPE_REMAP << GCM_TEXTURE_REMAP_TYPE_R_SHIFT) |
-		(GCM_TEXTURE_REMAP_TYPE_REMAP << GCM_TEXTURE_REMAP_TYPE_A_SHIFT) |
-		(GCM_TEXTURE_REMAP_COLOR_B << GCM_TEXTURE_REMAP_COLOR_B_SHIFT) |
-		(GCM_TEXTURE_REMAP_COLOR_G << GCM_TEXTURE_REMAP_COLOR_G_SHIFT) |
-		(GCM_TEXTURE_REMAP_COLOR_R << GCM_TEXTURE_REMAP_COLOR_R_SHIFT) |
-		(GCM_TEXTURE_REMAP_COLOR_A << GCM_TEXTURE_REMAP_COLOR_A_SHIFT));
-	gcmTex.width = textureResource.m_Width;
-	gcmTex.height = textureResource.m_Height;
-	gcmTex.depth = textureResource.m_IsCubemap ? 6 : 1;
+	gcmTex.cubemap = static_cast<uint8>(textureResource.m_IsCubemap ? GCM_TRUE : GCM_FALSE);
+	gcmTex.remap = ((GCM_TEXTURE_REMAP_TYPE_REMAP << GCM_TEXTURE_REMAP_TYPE_B_SHIFT) |
+				  (GCM_TEXTURE_REMAP_TYPE_REMAP << GCM_TEXTURE_REMAP_TYPE_G_SHIFT) |
+				  (GCM_TEXTURE_REMAP_TYPE_REMAP << GCM_TEXTURE_REMAP_TYPE_R_SHIFT) |
+				  (GCM_TEXTURE_REMAP_TYPE_REMAP << GCM_TEXTURE_REMAP_TYPE_A_SHIFT) |
+				  (GCM_TEXTURE_REMAP_COLOR_B << GCM_TEXTURE_REMAP_COLOR_B_SHIFT) |
+				  (GCM_TEXTURE_REMAP_COLOR_G << GCM_TEXTURE_REMAP_COLOR_G_SHIFT) |
+				  (GCM_TEXTURE_REMAP_COLOR_R << GCM_TEXTURE_REMAP_COLOR_R_SHIFT) |
+				  (GCM_TEXTURE_REMAP_COLOR_A << GCM_TEXTURE_REMAP_COLOR_A_SHIFT));
+	gcmTex.width = static_cast<uint16>(textureResource.m_Width);
+	gcmTex.height = static_cast<uint16>(textureResource.m_Height);
+	gcmTex.depth = static_cast<uint16>(textureResource.m_IsCubemap ? 6 : 1);
 	gcmTex.location = GCM_LOCATION_RSX;
 	gcmTex.pitch = texturePitch;
 	gcmTex.offset = textureResource.m_Offset;
+
 	rsxLoadTexture(context, slot, &gcmTex);
 
 	rsxTextureControl(
@@ -954,10 +965,11 @@ void CGcmRenderer::SetConstantBuffer(
 		return;
 	}
 
-	BoundUniform_t boundUniform;
-	boundUniform.m_hBuffer = hBuffer;
-	boundUniform.m_Slot = slot;
-	boundUniform.m_Stage = stage;
+	BoundUniform_t boundUniform = {
+		hBuffer,
+		slot,
+		stage
+	};
 	m_ProgramUniformBuffers[m_PipelineState.m_hShaderProgram].Insert(
 		hLayout,
 		boundUniform);
@@ -1079,18 +1091,16 @@ void CGcmRenderer::ApplyVertexConstants(ShaderProgramHandle hProgram)
 		{
 			const CFixedString& uniformName = uniformLayout.m_UniformNames[uniformNameIndex];
 
-			rsxProgramConst* pConst = GCMGL_NULL;
 			int32 constCacheIndex = constCache.Find(uniformName);
-			if (constCacheIndex != constCache.InvalidIndex())
-			{
-				pConst = constCache.Element(constCacheIndex);
-			}
-			else
-			{
-				pConst = rsxVertexProgramGetConst(
+			rsxProgramConst* pConst = (constCacheIndex != constCache.InvalidIndex()) ?
+				constCache.Element(constCacheIndex) :
+				rsxVertexProgramGetConst(
 					const_cast<rsxVertexProgram*>(
 						programResource.m_pVertexProgram),
 					uniformName.Get());
+
+			if (constCacheIndex == constCache.InvalidIndex() && pConst)
+			{
 				constCache.Insert(uniformName, pConst);
 			}
 
@@ -1192,6 +1202,7 @@ void CGcmRenderer::ApplyFragmentConstants(ShaderProgramHandle hProgram)
 		if (!hasChanged) continue;
 
 		memcpy(uniformShadow.m_Data.Base(), pBufferData, uniformLayout.m_Size);
+
 		__sync_synchronize();
 
 		if (uniformLayout.m_UniformNames.IsEmpty()) continue;
@@ -1213,7 +1224,6 @@ void CGcmRenderer::ApplyFragmentConstants(ShaderProgramHandle hProgram)
 			if (!pConst) continue;
 
 			int32 index = int32(pConst - pFragmentConsts);
-
 			rsxSetFragmentProgramParameter(
 				context,
 				const_cast<rsxFragmentProgram*>(
@@ -1396,7 +1406,13 @@ void CGcmRenderer::BindVertexAttributes(
 		const VertexAttribute_t& attribute = attributes[attributeIndex];
 		if (attribute.m_Name.IsEmpty()) continue;
 
+		void* pAttributePtr = reinterpret_cast<char*>(
+			m_BufferResources.Element(vertexBufferIndex).m_pPtr) + offset + attribute.m_Offset;
 		uint32 attributeLocation = 0xFFFFFFFF;
+		uint32 attributeOffset;
+		uint32 components;
+		uint8 dataType;
+
 		if (attribute.m_VertexSemantic != VertexSemantic_t::Unspecified)
 		{
 			attributeLocation = GetVertexSemanticAttributeIndex(
@@ -1404,9 +1420,6 @@ void CGcmRenderer::BindVertexAttributes(
 		}
 
 		if (attributeLocation == 0xFFFFFFFF) continue;
-
-		uint32 components = 3;
-		uint8 dataType = GCM_VERTEX_DATA_TYPE_F32;
 
 		switch (attribute.m_Format)
 		{
@@ -1442,9 +1455,6 @@ void CGcmRenderer::BindVertexAttributes(
 				break;
 		}
 
-		void* pAttributePtr = reinterpret_cast<char*>(
-			m_BufferResources.Element(vertexBufferIndex).m_pPtr) + offset + attribute.m_Offset;
-		uint32 attributeOffset = 0;
 		rsxAddressToOffset(pAttributePtr, &attributeOffset);
 
 		rsxBindVertexArrayAttrib(
