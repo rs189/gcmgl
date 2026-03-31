@@ -13,12 +13,13 @@
 
 #include "tier0/platform.h"
 
-namespace SpuUtils
+class CSpuUtils
 {
-	inline uint64 PtrToEa(void* pPtr)
+public:
+	static inline uint64 PtrToEa(void* pPtr)
 	{
 		return static_cast<uint64>(reinterpret_cast<uintptr_t>(pPtr));
 	}
-}
+};
 
 #endif // SPU_UTILS_H

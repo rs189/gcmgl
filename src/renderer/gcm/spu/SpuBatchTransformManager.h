@@ -15,8 +15,6 @@
 #include "platform/ps3/spu/SpuCommon.h"
 #include "SpuBatchTransformJob.h"
 
-static const uint32 s_NumBatchSpus = 2;
-
 class CMatrix4;
 
 class CSpuBatchTransformManager
@@ -42,7 +40,7 @@ public:
 		uint32 baseVertex);
 	SPUResult_t WaitBatch();
 private:
-
+	static const uint32 s_NumBatchSpus = 2;
 	sysSpuImage m_SpuImage;
 	SpuBatchJob_t* m_pBatchJobs[s_NumBatchSpus];
 	uint32 m_SpuThreadIds[s_NumBatchSpus];

@@ -13,12 +13,21 @@
 #include <malloc.h>
 #include <rsx/rsx.h>
 
+#ifndef PS3_SPU_ENABLED
+#include <sys/thread.h>
+#ifdef SIMD_ENABLED
+#include <altivec.h>
+#undef bool
+#endif
+#endif
+
 #ifdef PS3_SPU_ENABLED
 #include "spu/SpuBatchTransformManager.h"
 #endif
 
-CGcmBatchRenderer::CGcmBatchRenderer() :
+CGcmBatchRenderer::CGcmBatchRenderer()
 #ifdef PS3_SPU_ENABLED
+	:
 	m_PendingVertexBuffer(0),
 	m_PendingIndexBuffer(0),
 	m_PendingTotalVertices(0),
@@ -362,7 +371,7 @@ void CGcmBatchRenderer::DrawBatchedChunk(
 		for (uint32 i = 0; i < numThreads; i++)
 		{
 			uint64 threadExitCode = 0;
-			sysThreadJoin(threadIDs[i], &threadExitCode);
+			sysThreadJoin(threadIDs[i], reinterpret_cast<u64*>(&threadExitCode));
 		}
 	}
 #endif // THREADING_ENABLED
@@ -661,7 +670,7 @@ void CGcmBatchRenderer::DrawIndexedBatchedChunk(
 		for (uint32 i = 0; i < numThreads; i++)
 		{
 			uint64 threadExitCode;
-			sysThreadJoin(threadIDs[i], &threadExitCode);
+			sysThreadJoin(threadIDs[i], reinterpret_cast<u64*>(&threadExitCode));
 		}
 	}
 #endif // THREADING_ENABLED

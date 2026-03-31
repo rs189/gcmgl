@@ -255,16 +255,16 @@ static void transformVertices()
 	for (uint32 batchIndex = 0; batchIndex < g_Job.m_BatchCount; batchIndex++)
 	{
 		const uint32 matrixBufferIndex = batchIndex & 1u;
-		const uint32 nextmatrixBufferIndex = matrixBufferIndex ^ 1u;
+		const uint32 nextMatrixBufferIndex = matrixBufferIndex ^ 1u;
 		const uint32 matrixTag = matrixBufferIndex ? MATRIX_TAG1 : MATRIX_TAG0;
-		const uint32 nextMatrixTag = nextmatrixBufferIndex ? MATRIX_TAG1 : MATRIX_TAG0;
+		const uint32 nextMatrixTag = nextMatrixBufferIndex ? MATRIX_TAG1 : MATRIX_TAG0;
 
 		// Prefetch
 		if (batchIndex + 1u < g_Job.m_BatchCount)
 		{
 			uint64 nextMatrixEffAddr = g_Job.m_MatricesEffAddr + (batchIndex + 1u) * g_Job.m_MatrixStride;
 			dmaGet(
-				g_MatrixBuffer[nextmatrixBufferIndex],
+				g_MatrixBuffer[nextMatrixBufferIndex],
 				nextMatrixEffAddr,
 				64,
 				nextMatrixTag);
@@ -327,12 +327,12 @@ static void transformVertices()
 				uint8* pDst[4];
 				vec_float4 positions[4];
 
-				for (int j = 0; j < 4; j++)
+				for (uint32 k = 0; k < 4; k++)
 				{
-					pSrc[j] = g_SrcBuffer[srcBufferIndex] + (srcVertexCount + i + j) * vertexStride;
-					pDst[j] = g_DstBuffer[dstBufferIndex] + (dstVertexCount + i + j) * vertexStride;
-					copyVertex(pDst[j], pSrc[j], vertexStride);
-					positions[j] = loadPosition(pSrc[j] + posOffset);
+					pSrc[k] = g_SrcBuffer[srcBufferIndex] + (srcVertexCount + i + k) * vertexStride;
+					pDst[k] = g_DstBuffer[dstBufferIndex] + (dstVertexCount + i + k) * vertexStride;
+					copyVertex(pDst[k], pSrc[k], vertexStride);
+					positions[k] = loadPosition(pSrc[k] + posOffset);
 				}
 
 				transformVertices4(pDst, positions, pMatrix, posOffset);
@@ -406,6 +406,11 @@ static inline void processIndexChunk(
 	{
 		*(vec_uint4*)&pDst[i] = spu_add(*(vec_uint4*)&pSrc[i], indexOffsets);
 	}
+
+	for (uint32 i = (chunkCount & ~3u); i < chunkCount; i++)
+	{
+		pDst[i] = pSrc[i] + spu_extract(indexOffsets, 0);
+	}
 }
 
 static void processIndices()
@@ -455,12 +460,12 @@ static void processIndices()
 				}
 
 				indexCountsBuffer[srcBufferIndex ^ 1u] = pendingCount;
-				uint32 pendingCountBytes = (pendingCount * 4u + 15u) & ~15u;
+				uint32 nextPendingBytes = (pendingCount * 4u + 15u) & ~15u;
 				uint32 nextSrcTag = (srcBufferIndex ^ 1u) ? SRC_TAG1 : SRC_TAG0;
 				dmaGet(
 					g_SrcBuffer[srcBufferIndex ^ 1u],
 					srcEffAddr,
-					pendingCountBytes,
+					nextPendingBytes,
 					nextSrcTag);
 				srcEffAddr += pendingCount * 4u;
 				loadedIndexCount += pendingCount;

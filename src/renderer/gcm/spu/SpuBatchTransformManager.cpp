@@ -91,7 +91,7 @@ bool CSpuBatchTransformManager::Initialize()
 		m_pBatchJobs[i]->m_Status = SPU_BATCH_STATUS_IDLE;
 
 		sysSpuThreadArgument spuThreadArgument = { 0 };
-		spuThreadArgument.arg0 = SpuUtils::PtrToEa(m_pBatchJobs[i]);
+		spuThreadArgument.arg0 = CSpuUtils::PtrToEa(m_pBatchJobs[i]);
 
 		const int32 spuThreadInitializeResult = sysSpuThreadInitialize(
 			&m_SpuThreadIds[i],
@@ -173,7 +173,7 @@ void CSpuBatchTransformManager::Shutdown()
 		}
 
 		bool hasActiveJobs = true;
-		for (int32 i = 0; i < 1000; i++)
+		for (uint32 i = 0; i < 1000; i++)
 		{
 			__sync_synchronize();
 
@@ -300,14 +300,15 @@ SPUResult_t CSpuBatchTransformManager::BeginBatch(
 		uint64 offset = uint64(batchIndex) * vertexCount * vertexStride;
 		
 		SpuBatchJob_t& spuBatchJob = *m_pBatchJobs[i];
-		spuBatchJob.m_SrcVerticesEffAddr = SpuUtils::PtrToEa(
+		spuBatchJob.m_SrcVerticesEffAddr = CSpuUtils::PtrToEa(
 			(void*)pSrcVertices);
-		spuBatchJob.m_SrcIndicesEffAddr = SpuUtils::PtrToEa((void*)pSrcIndices);
-		spuBatchJob.m_MatricesEffAddr = SpuUtils::PtrToEa(
+		spuBatchJob.m_SrcIndicesEffAddr = CSpuUtils::PtrToEa(
+			(void*)pSrcIndices);
+		spuBatchJob.m_MatricesEffAddr = CSpuUtils::PtrToEa(
 			(void*)(pMatrices + batchIndex));
-		spuBatchJob.m_DstVerticesEffAddr = SpuUtils::PtrToEa(
+		spuBatchJob.m_DstVerticesEffAddr = CSpuUtils::PtrToEa(
 			pDstVertices + offset);
-		spuBatchJob.m_DstIndicesEffAddr = SpuUtils::PtrToEa(
+		spuBatchJob.m_DstIndicesEffAddr = CSpuUtils::PtrToEa(
 			pDstIndices + (batchIndex * indexCount));
 		spuBatchJob.m_Command = SPU_BATCH_CMD_TRANSFORM;
 		spuBatchJob.m_Status = SPU_BATCH_STATUS_IDLE;
