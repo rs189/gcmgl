@@ -40,7 +40,6 @@ int32 RunBatchExample(
 
 	double startTime = CTime::GetTime();
 
-	float32 rotationX = 0.0f;
 	float32 rotationY = 0.0f;
 
 	CCamera camera;

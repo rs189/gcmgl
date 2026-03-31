@@ -90,7 +90,7 @@ bool CSpuBatchTransformManager::Initialize()
 		m_pBatchJobs[i]->m_Command = SPU_BATCH_CMD_IDLE;
 		m_pBatchJobs[i]->m_Status = SPU_BATCH_STATUS_IDLE;
 
-		sysSpuspuThreadArgumentument spuThreadArgument = { 0 };
+		sysSpuThreadArgument spuThreadArgument = { 0 };
 		spuThreadArgument.arg0 = SpuUtils::PtrToEa(m_pBatchJobs[i]);
 
 		const int32 spuThreadInitializeResult = sysSpuThreadInitialize(
@@ -223,7 +223,7 @@ void CSpuBatchTransformManager::Shutdown()
 	sysSpuImageClose(&m_SpuImage);
 }
 
-spuInitializeResult_t CSpuBatchTransformManager::BeginBatch(
+SPUResult_t CSpuBatchTransformManager::BeginBatch(
 	const char* pSrcVertices,
 	const uint32* pSrcIndices,
 	const CMatrix4* pMatrices,
@@ -236,17 +236,52 @@ spuInitializeResult_t CSpuBatchTransformManager::BeginBatch(
 	uint32 vertexPosOffset,
 	uint32 baseVertex)
 {
-	if (batchCount == 0 || vertexCount == 0)
-	{
-		return spuInitializeResult_t::NotUsed;
-	}
-
 	if (m_IsShuttingDown)
 	{
-		return spuInitializeResult_t::NotUsed;
+		return SPUResult_t::NotUsed;
 	}
 
-	uint32 remainingBatches = batchCount;
+	if (vertexCount == 0 || batchCount == 0)
+	{
+		return SPUResult_t::NotUsed;
+	}
+
+	if ((vertexStride % 16) != 0)
+	{
+		AssertMsg(
+			0,
+			"CSpuBatchTransformManager: Vertex stride is not a multiple of 16");
+
+		return SPUResult_t::Error;
+	}
+
+	if ((indexCount % 4) != 0)
+	{
+		AssertMsg(
+			0,
+			"CSpuBatchTransformManager: Index count is not a multiple of 4");
+
+		return SPUResult_t::Error;
+	}
+	
+	if (((uintptr_t)pSrcVertices % 16) != 0)
+	{
+		AssertMsg(
+			0,
+			"CSpuBatchTransformManager: Source vertices are not 16-byte aligned");
+
+		return SPUResult_t::Error;
+	}
+
+	if (((uintptr_t)pDstVertices % 16) != 0)
+	{
+		AssertMsg(
+			0,
+			"CSpuBatchTransformManager: Destination vertices are not 16-byte aligned");
+
+		return SPUResult_t::Error;
+	}
+
 	uint32 batchIndex = 0;
 
 	for (uint32 i = 0; i < s_NumBatchSpus; i++)
@@ -256,32 +291,35 @@ spuInitializeResult_t CSpuBatchTransformManager::BeginBatch(
 			continue;
 		}
 
-		uint64 vertexOffset = uint64(batchIndex) * vertexCount * vertexStride;
-		uint64 indexOffset = uint64(batchIndex) * indexCount * sizeof(uint32);
-		uint64 matrixOffset = uint64(batchIndex) * sizeof(CMatrix4);
-		uint32 chunkBatches = remainingBatches / (s_NumBatchSpus - i);
+		uint32 chunkBatches = (batchCount + (s_NumBatchSpus - 1 - i)) / s_NumBatchSpus;
 		if (chunkBatches == 0)
 		{
 			continue;
 		}
 
-		m_pBatchJobs[i]->m_SrcVerticesEffAddr = SpuUtils::PtrToEa(const_cast<char*>(pSrcVertices));
-		m_pBatchJobs[i]->m_SrcIndicesEffAddr = SpuUtils::PtrToEa(const_cast<uint32*>(pSrcIndices));
-		m_pBatchJobs[i]->m_MatricesEffAddr = SpuUtils::PtrToEa(const_cast<CMatrix4*>(pMatrices)) + matrixOffset;
-		m_pBatchJobs[i]->m_DstVerticesEffAddr = SpuUtils::PtrToEa(pDstVertices) + vertexOffset;
-		m_pBatchJobs[i]->m_DstIndicesEffAddr = SpuUtils::PtrToEa(pDstIndices) + indexOffset;
-		m_pBatchJobs[i]->m_Command = SPU_BATCH_CMD_TRANSFORM;
-		m_pBatchJobs[i]->m_Status = SPU_BATCH_STATUS_BUSY;
-		m_pBatchJobs[i]->m_VertexCount = vertexCount;
-		m_pBatchJobs[i]->m_IndexCount = indexCount;
-		m_pBatchJobs[i]->m_BatchCount = chunkBatches;
-		m_pBatchJobs[i]->m_VertexStride = vertexStride;
-		m_pBatchJobs[i]->m_MatrixStride = sizeof(CMatrix4);
-		m_pBatchJobs[i]->m_VertexPosOffset = vertexPosOffset;
-		m_pBatchJobs[i]->m_BaseVertex = (batchIndex * vertexCount);
+		uint64 offset = uint64(batchIndex) * vertexCount * vertexStride;
+		
+		SpuBatchJob_t& spuBatchJob = *m_pBatchJobs[i];
+		spuBatchJob.m_SrcVerticesEffAddr = SpuUtils::PtrToEa(
+			(void*)pSrcVertices);
+		spuBatchJob.m_SrcIndicesEffAddr = SpuUtils::PtrToEa((void*)pSrcIndices);
+		spuBatchJob.m_MatricesEffAddr = SpuUtils::PtrToEa(
+			(void*)(pMatrices + batchIndex));
+		spuBatchJob.m_DstVerticesEffAddr = SpuUtils::PtrToEa(
+			pDstVertices + offset);
+		spuBatchJob.m_DstIndicesEffAddr = SpuUtils::PtrToEa(
+			pDstIndices + (batchIndex * indexCount));
+		spuBatchJob.m_Command = SPU_BATCH_CMD_TRANSFORM;
+		spuBatchJob.m_Status = SPU_BATCH_STATUS_IDLE;
+		spuBatchJob.m_VertexCount = vertexCount;
+		spuBatchJob.m_IndexCount = indexCount;
+		spuBatchJob.m_BatchCount = chunkBatches;
+		spuBatchJob.m_VertexStride = vertexStride;
+		spuBatchJob.m_MatrixStride = sizeof(CMatrix4);
+		spuBatchJob.m_VertexPositionOffset = vertexPosOffset;
+		spuBatchJob.m_BaseVertex = baseVertex + (batchIndex * vertexCount);
 
 		batchIndex += chunkBatches;
-		remainingBatches -= chunkBatches;
 	}
 
 	__sync_synchronize();
@@ -306,10 +344,10 @@ spuInitializeResult_t CSpuBatchTransformManager::BeginBatch(
 		}
 	}
 
-	return hasError ? spuInitializeResult_t::Error : spuInitializeResult_t::Success;
+	return hasError ? SPUResult_t::Error : SPUResult_t::Success;
 }
 
-spuInitializeResult_t CSpuBatchTransformManager::WaitBatch()
+SPUResult_t CSpuBatchTransformManager::WaitBatch()
 {
 	bool hasActiveJobs = true;
 	bool hasError = false;
@@ -331,7 +369,7 @@ spuInitializeResult_t CSpuBatchTransformManager::WaitBatch()
 				else if (m_pBatchJobs[i]->m_Status == SPU_BATCH_STATUS_ERROR)
 				{
 					m_pBatchJobs[i]->m_Command = SPU_BATCH_CMD_IDLE;
-
+					
 					hasError = true;
 				}
 				else
@@ -347,5 +385,5 @@ spuInitializeResult_t CSpuBatchTransformManager::WaitBatch()
 		}
 	}
 
-	return hasError ? spuInitializeResult_t::Error : spuInitializeResult_t::Success;
+	return hasError ? SPUResult_t::Error : SPUResult_t::Success;
 }

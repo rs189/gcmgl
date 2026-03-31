@@ -141,7 +141,6 @@ public:
 			return;
 		}
 
-		// Overwrite the removed slot with the last element
 		m_Elements[index] = m_Elements[m_Count - 1];
 		m_Count--;
 	}

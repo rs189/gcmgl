@@ -41,7 +41,7 @@ struct SpuBatchJob_t
 	uint32 m_BatchCount;
 	uint32 m_VertexStride;
 	uint32 m_MatrixStride;
-	uint32 m_VertexPosOffset;
+	uint32 m_VertexPositionOffset;
 	uint32 m_BaseVertex;
 	uint32 m_Reserved0;
 };

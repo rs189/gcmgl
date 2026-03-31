@@ -85,7 +85,7 @@ int32 RunLitExample(
 	LitVertex_t* pSphereVertices = new LitVertex_t[vertexCount];
 	uint32* pSphereIndices = new uint32[indexCount];
 
-	int32 vertexIdx = 0;
+	int32 vertexPos = 0;
 
 	for (int32 ring = 0; ring <= rings; ring++)
 	{
@@ -113,19 +113,20 @@ int32 RunLitExample(
 				normal.m_Z /= len;
 			}
 
-			pSphereVertices[vertexIdx].m_Position = position;
-			pSphereVertices[vertexIdx].m_TexCoord = CVector2(0.0f, 0.0f);
-			pSphereVertices[vertexIdx].m_Normal = normal;
-			pSphereVertices[vertexIdx].m_Color = Vertex_t::PackColor(
+			pSphereVertices[vertexPos].m_Position = position;
+			pSphereVertices[vertexPos].m_TexCoord = CVector2(0.0f, 0.0f);
+			pSphereVertices[vertexPos].m_Normal = normal;
+			pSphereVertices[vertexPos].m_Color = Vertex_t::PackColor(
 				0.1f,
 				0.1f,
 				0.5f);
 
-			vertexIdx++;
+			vertexPos++;
 		}
 	}
 	
-	int32 indexIdx = 0;
+	int32 indexPos = 0;
+
 	for (int32 ring = 0; ring < rings; ring++)
 	{
 		for (int32 seg = 0; seg < segments; seg++)
@@ -133,13 +134,13 @@ int32 RunLitExample(
 			int32 current = ring * (segments + 1) + seg;
 			int32 next = current + segments + 1;
 			
-			pSphereIndices[indexIdx++] = uint32(current);
-			pSphereIndices[indexIdx++] = uint32(next);
-			pSphereIndices[indexIdx++] = uint32(current + 1);
+			pSphereIndices[indexPos++] = uint32(current);
+			pSphereIndices[indexPos++] = uint32(next);
+			pSphereIndices[indexPos++] = uint32(current + 1);
 			
-			pSphereIndices[indexIdx++] = uint32(current + 1);
-			pSphereIndices[indexIdx++] = uint32(next);
-			pSphereIndices[indexIdx++] = uint32(next + 1);
+			pSphereIndices[indexPos++] = uint32(current + 1);
+			pSphereIndices[indexPos++] = uint32(next);
+			pSphereIndices[indexPos++] = uint32(next + 1);
 		}
 	}
 

@@ -131,7 +131,7 @@ public:
 				return mid;
 			}
 			
-			// We store in ascending order
+			// Store in ascending order
 			if (m_Elements[mid].m_Key < key)
 			{
 				low = mid + 1;
