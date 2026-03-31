@@ -1030,10 +1030,6 @@ void CGcmRenderer::ApplyVertexConstants(ShaderProgramHandle hProgram)
 	int32 uniformsIndex = m_ProgramUniformBuffers.Find(hProgram);
 	if (uniformsIndex == m_ProgramUniformBuffers.InvalidIndex())
 	{
-		Warning(
-			"[GCMRenderer] No uniform buffers bound for program: %d\n", 
-			hProgram);
-
 		return;
 	}
 
@@ -1154,10 +1150,6 @@ void CGcmRenderer::ApplyFragmentConstants(ShaderProgramHandle hProgram)
 	int32 uniformsIndex = m_ProgramUniformBuffers.Find(hProgram);
 	if (uniformsIndex == m_ProgramUniformBuffers.InvalidIndex())
 	{
-		Warning(
-			"[GCMRenderer] No uniform buffers bound for program: %d\n", 
-			hProgram);
-
 		return;
 	}
 

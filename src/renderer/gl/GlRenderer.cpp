@@ -870,10 +870,6 @@ void CGlRenderer::ApplyVertexConstants(ShaderProgramHandle hProgram)
 	int32 uniformsIndex = m_ProgramUniformBuffers.Find(hProgram);
 	if (uniformsIndex == m_ProgramUniformBuffers.InvalidIndex())
 	{
-		Warning(
-			"[GLRenderer] No uniform buffers bound for program: %d\n",
-			hProgram);
-
 		return;
 	}
 
@@ -987,10 +983,6 @@ void CGlRenderer::ApplyFragmentConstants(ShaderProgramHandle hProgram)
 	int32 uniformsIndex = m_ProgramUniformBuffers.Find(hProgram);
 	if (uniformsIndex == m_ProgramUniformBuffers.InvalidIndex())
 	{
-		Warning(
-			"[GLRenderer] No uniform buffers bound for program: %d\n",
-			hProgram);
-
 		return;
 	}
 
