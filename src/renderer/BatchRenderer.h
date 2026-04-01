@@ -101,6 +101,8 @@ public:
 	static bool FindVertexPosOffset(
 		const CVertexLayout* pLayout,
 		uint32& outOffset);
+protected:
+	CUtlVector<BatchChunkTransform_t> m_BatchChunkTransformsScratch;
 };
 
 #endif // BATCH_RENDERER_H

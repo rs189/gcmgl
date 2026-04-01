@@ -80,23 +80,23 @@ void CBatchRenderer::DrawBatched(
 	}
 
 	Plane_t frustumPlanes[6];
-	CUtlVector<BatchChunkTransform_t> batchChunkTransforms;
+	m_BatchChunkTransformsScratch.RemoveAll();
 	ExtractFrustumPlanes(viewProjection, frustumPlanes);
-	FrustumCullBatch(batch, frustumPlanes, batchChunkTransforms);
+	FrustumCullBatch(batch, frustumPlanes, m_BatchChunkTransformsScratch);
 
-	if (batchChunkTransforms.Count() == 0) return;
+	if (m_BatchChunkTransformsScratch.Count() == 0) return;
 
 	const uint32 vertexStride = m_PipelineState.m_pVertexLayout->GetStride();
 	const uint32 maxPerSubmit = CMaths::Max(
 		1u,
 		uint32(s_DrawChunkSize / (vertexCount * vertexStride)));
-	const uint32 visibleCount = uint32(batchChunkTransforms.Count());
+	const uint32 visibleCount = uint32(m_BatchChunkTransformsScratch.Count());
 
 	for (uint32 i = 0; i < visibleCount; i += maxPerSubmit)
 	{
 		DrawBatchedChunk(
 			vertexCount,
-			batchChunkTransforms,
+			m_BatchChunkTransformsScratch,
 			i,
 			CMaths::Min(maxPerSubmit, visibleCount - i),
 			startVertex);
@@ -135,25 +135,25 @@ void CBatchRenderer::DrawIndexedBatched(
 	}
 
 	Plane_t frustumPlanes[6];
-	CUtlVector<BatchChunkTransform_t> batchChunkTransforms;
+	m_BatchChunkTransformsScratch.RemoveAll();
 	ExtractFrustumPlanes(viewProjection, frustumPlanes);
-	FrustumCullBatch(batch, frustumPlanes, batchChunkTransforms);
+	FrustumCullBatch(batch, frustumPlanes, m_BatchChunkTransformsScratch);
 
-	if (batchChunkTransforms.Count() == 0) return;
+	if (m_BatchChunkTransformsScratch.Count() == 0) return;
 
 	const uint32 vertexStride = m_PipelineState.m_pVertexLayout->GetStride();
 	const uint32 bytesPerInstance = (vertexCount * vertexStride) + (indexCount * sizeof(uint32));
 	const uint32 maxPerSubmit = CMaths::Max(
 		1u,
 		uint32(s_DrawChunkSize / bytesPerInstance));
-	const uint32 visibleCount = uint32(batchChunkTransforms.Count());
+	const uint32 visibleCount = uint32(m_BatchChunkTransformsScratch.Count());
 
 	for (uint32 i = 0; i < visibleCount; i += maxPerSubmit)
 	{
 		DrawIndexedBatchedChunk(
 			indexCount,
 			vertexCount,
-			batchChunkTransforms,
+			m_BatchChunkTransformsScratch,
 			i,
 			CMaths::Min(maxPerSubmit, visibleCount - i),
 			startIndex,
