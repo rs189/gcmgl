@@ -20,6 +20,10 @@ public:
 	CGcmBatchRenderer();
 	virtual ~CGcmBatchRenderer();
 
+#ifdef PS3_SPU_ENABLED
+	virtual void EndFrame() GCMGL_OVERRIDE;
+#endif
+
 	virtual void DrawBatched(
 		uint32 vertexCount,
 		const CBatch& batch,
@@ -51,14 +55,20 @@ private:
 #ifdef PS3_SPU_ENABLED
 	void FlushPendingBatches();
 
-	BufferHandle m_PendingVertexBuffer;
-	BufferHandle m_PendingIndexBuffer;
-	uint32 m_PendingTotalVertices;
-	uint32 m_PendingTotalIndices;
-	uint32 m_PendingStartIndex;
-	int32 m_PendingBaseVertex;
+	struct PendingDrawState_t
+	{
+		PipelineState_t m_PipelineState;
+		BufferHandle m_hVertexBuffer;
+		BufferHandle m_hIndexBuffer;
+		uint32 m_TotalVertices;
+		uint32 m_TotalIndices;
+		uint32 m_StartIndex;
+		int32 m_BaseVertex;
+		bool m_IsIndexed;
+	};
+
+	PendingDrawState_t m_PendingDrawState;
 	bool m_HasPendingBatch;
-	bool m_IsPendingBatchIndexed;
 #endif // PS3_SPU_ENABLED
 };
 

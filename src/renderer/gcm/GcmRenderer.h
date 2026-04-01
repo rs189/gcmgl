@@ -138,6 +138,10 @@ public:
 		uint32 offset) GCMGL_OVERRIDE;
 	virtual void FlushProgramState() GCMGL_OVERRIDE;
 protected:
+#ifdef PS3_SPU_ENABLED
+	void MarkUniformsDirty(ShaderProgramHandle hProgram);
+#endif
+
 	struct BufferResource_t
 	{
 		void* m_pPtr;

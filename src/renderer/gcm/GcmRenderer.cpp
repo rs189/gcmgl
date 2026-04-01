@@ -1487,6 +1487,24 @@ void CGcmRenderer::FlushProgramState()
 		GCM_LOCATION_RSX);
 }
 
+#ifdef PS3_SPU_ENABLED
+void CGcmRenderer::MarkUniformsDirty(ShaderProgramHandle hProgram)
+{
+	int32 uniformShadowsIndex = m_ProgramUniformShadows.Find(hProgram);
+	if (uniformShadowsIndex == m_ProgramUniformShadows.InvalidIndex())
+	{
+		return;
+	}
+
+	CUtlMap<uint32, UniformShadow_t>& uniformShadows = m_ProgramUniformShadows.Element(
+		uniformShadowsIndex);
+	for (int32 i = uniformShadows.FirstInorder(); uniformShadows.IsValidIndex(i); i = uniformShadows.NextInorder(i))
+	{
+		uniformShadows.Element(i).m_IsDirty = true;
+	}
+}
+#endif // PS3_SPU_ENABLED
+
 IRenderer* CreateRenderer()
 {
 	void* pRendererMemory = CUtlMemory::Alloc(sizeof(CGcmBatchRenderer));
