@@ -34,12 +34,33 @@ gcmgl is a C++ graphics library targeting PlayStation 3 (GCM) and Linux (x86_64,
 - `RenderTargetHandle`
 - `UniformBlockLayoutHandle`
 
+### RendererDesc_t
+- `void* m_pWindow`
+- `uint32 m_Width`
+- `uint32 m_Height`
+- `bool m_IsFullscreen`
+- `bool m_IsVSync`
+
 ### ClearFlags_t
 - `ClearNone`
 - `ClearColor`
 - `ClearDepth`
 - `ClearStencil`
 - `ClearAll`
+
+### Viewport_t
+- `float32 m_X`
+- `float32 m_Y`
+- `float32 m_Width`
+- `float32 m_Height`
+- `float32 m_MinDepth`
+- `float32 m_MaxDepth`
+
+### Rect_t
+- `int32 m_X`
+- `int32 m_Y`
+- `uint32 m_Width`
+- `uint32 m_Height`
 
 ### BufferUsage_t
 - `Static`
@@ -74,6 +95,7 @@ gcmgl is a C++ graphics library targeting PlayStation 3 (GCM) and Linux (x86_64,
 - `ShaderStageAll`
 
 ### VertexFormat_t
+- `Unspecified`
 - `Float`
 - `Float2`
 - `Float3`
@@ -81,6 +103,7 @@ gcmgl is a C++ graphics library targeting PlayStation 3 (GCM) and Linux (x86_64,
 - `UByte4_Norm`
 
 ### VertexSemantic_t
+- `Unspecified`
 - `Position`
 - `Weight`
 - `Normal`
@@ -96,30 +119,23 @@ gcmgl is a C++ graphics library targeting PlayStation 3 (GCM) and Linux (x86_64,
 - `TexCoord4`
 - `TexCoord5`
 - `TexCoord6`
-- `TexCoord7`
 - `Tangent`
+- `TexCoord7`
 - `Binormal`
 
-### RendererDesc_t
-- `void* m_pWindow`
-- `uint32 m_Width`
-- `uint32 m_Height`
-- `bool m_IsFullscreen`
-- `bool m_IsVSync`
+### VertexAttribute_t
+- `CFixedString m_Name`
+- `VertexFormat_t m_Format`
+- `uint32 m_Offset`
+- `uint32 m_Location`
+- `VertexSemantic_t m_VertexSemantic`
 
-### Viewport_t
-- `float32 m_X`
-- `float32 m_Y`
-- `float32 m_Width`
-- `float32 m_Height`
-- `float32 m_MinDepth`
-- `float32 m_MaxDepth`
-
-### Rect_t
-- `int32 m_X`
-- `int32 m_Y`
-- `uint32 m_Width`
-- `uint32 m_Height`
+### CVertexLayout
+- `void AddAttribute(const CFixedString& name, uint32 format, uint32 offset, uint32 location = 0)`
+- `void AddAttribute(const CFixedString& name, uint32 format, uint32 offset, VertexSemantic_t vertexSemantic, uint32 location = 0)`
+- `void SetStride(uint32 vertexStride)`
+- `uint32 GetStride() const`
+- `const CUtlVector<VertexAttribute_t>& GetAttributes() const`
 
 ### BlendState_t
 - `bool m_IsEnabled`
@@ -144,17 +160,6 @@ gcmgl is a C++ graphics library targeting PlayStation 3 (GCM) and Linux (x86_64,
 - `uint32 m_Binding`
 - `uint32 m_Size`
 
-### VertexAttribute_t
-- `CFixedString m_Name`
-- `VertexFormat_t m_Format`
-- `uint32 m_Offset`
-- `uint32 m_Location`
-- `VertexSemantic_t m_VertexSemantic`
-
-### Plane_t
-- `CVector3 m_Normal`
-- `float32 m_Distance`
-
 ### BatchChunkTransform_t
 - `CQuaternion m_Rotation`
 - `CVector3 m_Position`
@@ -173,12 +178,9 @@ gcmgl is a C++ graphics library targeting PlayStation 3 (GCM) and Linux (x86_64,
 - `void Clear()`
 - `uint32 GetCount() const`
 
-### CVertexLayout
-- `void AddAttribute(const CFixedString& name, uint32 format, uint32 offset, uint32 location = 0)`
-- `void AddAttribute(const CFixedString& name, uint32 format, uint32 offset, VertexSemantic_t vertexSemantic, uint32 location = 0)`
-- `void SetStride(uint32 vertexStride)`
-- `uint32 GetStride() const`
-- `const CUtlVector<VertexAttribute_t>& GetAttributes() const`
+### Plane_t
+- `CVector3 m_Normal`
+- `float32 m_Distance`
 
 ### IRenderer / CRenderer
 - `bool Init(const RendererDesc_t& desc)`
@@ -202,14 +204,14 @@ gcmgl is a C++ graphics library targeting PlayStation 3 (GCM) and Linux (x86_64,
 - `ShaderProgramHandle GetOrCreateShaderProgram(const CFixedString& shaderName)`
 - `void DestroyShaderProgram(ShaderProgramHandle hProgram)`
 - `void ClearShaderCache()`
-- `TextureHandle CreateTexture2D(uint32 width, uint32 height, TextureFormat_t format, const void* pData = nullptr)`
-- `TextureHandle CreateTextureCube(uint32 size, TextureFormat_t format, const void** ppFaces = nullptr)`
+- `TextureHandle CreateTexture2D(uint32 width, uint32 height, TextureFormat_t format, const void* pData = GCMGL_NULL)`
+- `TextureHandle CreateTextureCube(uint32 size, TextureFormat_t format, const void** ppFaces = GCMGL_NULL)`
 - `void SetTexture(TextureHandle hTexture, uint32 slot, ShaderStage_t stage)`
 - `void SetSampler(SamplerHandle hSampler, uint32 slot, ShaderStage_t stage)`
 - `void UpdateTexture(TextureHandle hTexture, const void* pData, uint32 mipLevel = 0)`
 - `void DestroyTexture(TextureHandle hTexture)`
 - `void SetShaderProgram(ShaderProgramHandle hProgram)`
-- `void SetVertexBuffer(BufferHandle hBuffer, uint32 slot = 0, uint32 stride = 0, uint32 offset = 0, const CVertexLayout* pLayout = nullptr)`
+- `void SetVertexBuffer(BufferHandle hBuffer, uint32 slot = 0, uint32 vertexStride = 0, uint32 offset = 0, const CVertexLayout* pLayout = GCMGL_NULL)`
 - `void SetIndexBuffer(BufferHandle hBuffer, uint64 offset = 0)`
 - `UniformBlockLayoutHandle CreateUniformBlockLayout(const UniformBlockLayout_t& layout)`
 - `void SetConstantBuffer(BufferHandle hBuffer, UniformBlockLayoutHandle hLayout, uint32 slot, ShaderStage_t stage)`
@@ -217,8 +219,8 @@ gcmgl is a C++ graphics library targeting PlayStation 3 (GCM) and Linux (x86_64,
 - `void SetDepthStencilState(const DepthStencilState_t& state)`
 - `void ApplyVertexConstants(ShaderProgramHandle hProgram)`
 - `void ApplyFragmentConstants(ShaderProgramHandle hProgram)`
-- `void Draw(uint32 vertexCount, uint32 startVertex = 0, const CMatrix4* pViewProjection = nullptr, const CVector3* pAABBCenter = nullptr, const CVector3* pAABBExtent = nullptr)`
-- `void DrawIndexed(uint32 indexCount, uint32 startIndex = 0, int32 baseVertex = 0, const CMatrix4* pViewProjection = nullptr, const CVector3* pAABBCenter = nullptr, const CVector3* pAABBExtent = nullptr)`
+- `void Draw(uint32 vertexCount, uint32 startVertex = 0, const CMatrix4* pViewProjection = GCMGL_NULL, const CVector3* pAABBCenter = GCMGL_NULL, const CVector3* pAABBExtent = GCMGL_NULL)`
+- `void DrawIndexed(uint32 indexCount, uint32 startIndex = 0, int32 baseVertex = 0, const CMatrix4* pViewProjection = GCMGL_NULL, const CVector3* pAABBCenter = GCMGL_NULL, const CVector3* pAABBExtent = GCMGL_NULL)`
 - `void DrawBatched(uint32 vertexCount, const CBatch& batch, const CMatrix4& viewProjection, uint32 startVertex = 0)`
 - `void DrawIndexedBatched(uint32 indexCount, uint32 vertexCount, const CBatch& batch, const CMatrix4& viewProjection, uint32 startIndex = 0, int32 baseVertex = 0)`
 - `void SetPipelineState(const PipelineState_t& state)`
