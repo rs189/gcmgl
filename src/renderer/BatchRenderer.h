@@ -103,6 +103,8 @@ public:
 		uint32& outOffset);
 protected:
 	CUtlVector<BatchChunkTransform_t> m_BatchChunkTransformsScratch;
+	uint32 m_VertexPosOffset;
+	bool m_HasVertexPos;
 };
 
 #endif // BATCH_RENDERER_H

@@ -272,10 +272,8 @@ void CGcmBatchRenderer::DrawBatchedChunk(
 
 	char* pDstVertexData = reinterpret_cast<char*>(stagingVertexBuffer.m_pPtr);
 
-	uint32 vertexPosOffset;
-	const bool hasVertexPos = FindVertexPosOffset(
-		pVertexLayout,
-		vertexPosOffset);
+	const uint32 vertexPosOffset = m_VertexPosOffset;
+	const bool hasVertexPos = m_HasVertexPos;
 
 #ifdef PS3_SPU_ENABLED
 	if (hasVertexPos && m_pSpuBatchTransformManager)
@@ -548,10 +546,8 @@ void CGcmBatchRenderer::DrawIndexedBatchedChunk(
 	uint32* pDstIndexData = reinterpret_cast<uint32*>(
 		stagingIndexBuffer.m_pPtr);
 
-	uint32 vertexPosOffset;
-	const bool hasVertexPos = FindVertexPosOffset(
-		pVertexLayout,
-		vertexPosOffset);
+	const uint32 vertexPosOffset = m_VertexPosOffset;
+	const bool hasVertexPos = m_HasVertexPos;
 
 #ifdef PS3_SPU_ENABLED
 	if (hasVertexPos && m_pSpuBatchTransformManager)

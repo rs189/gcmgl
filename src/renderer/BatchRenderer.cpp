@@ -81,6 +81,9 @@ void CBatchRenderer::DrawBatched(
 
 	Plane_t frustumPlanes[6];
 	m_BatchChunkTransformsScratch.RemoveAll();
+	m_HasVertexPos = FindVertexPosOffset(
+		m_PipelineState.m_pVertexLayout,
+		m_VertexPosOffset);
 	ExtractFrustumPlanes(viewProjection, frustumPlanes);
 	FrustumCullBatch(batch, frustumPlanes, m_BatchChunkTransformsScratch);
 
@@ -136,6 +139,9 @@ void CBatchRenderer::DrawIndexedBatched(
 
 	Plane_t frustumPlanes[6];
 	m_BatchChunkTransformsScratch.RemoveAll();
+	m_HasVertexPos = FindVertexPosOffset(
+		m_PipelineState.m_pVertexLayout,
+		m_VertexPosOffset);
 	ExtractFrustumPlanes(viewProjection, frustumPlanes);
 	FrustumCullBatch(batch, frustumPlanes, m_BatchChunkTransformsScratch);
 

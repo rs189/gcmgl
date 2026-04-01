@@ -143,10 +143,8 @@ void CGlBatchRenderer::DrawBatchedChunk(
 	char* pDstVertexData = reinterpret_cast<char*>(
 		stagingVertexBuffer.m_Data.Base());
 
-	uint32 vertexPosOffset;
-	const bool hasVertexPos = FindVertexPosOffset(
-		pVertexLayout,
-		vertexPosOffset);
+	const uint32 vertexPosOffset = m_VertexPosOffset;
+	const bool hasVertexPos = m_HasVertexPos;
 
 #ifdef THREADING_ENABLED
 	const uint32 numThreads = CMaths::Min((chunkSize > 1) ? 2u : 1u, chunkSize);
@@ -375,10 +373,8 @@ void CGlBatchRenderer::DrawIndexedBatchedChunk(
 	uint32* pDstIndexData = reinterpret_cast<uint32*>(
 		stagingIndexBuffer.m_Data.Base());
 
-	uint32 vertexPosOffset;
-	const bool hasVertexPos = FindVertexPosOffset(
-		pVertexLayout,
-		vertexPosOffset);
+	const uint32 vertexPosOffset = m_VertexPosOffset;
+	const bool hasVertexPos = m_HasVertexPos;
 
 #ifdef THREADING_ENABLED
 	const uint32 numThreads = CMaths::Min((chunkSize > 1) ? 2u : 1u, chunkSize);
