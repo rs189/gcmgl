@@ -21,13 +21,13 @@ public:
 
 	static void Initialize();
 	static void Update();
-	static double GetTime();
+	static float64 GetTime();
 	static float32 GetDeltaTime();
 	static uint64 GetFrameCount();
-	static double GetTimeSinceStartup();
+	static float64 GetTimeSinceStartup();
 private:
-	static double s_CurrentTime;
-	static double s_LastTime;
+	static float64 s_CurrentTime;
+	static float64 s_LastTime;
 	static float32 s_DeltaTime;
 	static uint64 s_FrameCount;
 	static bool s_IsInitialized;

@@ -70,8 +70,8 @@ void* CWindowPs3::GetNativeHandle()
 }
 
 void CWindowPs3::SysutilExitCallback(
-	unsigned long status,
-	unsigned long param,
+	u64 status,
+	u64 param,
 	void* pUserData)
 {
 	CWindowPs3* pWindow = reinterpret_cast<CWindowPs3*>(pUserData);

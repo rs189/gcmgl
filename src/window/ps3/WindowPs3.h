@@ -31,8 +31,8 @@ private:
 	bool m_IsRunning;
 
 	static void SysutilExitCallback(
-		unsigned long status,
-		unsigned long param,
+		u64 status,
+		u64 param,
 		void* pUserData);
 };
 

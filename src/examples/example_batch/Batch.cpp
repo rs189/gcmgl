@@ -38,7 +38,7 @@ int32 RunBatchExample(
 
 	CTime::Initialize();
 
-	double startTime = CTime::GetTime();
+	float64 startTime = CTime::GetTime();
 
 	float32 rotationY = 0.0f;
 

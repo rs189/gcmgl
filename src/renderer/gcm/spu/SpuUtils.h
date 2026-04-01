@@ -15,13 +15,13 @@
 #include <spu_mfcio.h>
 #include "tier0/platform.h"
 
-static inline void waitForTag(uint32 mask)
+static INLINE void waitForTag(uint32 mask)
 {
 	mfc_write_tag_mask(mask);
 	spu_mfcstat(MFC_TAG_UPDATE_ALL);
 }
 
-static inline void dmaGet(void* ls, uint64 ea, uint32 size, uint32 tag)
+static INLINE void dmaGet(void* ls, uint64 ea, uint32 size, uint32 tag)
 {
 	if (size == 0)
 	{
@@ -31,7 +31,7 @@ static inline void dmaGet(void* ls, uint64 ea, uint32 size, uint32 tag)
 	mfc_get(ls, ea, size, tag, 0, 0);
 }
 
-static inline void dmaPut(void* ls, uint64 ea, uint32 size, uint32 tag)
+static INLINE void dmaPut(void* ls, uint64 ea, uint32 size, uint32 tag)
 {
 	if (size == 0)
 	{

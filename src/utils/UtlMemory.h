@@ -25,7 +25,7 @@ public:
 	 * @return A pointer to the allocated memory, or GCMGL_NULL if the
 	 *         allocation failed.
 	*/
-	static inline void* Alloc(uint64 size)
+	static INLINE void* Alloc(uint64 size)
 	{
 		return malloc(static_cast<size_t>(size));
 	}
@@ -35,7 +35,7 @@ public:
 	 *
 	 * @param pPtr A pointer to the memory to free.
 	*/
-	static inline void Free(void* pPtr)
+	static INLINE void Free(void* pPtr)
 	{
 		free(pPtr);
 	}
@@ -48,7 +48,7 @@ public:
 	 * @return A pointer to the allocated memory, or GCMGL_NULL if the
 	 *         allocation failed.
 	*/
-	static inline void* AlignedAlloc(uint64 size, uint32 alignment)
+	static INLINE void* AlignedAlloc(uint64 size, uint32 alignment)
 	{
 #if defined(PLATFORM_PS3) || defined(PLATFORM_LINUX)
 		return memalign(alignment, uint32(size));
@@ -67,7 +67,7 @@ public:
 	 * @param pPtr A pointer to the memory to free. Should be GCMGL_NULL
 	 *             or a pointer returned by AlignedAlloc.
 	*/
-	static inline void AlignedFree(void* pPtr)
+	static INLINE void AlignedFree(void* pPtr)
 	{
 		if (!pPtr)
 		{

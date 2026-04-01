@@ -13,8 +13,8 @@
 #include <GLFW/glfw3.h>
 #endif
 
-double CTime::s_CurrentTime = 0.0;
-double CTime::s_LastTime = 0.0;
+float64 CTime::s_CurrentTime = 0.0;
+float64 CTime::s_LastTime = 0.0;
 float32 CTime::s_DeltaTime = 0.0f;
 uint64 CTime::s_FrameCount = 0;
 bool CTime::s_IsInitialized = false;
@@ -42,14 +42,14 @@ void CTime::Update()
 	s_LastTime = s_CurrentTime;
 	s_CurrentTime = GetTimeSinceStartup();
 
-	double rawDelta = s_CurrentTime - s_LastTime;
+	float64 rawDelta = s_CurrentTime - s_LastTime;
 	s_DeltaTime = static_cast<float32>(rawDelta);
 
 	s_FrameCount++;
 }
 
 // Get elapsed time since startup
-double CTime::GetTime()
+float64 CTime::GetTime()
 {
 	return s_CurrentTime;
 }
@@ -64,10 +64,10 @@ uint64 CTime::GetFrameCount()
 	return s_FrameCount;
 }
 
-double CTime::GetTimeSinceStartup()
+float64 CTime::GetTimeSinceStartup()
 {
 	timeval tv;
 	gettimeofday(&tv, GCMGL_NULL);
 
-	return double(tv.tv_sec) + double(tv.tv_usec) / 1000000.0;
+	return float64(tv.tv_sec) + float64(tv.tv_usec) / 1000000.0;
 }

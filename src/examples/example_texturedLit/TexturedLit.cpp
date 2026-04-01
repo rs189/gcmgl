@@ -136,7 +136,7 @@ int32 RunTexturedLitExample(
 		fullPath = "/dev_hdd0/game/GCGL00001/USRDIR/" + fullPath;
 	}
 #endif
-	unsigned char* pRawImageData = stbi_load(
+	uint8* pRawImageData = stbi_load(
 		fullPath.c_str(),
 		&texWidth,
 		&texHeight,

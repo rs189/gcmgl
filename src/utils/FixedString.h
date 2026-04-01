@@ -102,7 +102,7 @@ private:
 	std::string m_String;
 };
 
-inline CFixedString operator+(const char* pLeft, const CFixedString& right)
+INLINE CFixedString operator+(const char* pLeft, const CFixedString& right)
 {
 	return CFixedString(std::string(pLeft ? pLeft : "") + right.c_str());
 }

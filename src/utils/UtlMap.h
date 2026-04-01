@@ -14,7 +14,7 @@
 #include "tier0/platform.h"
 #include "tier0/dbg.h"
 
-template <class K, class V, int MAX_ELEMENTS = 256>
+template <class K, class V, int32 MAX_ELEMENTS = 256>
 class CUtlMap
 {
 public:

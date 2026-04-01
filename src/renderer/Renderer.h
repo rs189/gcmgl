@@ -417,12 +417,12 @@ enum class StateDirtyFlags_t : uint32
 	All = 0xFFFFFFFF
 };
 
-inline StateDirtyFlags_t operator|(StateDirtyFlags_t a, StateDirtyFlags_t b)
+INLINE StateDirtyFlags_t operator|(StateDirtyFlags_t a, StateDirtyFlags_t b)
 {
 	return static_cast<StateDirtyFlags_t>(uint32(a) | uint32(b));
 }
 
-inline StateDirtyFlags_t operator&(StateDirtyFlags_t a, StateDirtyFlags_t b)
+INLINE StateDirtyFlags_t operator&(StateDirtyFlags_t a, StateDirtyFlags_t b)
 {
 	return static_cast<StateDirtyFlags_t>(uint32(a) & uint32(b));
 }
