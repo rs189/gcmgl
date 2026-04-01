@@ -243,7 +243,7 @@ struct UniformBlockLayout_t
 	uint32 m_Size;
 };
 
-struct BatchChunkTransform_t
+struct ALIGN16 BatchChunkTransform_t
 {
 	CQuaternion m_Rotation;
 	CVector3 m_Position;

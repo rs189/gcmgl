@@ -10,7 +10,7 @@
 #include "tier0/dbg.h"
 #include "platform/ps3/spu/SpuUtils.h"
 #include "utils/UtlMemory.h"
-#include "mathsfury/Matrix4.h"
+#include "renderer/Renderer.h"
 #include "rsxutil/rsxutil.h"
 #include <string.h>
 #include <sys/thread.h>
@@ -24,7 +24,7 @@ extern "C"
 
 CSpuBatchTransformManager::CSpuBatchTransformManager()
 {
-	for (uint32 i = 0; i < s_NumBatchSpus; i++)
+	for (uint32 i = 0; i < s_BatchTransformSpuCount; i++)
 	{
 		m_pBatchJobs[i] = GCMGL_NULL;
 		m_SpuThreadIds[i] = 0;
@@ -60,7 +60,7 @@ bool CSpuBatchTransformManager::Initialize()
 
 	const int32 spuThreadGroupCreateResult = sysSpuThreadGroupCreate(
 		&m_SpuGroupId,
-		s_NumBatchSpus,
+		s_BatchTransformSpuCount,
 		100,
 		&groupAttr);
 	if (spuThreadGroupCreateResult < 0)
@@ -70,14 +70,14 @@ bool CSpuBatchTransformManager::Initialize()
 		return false;
 	}
 
-	for (uint32 i = 0; i < s_NumBatchSpus; i++)
+	for (uint32 i = 0; i < s_BatchTransformSpuCount; i++)
 	{
 		sysSpuThreadAttribute spuThreadAttribute = { 0 };
 		spuThreadAttribute.name = const_cast<char*>("gcmBatchSpu");
 		spuThreadAttribute.option = SPU_THREAD_ATTR_NONE;
 
-		m_pBatchJobs[i] = static_cast<SpuBatchJob_t*>(
-			CUtlMemory::AlignedAlloc(sizeof(SpuBatchJob_t), 128));
+		m_pBatchJobs[i] = static_cast<SpuBatchTransformJob_t*>(
+			CUtlMemory::AlignedAlloc(sizeof(SpuBatchTransformJob_t), 128));
 		if (!m_pBatchJobs[i])
 		{
 			sysSpuThreadGroupDestroy(m_SpuGroupId);
@@ -85,7 +85,7 @@ bool CSpuBatchTransformManager::Initialize()
 
 			return false;
 		}
-		memset(m_pBatchJobs[i], 0, sizeof(SpuBatchJob_t));
+		memset(m_pBatchJobs[i], 0, sizeof(SpuBatchTransformJob_t));
 
 		m_pBatchJobs[i]->m_Command = SPU_BATCH_CMD_IDLE;
 		m_pBatchJobs[i]->m_Status = SPU_BATCH_STATUS_IDLE;
@@ -126,7 +126,7 @@ bool CSpuBatchTransformManager::Initialize()
 		m_SpuGroupId);
 	if (spuThreadGroupStartResult < 0)
 	{
-		for (uint32 i = 0; i < s_NumBatchSpus; i++)
+		for (uint32 i = 0; i < s_BatchTransformSpuCount; i++)
 		{
 			if (m_pBatchJobs[i])
 			{
@@ -150,7 +150,7 @@ void CSpuBatchTransformManager::Shutdown()
 
 	if (m_SpuGroupId != 0)
 	{
-		for (uint32 i = 0; i < s_NumBatchSpus; i++)
+		for (uint32 i = 0; i < s_BatchTransformSpuCount; i++)
 		{
 			if (m_pBatchJobs[i])
 			{
@@ -179,7 +179,7 @@ void CSpuBatchTransformManager::Shutdown()
 
 			hasActiveJobs = false;
 
-			for (uint32 j = 0; j < s_NumBatchSpus; j++)
+			for (uint32 j = 0; j < s_BatchTransformSpuCount; j++)
 			{
 				if (m_pBatchJobs[j] &&
 					m_pBatchJobs[j]->m_Status != SPU_BATCH_STATUS_IDLE &&
@@ -210,7 +210,7 @@ void CSpuBatchTransformManager::Shutdown()
 		m_SpuGroupId = 0;
 	}
 
-	for (uint32 i = 0; i < s_NumBatchSpus; i++)
+	for (uint32 i = 0; i < s_BatchTransformSpuCount; i++)
 	{
 		if (m_pBatchJobs[i])
 		{
@@ -226,7 +226,7 @@ void CSpuBatchTransformManager::Shutdown()
 SPUResult_t CSpuBatchTransformManager::BeginBatch(
 	const char* pSrcVertices,
 	const uint32* pSrcIndices,
-	const CMatrix4* pMatrices,
+	const BatchChunkTransform_t* pTransforms,
 	char* pDstVertices,
 	uint32* pDstIndices,
 	uint32 vertexCount,
@@ -284,14 +284,14 @@ SPUResult_t CSpuBatchTransformManager::BeginBatch(
 
 	uint32 batchIndex = 0;
 
-	for (uint32 i = 0; i < s_NumBatchSpus; i++)
+	for (uint32 i = 0; i < s_BatchTransformSpuCount; i++)
 	{
 		if (!m_pBatchJobs[i])
 		{
 			continue;
 		}
 
-		uint32 chunkBatches = (batchCount + (s_NumBatchSpus - 1 - i)) / s_NumBatchSpus;
+		uint32 chunkBatches = (batchCount + (s_BatchTransformSpuCount - 1 - i)) / s_BatchTransformSpuCount;
 		if (chunkBatches == 0)
 		{
 			continue;
@@ -299,26 +299,26 @@ SPUResult_t CSpuBatchTransformManager::BeginBatch(
 
 		uint64 offset = uint64(batchIndex) * vertexCount * vertexStride;
 		
-		SpuBatchJob_t& spuBatchJob = *m_pBatchJobs[i];
-		spuBatchJob.m_SrcVerticesEffAddr = CSpuUtils::PtrToEa(
+		SpuBatchTransformJob_t& spuBatchTransformJob = *m_pBatchJobs[i];
+		spuBatchTransformJob.m_SrcVerticesEffAddr = CSpuUtils::PtrToEa(
 			(void*)pSrcVertices);
-		spuBatchJob.m_SrcIndicesEffAddr = CSpuUtils::PtrToEa(
+		spuBatchTransformJob.m_SrcIndicesEffAddr = CSpuUtils::PtrToEa(
 			(void*)pSrcIndices);
-		spuBatchJob.m_MatricesEffAddr = CSpuUtils::PtrToEa(
-			(void*)(pMatrices + batchIndex));
-		spuBatchJob.m_DstVerticesEffAddr = CSpuUtils::PtrToEa(
+		spuBatchTransformJob.m_TransformsEffAddr = CSpuUtils::PtrToEa(
+			(void*)(pTransforms + batchIndex));
+		spuBatchTransformJob.m_DstVerticesEffAddr = CSpuUtils::PtrToEa(
 			pDstVertices + offset);
-		spuBatchJob.m_DstIndicesEffAddr = CSpuUtils::PtrToEa(
+		spuBatchTransformJob.m_DstIndicesEffAddr = CSpuUtils::PtrToEa(
 			pDstIndices + (batchIndex * indexCount));
-		spuBatchJob.m_Command = SPU_BATCH_CMD_TRANSFORM;
-		spuBatchJob.m_Status = SPU_BATCH_STATUS_IDLE;
-		spuBatchJob.m_VertexCount = vertexCount;
-		spuBatchJob.m_IndexCount = indexCount;
-		spuBatchJob.m_BatchCount = chunkBatches;
-		spuBatchJob.m_VertexStride = vertexStride;
-		spuBatchJob.m_MatrixStride = sizeof(CMatrix4);
-		spuBatchJob.m_VertexPositionOffset = vertexPosOffset;
-		spuBatchJob.m_BaseVertex = baseVertex + (batchIndex * vertexCount);
+		spuBatchTransformJob.m_Command = SPU_BATCH_CMD_TRANSFORM;
+		spuBatchTransformJob.m_Status = SPU_BATCH_STATUS_IDLE;
+		spuBatchTransformJob.m_VertexCount = vertexCount;
+		spuBatchTransformJob.m_IndexCount = indexCount;
+		spuBatchTransformJob.m_BatchCount = chunkBatches;
+		spuBatchTransformJob.m_VertexStride = vertexStride;
+		spuBatchTransformJob.m_TransformStride = sizeof(BatchChunkTransform_t);
+		spuBatchTransformJob.m_VertexPositionOffset = vertexPosOffset;
+		spuBatchTransformJob.m_BaseVertex = baseVertex + (batchIndex * vertexCount);
 
 		batchIndex += chunkBatches;
 	}
@@ -327,7 +327,7 @@ SPUResult_t CSpuBatchTransformManager::BeginBatch(
 
 	bool hasError = false;
 
-	for (uint32 i = 0; i < s_NumBatchSpus; i++)
+	for (uint32 i = 0; i < s_BatchTransformSpuCount; i++)
 	{
 		if (m_pBatchJobs[i] && m_pBatchJobs[i]->m_Command == SPU_BATCH_CMD_TRANSFORM)
 		{
@@ -358,7 +358,7 @@ SPUResult_t CSpuBatchTransformManager::WaitBatch()
 		__sync_synchronize();
 
 		hasActiveJobs = false;
-		for (uint32 i = 0; i < s_NumBatchSpus; i++)
+		for (uint32 i = 0; i < s_BatchTransformSpuCount; i++)
 		{
 			if (m_pBatchJobs[i] && m_pBatchJobs[i]->m_Command != SPU_BATCH_CMD_IDLE)
 			{

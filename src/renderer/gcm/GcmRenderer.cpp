@@ -30,8 +30,6 @@
  CGcmRenderer::CGcmRenderer() :
 #ifdef PS3_SPU_ENABLED
 	m_pSpuBatchTransformManager(GCMGL_NULL),
-	m_pScratchMatrices(GCMGL_NULL),
-	m_ScratchMatricesCapacity(0),
 #endif
 	m_StagingIndex(0),
 	m_pHostAddr(GCMGL_NULL),
@@ -161,13 +159,6 @@ void CGcmRenderer::Shutdown()
 		m_pSpuBatchTransformManager->~CSpuBatchTransformManager();
 		CUtlMemory::Free(m_pSpuBatchTransformManager);
 		m_pSpuBatchTransformManager = GCMGL_NULL;
-	}
-
-	if (m_pScratchMatrices)
-	{
-		free(m_pScratchMatrices);
-		m_pScratchMatrices = GCMGL_NULL;
-		m_ScratchMatricesCapacity = 0;
 	}
 #endif
 

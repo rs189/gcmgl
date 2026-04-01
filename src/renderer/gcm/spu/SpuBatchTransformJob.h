@@ -27,11 +27,11 @@ extern "C"
 #define SPU_BATCH_STATUS_DONE 2u
 #define SPU_BATCH_STATUS_ERROR 3u
 
-struct SpuBatchJob_t
+struct SpuBatchTransformJob_t
 {
 	uint64 m_SrcVerticesEffAddr;
 	uint64 m_SrcIndicesEffAddr;
-	uint64 m_MatricesEffAddr;
+	uint64 m_TransformsEffAddr;
 	uint64 m_DstVerticesEffAddr;
 	uint64 m_DstIndicesEffAddr;
 	uint32 m_Command;
@@ -40,14 +40,14 @@ struct SpuBatchJob_t
 	uint32 m_IndexCount;
 	uint32 m_BatchCount;
 	uint32 m_VertexStride;
-	uint32 m_MatrixStride;
+	uint32 m_TransformStride;
 	uint32 m_VertexPositionOffset;
 	uint32 m_BaseVertex;
 	uint32 m_Reserved0;
 };
 
 #ifndef __cplusplus
-typedef struct SpuBatchJob_t SpuBatchJob_t;
+typedef struct SpuBatchTransformJob_t SpuBatchTransformJob_t;
 #endif
 
 #ifdef __cplusplus

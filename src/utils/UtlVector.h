@@ -77,7 +77,7 @@ public:
 		{
 			newElements[i] = m_Elements[i];
 		}
-		
+
 		delete[] m_Elements;
 		m_Elements = newElements;
 		m_Capacity = newCapacity;

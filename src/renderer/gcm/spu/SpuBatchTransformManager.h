@@ -15,7 +15,7 @@
 #include "platform/ps3/spu/SpuCommon.h"
 #include "SpuBatchTransformJob.h"
 
-class CMatrix4;
+struct BatchChunkTransform_t;
 
 class CSpuBatchTransformManager
 {
@@ -29,7 +29,7 @@ public:
 	SPUResult_t BeginBatch(
 		const char* pSrcVertices,
 		const uint32* pSrcIndices,
-		const CMatrix4* pMatrices,
+		const BatchChunkTransform_t* pTransforms,
 		char* pDstVertices,
 		uint32* pDstIndices,
 		uint32 vertexCount,
@@ -40,10 +40,10 @@ public:
 		uint32 baseVertex);
 	SPUResult_t WaitBatch();
 private:
-	static const uint32 s_NumBatchSpus = 2;
+	static const uint32 s_BatchTransformSpuCount = 2;
 	sysSpuImage m_SpuImage;
-	SpuBatchJob_t* m_pBatchJobs[s_NumBatchSpus];
-	uint32 m_SpuThreadIds[s_NumBatchSpus];
+	SpuBatchTransformJob_t* m_pBatchJobs[s_BatchTransformSpuCount];
+	uint32 m_SpuThreadIds[s_BatchTransformSpuCount];
 	uint32 m_SpuGroupId;
 	bool m_IsShuttingDown;
 };

@@ -280,28 +280,10 @@ void CGcmBatchRenderer::DrawBatchedChunk(
 #ifdef PS3_SPU_ENABLED
 	if (hasVertexPos && m_pSpuBatchTransformManager)
 	{
-		if (chunkSize > m_ScratchMatricesCapacity)
-		{
-			if (m_pScratchMatrices)
-			{
-				free(m_pScratchMatrices);
-			}
-
-			m_pScratchMatrices = (CMatrix4*)memalign(
-				16, 
-				chunkSize * sizeof(CMatrix4));
-			m_ScratchMatricesCapacity = chunkSize;
-		}
-
-		for (uint32 i = 0; i < chunkSize; i++)
-		{
-			m_pScratchMatrices[i] = batchChunkTransforms[chunkStart + i].ToMatrix();
-		}
-
 		m_pSpuBatchTransformManager->BeginBatch(
 			pSrcVertexData,
 			GCMGL_NULL,
-			m_pScratchMatrices,
+			&batchChunkTransforms[chunkStart],
 			pDstVertexData,
 			GCMGL_NULL,
 			vertexCount,
@@ -574,28 +556,10 @@ void CGcmBatchRenderer::DrawIndexedBatchedChunk(
 #ifdef PS3_SPU_ENABLED
 	if (hasVertexPos && m_pSpuBatchTransformManager)
 	{
-		if (chunkSize > m_ScratchMatricesCapacity)
-		{
-			if (m_pScratchMatrices)
-			{
-				free(m_pScratchMatrices);
-			}
-
-			m_pScratchMatrices = (CMatrix4*)memalign(
-				16,
-				chunkSize * sizeof(CMatrix4));
-			m_ScratchMatricesCapacity = chunkSize;
-		}
-
-		for (uint32 i = 0; i < chunkSize; i++)
-		{
-			m_pScratchMatrices[i] = batchChunkTransforms[chunkStart + i].ToMatrix();
-		}
-
 		m_pSpuBatchTransformManager->BeginBatch(
 			pSrcVertexData,
 			pSrcIndices,
-			m_pScratchMatrices,
+			&batchChunkTransforms[chunkStart],
 			pDstVertexData,
 			pDstIndexData,
 			vertexCount,

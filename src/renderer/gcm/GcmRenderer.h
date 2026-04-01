@@ -166,8 +166,6 @@ protected:
 	CUtlMap<BufferHandle, BufferResource_t> m_BufferResources;
 #ifdef PS3_SPU_ENABLED
 	CSpuBatchTransformManager* m_pSpuBatchTransformManager;
-	CMatrix4* m_pScratchMatrices;
-	uint32 m_ScratchMatricesCapacity;
 #endif
 	int32 m_StagingIndex;
 private:
