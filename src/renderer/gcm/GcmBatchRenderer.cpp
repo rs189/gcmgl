@@ -197,6 +197,8 @@ void CGcmBatchRenderer::DrawBatched(
 
 #ifdef PS3_SPU_ENABLED
 	FlushPendingBatches();
+#else
+	rsxFlushBuffer(context);
 #endif
 }
 
@@ -218,6 +220,8 @@ void CGcmBatchRenderer::DrawIndexedBatched(
 
 #ifdef PS3_SPU_ENABLED
 	FlushPendingBatches();
+#else
+	rsxFlushBuffer(context);
 #endif
 }
 
@@ -377,8 +381,6 @@ void CGcmBatchRenderer::DrawBatchedChunk(
 		}
 	}
 #endif // !PS3_SPU_ENABLED
-
-	rsxFlushBuffer(context);
 
 	const BufferResource_t stagingVertexBufferResource = {
 		stagingVertexBuffer.m_pPtr,
@@ -663,8 +665,6 @@ void CGcmBatchRenderer::DrawIndexedBatchedChunk(
 		}
 	}
 #endif // !PS3_SPU_ENABLED
-
-	rsxFlushBuffer(context);
 
 	const BufferResource_t stagingVertexBufferResource = {
 		stagingVertexBuffer.m_pPtr,
