@@ -12,6 +12,7 @@
 #pragma once
 
 #include <sys/spu.h>
+#include <sys/event_queue.h>
 #include "platform/ps3/spu/SpuCommon.h"
 #include "SpuBatchTransformJob.h"
 
@@ -43,6 +44,7 @@ private:
 	static const uint32 s_BatchTransformSpuCount = 2;
 	sysSpuImage m_SpuImage;
 	SpuBatchTransformJob_t* m_pBatchJobs[s_BatchTransformSpuCount];
+	sys_event_queue_t m_EventQueues[s_BatchTransformSpuCount];
 	uint32 m_SpuThreadIds[s_BatchTransformSpuCount];
 	uint32 m_SpuGroupId;
 	bool m_IsShuttingDown;

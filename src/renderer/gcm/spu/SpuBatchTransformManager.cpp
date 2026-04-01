@@ -15,6 +15,7 @@
 #include <string.h>
 #include <sys/thread.h>
 #include <sys/systime.h>
+#include <sys/event_queue.h>
 
 extern "C"
 {
@@ -28,6 +29,7 @@ CSpuBatchTransformManager::CSpuBatchTransformManager()
 	{
 		m_pBatchJobs[i] = GCMGL_NULL;
 		m_SpuThreadIds[i] = 0;
+		m_EventQueues[i] = 0;
 	}
 	m_SpuGroupId = 0;
 	m_IsShuttingDown = false;
@@ -120,6 +122,47 @@ bool CSpuBatchTransformManager::Initialize()
 		sysSpuThreadSetConfiguration(
 			m_SpuThreadIds[i],
 			SPU_SIGNAL1_OVERWRITE | SPU_SIGNAL2_OVERWRITE);
+
+		sys_event_queue_attr_t eventQueueAttr;
+		eventQueueAttr.attr_protocol = SYS_EVENT_QUEUE_FIFO;
+		eventQueueAttr.type = SYS_EVENT_QUEUE_PPU;
+		eventQueueAttr.name[0] = '\0';
+
+		const int32 eventQueueCreateResult = sysEventQueueCreate(
+			&m_EventQueues[i],
+			&eventQueueAttr,
+			SYS_EVENT_QUEUE_KEY_LOCAL,
+			1);
+		const int32 spuThreadConnectEventResult = (eventQueueCreateResult >= 0)
+			? sysSpuThreadConnectEvent(
+				m_SpuThreadIds[i],
+				m_EventQueues[i],
+				SPU_THREAD_EVENT_USER,
+				0)
+			: -1;
+
+		if (eventQueueCreateResult < 0 || spuThreadConnectEventResult < 0)
+		{
+			for (uint32 j = 0; j <= i; j++)
+			{
+				if (m_EventQueues[j])
+				{
+					sysEventQueueDestroy(m_EventQueues[j], 0);
+					m_EventQueues[j] = 0;
+				}
+
+				if (m_pBatchJobs[j])
+				{
+					CUtlMemory::AlignedFree(m_pBatchJobs[j]);
+					m_pBatchJobs[j] = GCMGL_NULL;
+				}
+			}
+
+			sysSpuThreadGroupDestroy(m_SpuGroupId);
+			sysSpuImageClose(&m_SpuImage);
+
+			return false;
+		}
 	}
 
 	const int32 spuThreadGroupStartResult = sysSpuThreadGroupStart(
@@ -128,6 +171,12 @@ bool CSpuBatchTransformManager::Initialize()
 	{
 		for (uint32 i = 0; i < s_BatchTransformSpuCount; i++)
 		{
+			if (m_EventQueues[i])
+			{
+				sysEventQueueDestroy(m_EventQueues[i], 0);
+				m_EventQueues[i] = 0;
+			}
+
 			if (m_pBatchJobs[i])
 			{
 				CUtlMemory::AlignedFree(m_pBatchJobs[i]);
@@ -217,6 +266,13 @@ void CSpuBatchTransformManager::Shutdown()
 			CUtlMemory::AlignedFree(m_pBatchJobs[i]);
 			m_pBatchJobs[i] = GCMGL_NULL;
 		}
+
+		if (m_EventQueues[i])
+		{
+			sysEventQueueDestroy(m_EventQueues[i], 0);
+			m_EventQueues[i] = 0;
+		}
+
 		m_SpuThreadIds[i] = 0;
 	}
 
@@ -350,40 +406,27 @@ SPUResult_t CSpuBatchTransformManager::BeginBatch(
 
 SPUResult_t CSpuBatchTransformManager::WaitBatch()
 {
-	bool hasActiveJobs = true;
 	bool hasError = false;
 
-	while (hasActiveJobs)
+	for (uint32 i = 0; i < s_BatchTransformSpuCount; i++)
 	{
-		__sync_synchronize();
-
-		hasActiveJobs = false;
-		for (uint32 i = 0; i < s_BatchTransformSpuCount; i++)
+		if (!m_pBatchJobs[i] || m_pBatchJobs[i]->m_Command == SPU_BATCH_CMD_IDLE)
 		{
-			if (m_pBatchJobs[i] && m_pBatchJobs[i]->m_Command != SPU_BATCH_CMD_IDLE)
-			{
-				if (m_pBatchJobs[i]->m_Status == SPU_BATCH_STATUS_DONE)
-				{
-					m_pBatchJobs[i]->m_Command = SPU_BATCH_CMD_IDLE;
-					m_pBatchJobs[i]->m_Status = SPU_BATCH_STATUS_IDLE;
-				}
-				else if (m_pBatchJobs[i]->m_Status == SPU_BATCH_STATUS_ERROR)
-				{
-					m_pBatchJobs[i]->m_Command = SPU_BATCH_CMD_IDLE;
-					
-					hasError = true;
-				}
-				else
-				{
-					hasActiveJobs = true;
-				}
-			}
+			continue;
 		}
 
-		if (hasActiveJobs)
+		sys_event_t event;
+		if (sysEventQueueReceive(m_EventQueues[i], &event, 0) < 0)
 		{
-			sysUsleep(50);
+			hasError = true;
 		}
+		else if (static_cast<uint32>(event.data_2) == SPU_BATCH_STATUS_ERROR)
+		{
+			hasError = true;
+		}
+
+		m_pBatchJobs[i]->m_Command = SPU_BATCH_CMD_IDLE;
+		m_pBatchJobs[i]->m_Status = SPU_BATCH_STATUS_IDLE;
 	}
 
 	return hasError ? SPUResult_t::Error : SPUResult_t::Success;

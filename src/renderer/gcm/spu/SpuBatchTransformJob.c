@@ -10,6 +10,7 @@
 #include <string.h>
 #include <spu_intrinsics.h>
 #include <spu_mfcio.h>
+#include <sys/spu_event.h>
 #include "SpuBatchTransformJob.h"
 #include "SpuUtils.h"
 
@@ -26,10 +27,12 @@
 static const vec_uchar16 s_SplatXPattern = { 0,1,2,3, 0,1,2,3, 0,1,2,3, 0,1,2,3 };
 static const vec_uchar16 s_SplatYPattern = { 4,5,6,7, 4,5,6,7, 4,5,6,7, 4,5,6,7 };
 static const vec_uchar16 s_SplatZPattern = { 8,9,10,11, 8,9,10,11, 8,9,10,11, 8,9,10,11 };
+static const vec_uchar16 s_SplatWPattern = { 12,13,14,15, 12,13,14,15, 12,13,14,15, 12,13,14,15 };
 static const vec_uchar16 s_SplatXYZW1Pattern = { 0,1,2,3, 4,5,6,7, 8,9,10,11, 28,29,30,31 };
 
 static uint8 g_DstBuffer[2][SPU_BUFFER_SIZE] ALIGN128;
 static uint8 g_SrcBuffer[2][SPU_BUFFER_SIZE] ALIGN128;
+static uint8 g_IndexSrcBuffer[2][SPU_BUFFER_SIZE] ALIGN128;
 static vec_float4 g_TransformBuffer[2][3] ALIGN128;
 static SpuBatchTransformJob_t g_Job ALIGN128;
 
@@ -243,40 +246,63 @@ static inline void transformFromBatchTransform(
 	vec_float4 pMatrix[4],
 	const vec_float4 buf[3])
 {
-	float32 qx = spu_extract(buf[0], 0);
-	float32 qy = spu_extract(buf[0], 1);
-	float32 qz = spu_extract(buf[0], 2);
-	float32 qw = spu_extract(buf[0], 3);
-	float32 px = spu_extract(buf[1], 0);
-	float32 py = spu_extract(buf[1], 1);
-	float32 pz = spu_extract(buf[1], 2);
-	float32 sx = spu_extract(buf[1], 3);
-	float32 sy = spu_extract(buf[2], 0);
-	float32 sz = spu_extract(buf[2], 1);
+	// buf[0] = (qx, qy, qz, qw)
+	// buf[1] = (px, py, pz, sx)
+	// buf[2] = (sy, sz,  _,  _)
+	const vec_float4 q = buf[0];
+	const vec_float4 q2 = spu_add(q, q);
+	const vec_float4 one = spu_splats(1.0f);
 
-	float32 xx = qx * qx, yy = qy * qy, zz = qz * qz;
-	float32 xy = qx * qy, xz = qx * qz, yz = qy * qz;
-	float32 wx = qw * qx, wy = qw * qy, wz = qw * qz;
+	const vec_float4 qx = spu_shuffle(q, q, s_SplatXPattern);
+	const vec_float4 qy = spu_shuffle(q, q, s_SplatYPattern);
+	const vec_float4 qz = spu_shuffle(q, q, s_SplatZPattern);
+	const vec_float4 qw = spu_shuffle(q, q, s_SplatWPattern);
+	const vec_float4 q2x = spu_shuffle(q2, q2, s_SplatXPattern);
+	const vec_float4 q2y = spu_shuffle(q2, q2, s_SplatYPattern);
+	const vec_float4 q2z = spu_shuffle(q2, q2, s_SplatZPattern);
 
-	pMatrix[0] = (vec_float4){
-		(1.0f - 2.0f * (yy + zz)) * sx,
-		(2.0f * (xy + wz)) * sx,
-		(2.0f * (xz - wy)) * sx,
-		0.0f 
-	};
-	pMatrix[1] = (vec_float4){
-		(2.0f * (xy - wz)) * sy,
-		(1.0f - 2.0f * (xx + zz)) * sy,
-		(2.0f * (yz + wx)) * sy,
+	const vec_float4 xx2 = spu_mul(qx, q2x);
+	const vec_float4 yy2 = spu_mul(qy, q2y);
+	const vec_float4 zz2 = spu_mul(qz, q2z);
+	const vec_float4 xy2 = spu_mul(qx, q2y);
+	const vec_float4 xz2 = spu_mul(qx, q2z);
+	const vec_float4 yz2 = spu_mul(qy, q2z);
+	const vec_float4 wx2 = spu_mul(qw, q2x);
+	const vec_float4 wy2 = spu_mul(qw, q2y);
+	const vec_float4 wz2 = spu_mul(qw, q2z);
+
+	const float32 sx = spu_extract(buf[1], 3);
+	const float32 sy = spu_extract(buf[2], 0);
+	const float32 sz = spu_extract(buf[2], 1);
+
+	vec_float4 col0 = {
+		spu_extract(spu_sub(spu_sub(one, yy2), zz2), 0),
+		spu_extract(spu_add(xy2, wz2), 0),
+		spu_extract(spu_sub(xz2, wy2), 0),
 		0.0f
 	};
-	pMatrix[2] = (vec_float4){
-		(2.0f * (xz + wy)) * sz,
-		(2.0f * (yz - wx)) * sz,
-		(1.0f - 2.0f * (xx + yy)) * sz,
+	vec_float4 col1 = {
+		spu_extract(spu_sub(xy2, wz2), 0),
+		spu_extract(spu_sub(spu_sub(one, xx2), zz2), 0),
+		spu_extract(spu_add(yz2, wx2), 0),
 		0.0f
 	};
-	pMatrix[3] = (vec_float4){ px, py, pz, 1.0f };
+	vec_float4 col2 = {
+		spu_extract(spu_add(xz2, wy2), 0),
+		spu_extract(spu_sub(yz2, wx2), 0),
+		spu_extract(spu_sub(spu_sub(one, xx2), yy2), 0),
+		0.0f
+	};
+
+	pMatrix[0] = spu_mul(col0, spu_splats(sx));
+	pMatrix[1] = spu_mul(col1, spu_splats(sy));
+	pMatrix[2] = spu_mul(col2, spu_splats(sz));
+	pMatrix[3] = (vec_float4){
+		spu_extract(buf[1], 0),
+		spu_extract(buf[1], 1),
+		spu_extract(buf[1], 2),
+		1.0f
+	};
 }
 
 static void transformVertices()
@@ -483,7 +509,7 @@ static void processIndices()
 			0
 		};
 		uint32 pendingCountBytes = (indexCountsBuffer[0] * 4u + 15u) & ~15u;
-		dmaGet(g_SrcBuffer[0], srcEffAddr, pendingCountBytes, SRC_TAG0);
+		dmaGet(g_IndexSrcBuffer[0], srcEffAddr, pendingCountBytes, SRC_TAG0);
 		srcEffAddr += indexCountsBuffer[0] * 4u;
 
 		uint32 loadedIndexCount = indexCountsBuffer[0];
@@ -506,7 +532,7 @@ static void processIndices()
 				uint32 nextPendingBytes = (pendingCount * 4u + 15u) & ~15u;
 				uint32 nextSrcTag = (srcBufferIndex ^ 1u) ? SRC_TAG1 : SRC_TAG0;
 				dmaGet(
-					g_SrcBuffer[srcBufferIndex ^ 1u],
+					g_IndexSrcBuffer[srcBufferIndex ^ 1u],
 					srcEffAddr,
 					nextPendingBytes,
 					nextSrcTag);
@@ -520,7 +546,7 @@ static void processIndices()
 
 			processIndexChunk(
 				(uint32*)g_DstBuffer[dstBufferIndex] + dstIndexCount,
-				(uint32*)g_SrcBuffer[srcBufferIndex] + srcIndexCount,
+				(uint32*)g_IndexSrcBuffer[srcBufferIndex] + srcIndexCount,
 				chunkCount,
 				indexOffsetSplat);
 
@@ -613,6 +639,8 @@ int main(uint64 jobEffAddr, uint64 arg1, uint64 arg2, uint64 arg3)
 			0,
 			0);
 		waitForTag(1u << JOB_TAG);
+
+		spu_thread_send_event(0, g_Job.m_Status, 0);
 	}
 
 	return 0;

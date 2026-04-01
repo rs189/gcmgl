@@ -102,7 +102,7 @@ $(BUILDDIR)/%.o: %.c | $(OBJDIR)
 
 $(SPU_ELF): $(SPU_SRC) $(SPU_SRCDIR)/SpuBatchTransformJob.h | $(SPU_BUILD_DIR)
 	@echo Building $(notdir $@)
-	@$(SPU_CC) $(SPU_CFLAGS) -o $@ $(SPU_SRC)
+	@$(SPU_CC) $(SPU_CFLAGS) -o $@ $(SPU_SRC) -L/usr/local/ps3dev/spu/lib -lsputhread
 
 $(SPU_OBJ): $(SPU_ELF)
 	@echo Embedding $(notdir $<)
