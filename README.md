@@ -172,6 +172,7 @@ gcmgl is a C++ graphics library targeting PlayStation 3 (GCM) and Linux (x86_64,
 
 ### CBatch
 - `CUtlVector<BatchChunk_t> m_BatchChunks`
+- `const CVector3* m_pCameraPos`
 - `void Add(const CVector3& position, const CQuaternion& rotation = CQuaternion(), const CVector3& scale = CVector3(1.0f, 1.0f, 1.0f))`
 - `void Build(float32 chunkSize = 500.0f)`
 - `void Clear()`
@@ -231,7 +232,7 @@ gcmgl is a C++ graphics library targeting PlayStation 3 (GCM) and Linux (x86_64,
 - `void DrawBatched(uint32 vertexCount, const CBatch& batch, const CMatrix4& viewProjection, uint32 startVertex = 0)`
 - `void DrawIndexedBatched(uint32 indexCount, uint32 vertexCount, const CBatch& batch, const CMatrix4& viewProjection, uint32 startIndex = 0, int32 baseVertex = 0)`
 - `static bool ShouldUpdateChunk(float32 distanceToCamera, uint64 frameCount)`
-- `void FrustumCullBatch(const CBatch& batch, const Plane_t* pFrustumPlanes, CUtlVector<BatchChunkTransform_t>& batchChunkTransforms)`
+- `static void CullChunk(const BatchChunkTransform_t* pSrcTransforms, uint32 start, uint32 end, const Plane_t* pPlanes, CUtlVector<BatchChunkTransform_t>& transforms)`
 - `static void TransformVertices(char* pDst, uint32 vertexCount, uint32 vertexStride, uint32 vertexPosOffset, const CMatrix4& matrix)`
 - `static void ProcessBatch(char* pVertexDst, const char* pVertexSrc, uint32 vertexCount, uint32 vertexStride, uint32 vertexPosOffset, bool hasVertexPos, const CMatrix4& matrix)`
 - `static void ProcessIndexedBatch(char* pVertexDst, const char* pVertexSrc, uint32* pIndexDst, const uint32* pIndexSrc, uint32 vertexCount, uint32 indexCount, uint32 batchIndex, uint32 vertexStride, uint32 vertexPosOffset, bool hasVertexPos, const CMatrix4& matrix)`
