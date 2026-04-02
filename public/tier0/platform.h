@@ -24,9 +24,9 @@
 #elif defined( PLATFORM_MACOS ) || defined( __APPLE__ )
 	#undef PLATFORM_MACOS
 	#define PLATFORM_MACOS 1
-#else
+#else // unknown platform
 	#error "Unknown platform"
-#endif
+#endif // PLATFORM_PS3 || PLATFORM_WINDOWS || PLATFORM_LINUX || PLATFORM_MACOS
 
 #if defined(__cplusplus) && __cplusplus >= 201103L
 	#define GCMGL_MODERN_CPP 1
@@ -35,20 +35,20 @@
 // NULL definition
 #ifdef GCMGL_MODERN_CPP
 	#define GCMGL_NULL nullptr
-#else
+#else // GCMGL_MODERN_CPP
 	#define GCMGL_NULL 0
-#endif
+#endif // !GCMGL_MODERN_CPP
 
 #ifndef NULL
 	#define NULL 0
-#endif
+#endif // !NULL
 
 // Override definition
 #ifdef GCMGL_MODERN_CPP
 	#define GCMGL_OVERRIDE override
-#else
+#else // GCMGL_MODERN_CPP
 	#define GCMGL_OVERRIDE
-#endif
+#endif // !GCMGL_MODERN_CPP
 
 // Basic types
 typedef signed char int8;
@@ -61,10 +61,10 @@ typedef unsigned int uint32;
 #if defined( _MSC_VER )
 	typedef signed __int64 int64;
 	typedef unsigned __int64 uint64;
-#else
+#else // _MSC_VER
 	typedef signed long long int64;
 	typedef unsigned long long uint64;
-#endif
+#endif // _MSC_VER
 
 typedef float float32;
 typedef double float64;
@@ -73,10 +73,10 @@ typedef double float64;
 #if defined( _WIN64 ) || defined( __LP64__ )
 	typedef int64 intp;
 	typedef uint64 uintp;
-#else
+#else // _WIN64 || __LP64__
 	typedef int32 intp;
 	typedef uint32 uintp;
-#endif
+#endif // _WIN64 || __LP64__
 
 // Alignment macros
 #if defined( _MSC_VER )
@@ -91,13 +91,13 @@ typedef double float64;
 	#define ALIGN16 __attribute__((aligned(16)))
 	#define ALIGN32 __attribute__((aligned(32)))
 	#define ALIGN128 __attribute__((aligned(128)))
-#else
+#else // _MSC_VER || __GNUC__ || __clang__
 	#define ALIGN4
 	#define ALIGN8
 	#define ALIGN16
 	#define ALIGN32
 	#define ALIGN128
-#endif
+#endif // _MSC_VER || __GNUC__ || __clang__
 
 // Compiler keywords
 #if defined( _MSC_VER )
@@ -110,28 +110,28 @@ typedef double float64;
 	#define NOINLINE __attribute__((noinline))
 	#define NORETURN __attribute__((noreturn))
 	#define RESTRICT __restrict__
-#else
+#else // _MSC_VER || __GNUC__ || __clang__
 	#define INLINE inline
 	#define NOINLINE
 	#define NORETURN
 	#define RESTRICT
-#endif
+#endif // _MSC_VER || __GNUC__ || __clang__
 
 // Likely/Unlikely branch hints
 #if defined( __GNUC__ ) || defined( __clang__ )
 	#define LIKELY(x) __builtin_expect(!!(x), 1)
 	#define UNLIKELY(x) __builtin_expect(!!(x), 0)
-#else
+#else // __GNUC__ || __clang__
 	#define LIKELY(x) (x)
 	#define UNLIKELY(x) (x)
-#endif
+#endif // __GNUC__ || __clang__
 
 // Static assert
 #ifdef GCMGL_MODERN_CPP
 	#define STATIC_ASSERT(x) static_assert(x, #x)
-#else
+#else // GCMGL_MODERN_CPP
 	#define STATIC_ASSERT(x) typedef char static_assertion[(x) ? 1 : -1]
-#endif
+#endif // !GCMGL_MODERN_CPP
 
 // Float literal suffix enforcement
 #define GCMGL_FLT(x) (x##f)
@@ -139,6 +139,8 @@ typedef double float64;
 // Feature toggles
 #define SIMD_ENABLED
 #define THREADING_ENABLED
+
+#define SHADER_INSTANCING_ENABLED
 
 #define PS3_SPU_ENABLED
 

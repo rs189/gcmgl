@@ -54,18 +54,18 @@
 			} \
 		} while (0)
 
-#else
+#else // !NDEBUG
 	#define Assert(x) do { } while (0)
 	#define AssertMsg(x, msg) do { } while (0)
 	#define AssertFatal(x) do { if (!(x)) abort(); } while (0)
-#endif
+#endif // NDEBUG
 
 #if !defined(NDEBUG)
 	#define DebugMsg(...) \
 		do { printf("[DEBUG] "); printf(__VA_ARGS__); } while (0)
-#else
+#else // !NDEBUG
 	#define DebugMsg(...) do { } while (0)
-#endif
+#endif // NDEBUG
 
 // Pointer validation
 #define IsValidPtr(p) ((p) != GCMGL_NULL)
