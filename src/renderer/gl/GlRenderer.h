@@ -45,15 +45,15 @@ public:
 	virtual BufferHandle CreateVertexBuffer(
 		const void* pData,
 		uint64 size,
-		BufferUsage_t usage) GCMGL_OVERRIDE;
+		BufferUsage_t::Enum usage) GCMGL_OVERRIDE;
 	virtual BufferHandle CreateIndexBuffer(
 		const void* pData,
 		uint64 size,
-		IndexFormat_t format,
-		BufferUsage_t usage) GCMGL_OVERRIDE;
+		IndexFormat_t::Enum format,
+		BufferUsage_t::Enum usage) GCMGL_OVERRIDE;
 	virtual BufferHandle CreateConstantBuffer(
 		uint64 size,
-		BufferUsage_t usage) GCMGL_OVERRIDE;
+		BufferUsage_t::Enum usage) GCMGL_OVERRIDE;
 	virtual void UpdateBuffer(
 		BufferHandle hBuffer,
 		const void* pData,
@@ -73,11 +73,11 @@ public:
 	virtual TextureHandle CreateTexture2D(
 		uint32 width,
 		uint32 height,
-		TextureFormat_t format,
+		TextureFormat_t::Enum format,
 		const void* pData = GCMGL_NULL) GCMGL_OVERRIDE;
 	virtual TextureHandle CreateTextureCube(
 		uint32 size,
-		TextureFormat_t format,
+		TextureFormat_t::Enum format,
 		const void** pFaces = GCMGL_NULL) GCMGL_OVERRIDE;
 	virtual void SetTexture(
 		TextureHandle hTexture,
@@ -125,7 +125,7 @@ public:
 		const CVector3* pAABBExtent = GCMGL_NULL) GCMGL_OVERRIDE;
 
 	// Pipeline
-	uint32 GetVertexSemanticAttributeIndex(VertexSemantic_t vertexSemantic);
+	uint32 GetVertexSemanticAttributeIndex(VertexSemantic_t::Enum vertexSemantic);
 	virtual void BindVertexAttributes(
 		const CVertexLayout* pLayout,
 		uint32 vertexStride,
@@ -172,7 +172,7 @@ private:
 		uint32 m_Target;
 		uint32 m_Width;
 		uint32 m_Height;
-		TextureFormat_t m_Format;
+		TextureFormat_t::Enum m_Format;
 		bool m_IsCubemap;
 	};
 
@@ -190,8 +190,8 @@ private:
 	};
 
 	CUtlMap<ShaderProgramHandle, ProgramResource_t> m_ProgramResources;
-	CUtlMap<ShaderProgramHandle, CUtlMap<uint32, UniformShadow_t>> m_ProgramUniformShadows;
-	CUtlMap<ShaderProgramHandle, CUtlMap<uint32, BoundUniform_t>> m_ProgramUniformBuffers;
+	CUtlMap<ShaderProgramHandle, CUtlMap<uint32, UniformShadow_t> > m_ProgramUniformShadows;
+	CUtlMap<ShaderProgramHandle, CUtlMap<uint32, BoundUniform_t> > m_ProgramUniformBuffers;
 	CUtlMap<TextureHandle, TextureResource_t> m_TextureResources;
 	
 	Viewport_t m_Viewport;

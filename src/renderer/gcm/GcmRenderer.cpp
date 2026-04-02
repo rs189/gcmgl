@@ -16,7 +16,7 @@
 #include <string.h>
 #include <sys/memory.h>
 
-#if defined(SIMD_ENABLED)
+#ifdef SIMD_ENABLED
 #include <altivec.h>
 #undef pixel
 #undef bool
@@ -25,11 +25,13 @@
 #ifdef PS3_SPU_ENABLED
 #include "platform/ps3/spu/SpuCommon.h"
 #include "spu/SpuBatchTransformManager.h"
+#include "spu/SpuFrustumCullManager.h"
 #endif
 
  CGcmRenderer::CGcmRenderer() :
 #ifdef PS3_SPU_ENABLED
 	m_pSpuBatchTransformManager(GCMGL_NULL),
+	m_pSpuFrustumCullManager(GCMGL_NULL),
 #endif
 	m_StagingIndex(0),
 	m_pHostAddr(GCMGL_NULL),
@@ -143,6 +145,19 @@ bool CGcmRenderer::Init(const RendererDesc_t& rendererDesc)
 			m_pSpuBatchTransformManager = GCMGL_NULL;
 		}
 	}
+
+	void* pSpuFrustumCullManagerMemory = CUtlMemory::Alloc(
+		sizeof(CSpuFrustumCullManager));
+	if (pSpuFrustumCullManagerMemory)
+	{
+		m_pSpuFrustumCullManager = new(pSpuFrustumCullManagerMemory) CSpuFrustumCullManager();
+		if (!m_pSpuFrustumCullManager->Initialize())
+		{
+			m_pSpuFrustumCullManager->~CSpuFrustumCullManager();
+			CUtlMemory::Free(pSpuFrustumCullManagerMemory);
+			m_pSpuFrustumCullManager = GCMGL_NULL;
+		}
+	}
 #endif // PS3_SPU_ENABLED
 
 	return true;
@@ -160,7 +175,15 @@ void CGcmRenderer::Shutdown()
 		CUtlMemory::Free(m_pSpuBatchTransformManager);
 		m_pSpuBatchTransformManager = GCMGL_NULL;
 	}
-#endif
+
+	if (m_pSpuFrustumCullManager)
+	{
+		m_pSpuFrustumCullManager->Shutdown();
+		m_pSpuFrustumCullManager->~CSpuFrustumCullManager();
+		CUtlMemory::Free(m_pSpuFrustumCullManager);
+		m_pSpuFrustumCullManager = GCMGL_NULL;
+	}
+#endif // PS3_SPU_ENABLED
 
 	rsxFlushBuffer(context);
 	waitFinish();
@@ -363,7 +386,7 @@ void CGcmRenderer::SetStencilRef(uint32 stencilRef)
 BufferHandle CGcmRenderer::CreateVertexBuffer(
 	const void* pData,
 	uint64 size,
-	BufferUsage_t usage)
+	BufferUsage_t::Enum usage)
 {
 	void* pPtr = rsxMemalign(64, uint32(size));
 	if (!pPtr)
@@ -399,8 +422,8 @@ BufferHandle CGcmRenderer::CreateVertexBuffer(
 BufferHandle CGcmRenderer::CreateIndexBuffer(
 	const void* pData,
 	uint64 size,
-	IndexFormat_t format,
-	BufferUsage_t usage)
+	IndexFormat_t::Enum format,
+	BufferUsage_t::Enum usage)
 {
 	void* pPtr = rsxMemalign(64, uint32(size));
 	if (!pPtr)
@@ -435,7 +458,7 @@ BufferHandle CGcmRenderer::CreateIndexBuffer(
 
 BufferHandle CGcmRenderer::CreateConstantBuffer(
 	uint64 size,
-	BufferUsage_t usage)
+	BufferUsage_t::Enum usage)
 {
 	void* pPtr = rsxMemalign(64, uint32(size));
 	if (!pPtr)
@@ -626,7 +649,7 @@ void CGcmRenderer::DestroyShaderProgram(ShaderProgramHandle hProgram)
 TextureHandle CGcmRenderer::CreateTexture2D(
 	uint32 width,
 	uint32 height,
-	TextureFormat_t format,
+	TextureFormat_t::Enum format,
 	const void* pData)
 {
 	// 4 bytes per pixel (ARGB8)
@@ -712,7 +735,7 @@ TextureHandle CGcmRenderer::CreateTexture2D(
 
 TextureHandle CGcmRenderer::CreateTextureCube(
 	uint32 size,
-	TextureFormat_t format,
+	TextureFormat_t::Enum format,
 	const void** pFaces)
 {
 	// 6 faces, 4 bytes per pixel (ARGB8)
@@ -1311,7 +1334,7 @@ void CGcmRenderer::DrawIndexed(
 }
 
 uint32 CGcmRenderer::GetVertexSemanticAttributeIndex(
-	VertexSemantic_t vertexSemantic)
+	VertexSemantic_t::Enum vertexSemantic)
 {
 	switch (vertexSemantic)
 	{

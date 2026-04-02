@@ -21,9 +21,9 @@
 #include <sys/process.h>
 #include <sysutil/sysutil.h>
 #include <io/pad.h>
-#else
+#else // PLATFORM_PS3
 #include <GLFW/glfw3.h>
-#endif
+#endif // !PLATFORM_PS3
 
 int32 RunTriangleExample(
 	CWindowManager& windowManager,
@@ -51,9 +51,9 @@ int32 RunTriangleExample(
 
 	// Create triangle
 	Vertex_t vertexData[] = {
-		{{-1.0f, -1.0f, 0.0f}, Vertex_t::PackColor(1.0f, 0.0f, 0.0f)}, // red
-		{{1.0f, -1.0f, 0.0f}, Vertex_t::PackColor(0.0f, 1.0f, 0.0f)}, // green
-		{{0.0f, 1.0f, 0.0f}, Vertex_t::PackColor(0.0f, 0.0f, 1.0f)} // blue
+		Vertex_t(CVector3(-1.0f, -1.0f, 0.0f), Vertex_t::PackColor(1.0f, 0.0f, 0.0f)), // red
+		Vertex_t(CVector3(1.0f, -1.0f, 0.0f), Vertex_t::PackColor(0.0f, 1.0f, 0.0f)), // green
+		Vertex_t(CVector3(0.0f, 1.0f, 0.0f), Vertex_t::PackColor(0.0f, 0.0f, 1.0f)) // blue
 	};
 
 	// Create buffers

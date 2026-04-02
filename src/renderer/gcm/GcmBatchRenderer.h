@@ -22,6 +22,7 @@ public:
 
 #ifdef PS3_SPU_ENABLED
 	virtual void EndFrame() GCMGL_OVERRIDE;
+	virtual void Shutdown() GCMGL_OVERRIDE;
 #endif
 
 	virtual void DrawBatched(
@@ -37,6 +38,10 @@ public:
 		uint32 startIndex = 0,
 		int32 baseVertex = 0) GCMGL_OVERRIDE;
 protected:
+	virtual void FrustumCullBatch(
+		const CBatch& batch,
+		const Plane_t* pFrustumPlanes,
+		CUtlVector<BatchChunkTransform_t>& batchChunkTransforms) GCMGL_OVERRIDE;
 	virtual void DrawBatchedChunk(
 		uint32 vertexCount,
 		const CUtlVector<BatchChunkTransform_t>& batchChunkTransforms,
@@ -67,7 +72,11 @@ private:
 		bool m_IsIndexed;
 	};
 
+	BatchChunkTransform_t* m_pCullOutput[2];
+	uint32* m_pCullCount[2];
 	PendingDrawState_t m_PendingDrawState;
+	uint32 m_CullOutputCapacity[2];
+	uint32 m_CullIndex;
 	bool m_HasPendingBatch;
 #endif // PS3_SPU_ENABLED
 };

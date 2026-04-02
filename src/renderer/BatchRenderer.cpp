@@ -37,20 +37,61 @@ void CBatchRenderer::FrustumCullBatch(
 			static const float32 s_ChunkCullRadius = 20000.0f;
 			static const float32 s_ChunkCullRadiusSq = s_ChunkCullRadius * s_ChunkCullRadius;
 			const CVector3 chunkOffset = batchChunk.m_Center - *batch.m_pCameraPos;
-			if (chunkOffset.LengthSq() > s_ChunkCullRadiusSq) 
+			if (chunkOffset.LengthSq() > s_ChunkCullRadiusSq)
 			{
 				continue;
 			}
 		}
 
-		for (int32 i = 0; i < batchChunk.m_BatchChunkTransforms.Count(); i++)
+		const int32 batchChunkTransformCount = batchChunk.m_BatchChunkTransforms.Count();
+		for (int32 j = 0; j < batchChunkTransformCount; j++)
 		{
-			const BatchChunkTransform_t& batchChunkTransform = batchChunk.m_BatchChunkTransforms[i];
+			const BatchChunkTransform_t& batchChunkTransform =
+				batchChunk.m_BatchChunkTransforms[j];
 			if (TestAABBFrustum(
 				batchChunkTransform.m_Position,
 				batchChunkTransform.m_Scale * 0.5f,
 				pFrustumPlanes))
+			{
 				batchChunkTransforms.AddToTail(batchChunkTransform);
+			}
+		}
+	}
+}
+
+void CBatchRenderer::CullChunk(
+	const BatchChunkTransform_t* pSrcTransforms,
+	uint32 start,
+	uint32 end,
+	const Plane_t* pPlanes,
+	CUtlVector<BatchChunkTransform_t>& transforms)
+{
+	for (uint32 instanceIndex = start; instanceIndex < end; instanceIndex++)
+	{
+		const BatchChunkTransform_t& batchChunkTransform = pSrcTransforms[instanceIndex];
+		bool isVisible = true;
+
+		for (int32 i = 0; i < 6; i++)
+		{
+			const Plane_t& plane = pPlanes[i];
+			const float32 radius =
+				batchChunkTransform.m_Scale.m_X * 0.5f * CMaths::Abs(plane.m_Normal.m_X) +
+				batchChunkTransform.m_Scale.m_Y * 0.5f * CMaths::Abs(plane.m_Normal.m_Y) +
+				batchChunkTransform.m_Scale.m_Z * 0.5f * CMaths::Abs(plane.m_Normal.m_Z);
+			const float32 dist =
+				plane.m_Normal.Dot(batchChunkTransform.m_Position) + plane.m_Distance;
+
+			if (dist + radius < 0.0f)
+			{
+				isVisible = false;
+
+				break;
+			}
+		}
+
+		if (isVisible)
+		{
+			transforms.AddToTail(batchChunkTransform);
 		}
 	}
 }
@@ -247,7 +288,8 @@ bool CBatchRenderer::FindVertexPosOffset(
 	for (int32 i = 0; i < attributes.Count(); i++)
 	{
 		const VertexAttribute_t& attribute = attributes[i];
-		if (attribute.m_VertexSemantic == VertexSemantic_t::Position && attribute.m_Format == VertexFormat_t::Float3)
+		if (attribute.m_VertexSemantic == VertexSemantic_t::Position &&
+			attribute.m_Format == VertexFormat_t::Float3)
 		{
 			outOffset = attribute.m_Offset;
 

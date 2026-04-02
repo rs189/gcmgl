@@ -10,10 +10,19 @@
 #include "mathsfury/Maths.h"
 
 CRenderer::CRenderer() :
-	m_PipelineState({ 0, GCMGL_NULL, 0, 0, 0, 0, 0, { true, true }, { false } }),
 	m_StateDirtyFlags(StateDirtyFlags_t::All),
 	m_NextHandle(1)
 {
+	m_PipelineState.m_IndexOffset = 0;
+	m_PipelineState.m_pVertexLayout = GCMGL_NULL;
+	m_PipelineState.m_hShaderProgram = 0;
+	m_PipelineState.m_hVertexBuffer = 0;
+	m_PipelineState.m_hIndexBuffer = 0;
+	m_PipelineState.m_VertexStride = 0;
+	m_PipelineState.m_VertexOffset = 0;
+	m_PipelineState.m_DepthStencilState.m_IsDepthTest = true;
+	m_PipelineState.m_DepthStencilState.m_IsDepthWrite = true;
+	m_PipelineState.m_BlendState.m_IsEnabled = false;
 }
 
 CVertexLayout::CVertexLayout() :
@@ -30,7 +39,7 @@ void CVertexLayout::AddAttribute(
 {
 	const VertexAttribute_t attribute = {
 		name,
-		static_cast<VertexFormat_t>(format),
+		static_cast<VertexFormat_t::Enum>(format),
 		offset,
 		location,
 		VertexSemantic_t::Unspecified
@@ -43,12 +52,12 @@ void CVertexLayout::AddAttribute(
 	const CFixedString& name,
 	uint32 format,
 	uint32 offset,
-	VertexSemantic_t vertexSemantic,
+	VertexSemantic_t::Enum vertexSemantic,
 	uint32 location)
 {
 	const VertexAttribute_t attribute = {
 		name,
-		static_cast<VertexFormat_t>(format),
+		static_cast<VertexFormat_t::Enum>(format),
 		offset,
 		location,
 		vertexSemantic

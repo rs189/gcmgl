@@ -125,14 +125,14 @@ gcmgl is a C++ graphics library targeting PlayStation 3 (GCM) and Linux (x86_64,
 
 ### VertexAttribute_t
 - `CFixedString m_Name`
-- `VertexFormat_t m_Format`
+- `VertexFormat_t::Enum m_Format`
 - `uint32 m_Offset`
 - `uint32 m_Location`
-- `VertexSemantic_t m_VertexSemantic`
+- `VertexSemantic_t::Enum m_VertexSemantic`
 
 ### CVertexLayout
 - `void AddAttribute(const CFixedString& name, uint32 format, uint32 offset, uint32 location = 0)`
-- `void AddAttribute(const CFixedString& name, uint32 format, uint32 offset, VertexSemantic_t vertexSemantic, uint32 location = 0)`
+- `void AddAttribute(const CFixedString& name, uint32 format, uint32 offset, VertexSemantic_t::Enum vertexSemantic, uint32 location = 0)`
 - `void SetStride(uint32 vertexStride)`
 - `uint32 GetStride() const`
 - `const CUtlVector<VertexAttribute_t>& GetAttributes() const`
@@ -172,7 +172,6 @@ gcmgl is a C++ graphics library targeting PlayStation 3 (GCM) and Linux (x86_64,
 
 ### CBatch
 - `CUtlVector<BatchChunk_t> m_BatchChunks`
-- `const CVector3* m_pCameraPos`
 - `void Add(const CVector3& position, const CQuaternion& rotation = CQuaternion(), const CVector3& scale = CVector3(1.0f, 1.0f, 1.0f))`
 - `void Build(float32 chunkSize = 500.0f)`
 - `void Clear()`
@@ -192,9 +191,9 @@ gcmgl is a C++ graphics library targeting PlayStation 3 (GCM) and Linux (x86_64,
 - `void SetViewport(const Viewport_t& viewport)`
 - `void SetScissor(const Rect_t& rect)`
 - `void SetStencilRef(uint32 stencilRef)`
-- `BufferHandle CreateVertexBuffer(const void* pData, uint64 size, BufferUsage_t usage)`
-- `BufferHandle CreateIndexBuffer(const void* pData, uint64 size, IndexFormat_t format, BufferUsage_t usage)`
-- `BufferHandle CreateConstantBuffer(uint64 size, BufferUsage_t usage)`
+- `BufferHandle CreateVertexBuffer(const void* pData, uint64 size, BufferUsage_t::Enum usage)`
+- `BufferHandle CreateIndexBuffer(const void* pData, uint64 size, IndexFormat_t::Enum format, BufferUsage_t::Enum usage)`
+- `BufferHandle CreateConstantBuffer(uint64 size, BufferUsage_t::Enum usage)`
 - `void UpdateBuffer(BufferHandle hBuffer, const void* pData, uint64 size, uint64 offset = 0)`
 - `void DestroyBuffer(BufferHandle hBuffer)`
 - `void* MapBuffer(BufferHandle hBuffer)`
@@ -204,8 +203,8 @@ gcmgl is a C++ graphics library targeting PlayStation 3 (GCM) and Linux (x86_64,
 - `ShaderProgramHandle GetOrCreateShaderProgram(const CFixedString& shaderName)`
 - `void DestroyShaderProgram(ShaderProgramHandle hProgram)`
 - `void ClearShaderCache()`
-- `TextureHandle CreateTexture2D(uint32 width, uint32 height, TextureFormat_t format, const void* pData = GCMGL_NULL)`
-- `TextureHandle CreateTextureCube(uint32 size, TextureFormat_t format, const void** ppFaces = GCMGL_NULL)`
+- `TextureHandle CreateTexture2D(uint32 width, uint32 height, TextureFormat_t::Enum format, const void* pData = GCMGL_NULL)`
+- `TextureHandle CreateTextureCube(uint32 size, TextureFormat_t::Enum format, const void** ppFaces = GCMGL_NULL)`
 - `void SetTexture(TextureHandle hTexture, uint32 slot, ShaderStage_t stage)`
 - `void SetSampler(SamplerHandle hSampler, uint32 slot, ShaderStage_t stage)`
 - `void UpdateTexture(TextureHandle hTexture, const void* pData, uint32 mipLevel = 0)`

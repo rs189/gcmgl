@@ -20,10 +20,10 @@ uint32 CColor::PackColor(const CColor& color)
 #ifdef PLATFORM_PS3
 	// Big-endian
 	return PackRGBA(color);
-#else
+#else // PLATFORM_PS3
 	// Little-endian
 	return PackABGR(color);
-#endif
+#endif // !PLATFORM_PS3
 }
 
 uint32 CColor::PackRGBA(const CColor& color)

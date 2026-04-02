@@ -14,9 +14,15 @@ INCLUDES := src include public thirdparty src/renderer/gcm/spu
 
 SPU_SRCDIR := src/renderer/gcm/spu
 SPU_BUILD_DIR := $(OBJDIR)/spu
-SPU_ELF := $(SPU_BUILD_DIR)/SpuBatchTransformJob.elf
-SPU_OBJ := $(OBJDIR)/SpuBatchTransformJob_spu.o
-SPU_SRC := $(SPU_SRCDIR)/SpuBatchTransformJob.c
+
+SPU_BATCH_TRANSFORM_JOB_ELF := $(SPU_BUILD_DIR)/SpuBatchTransformJob.elf
+SPU_BATCH_TRANSFORM_JOB_OBJ := $(OBJDIR)/SpuBatchTransformJob_spu.o
+SPU_BATCH_TRANSFORM_JOB_SRC := $(SPU_SRCDIR)/SpuBatchTransformJob.c
+
+SPU_FRUSTUM_CULL_JOB_ELF := $(SPU_BUILD_DIR)/SpuFrustumCullJob.elf
+SPU_FRUSTUM_CULL_JOB_OBJ := $(OBJDIR)/SpuFrustumCullJob_spu.o
+SPU_FRUSTUM_CULL_JOB_SRC := $(SPU_SRCDIR)/SpuFrustumCullJob.c
+
 SPU_CC := spu-gcc
 SPU_CFLAGS := -O2 -Wall -I$(SPU_SRCDIR) -I/usr/local/ps3dev/spu/include -Ipublic -DPLATFORM_PS3
 
@@ -27,8 +33,8 @@ else
 	OPT_FLAGS = -O2
 endif
 
-CFLAGS = $(OPT_FLAGS) -Wall -mcpu=cell -maltivec $(MACHDEP) $(INCLUDE) -DPLATFORM_PS3
-CXXFLAGS = $(CFLAGS) -std=c++11
+CFLAGS = $(OPT_FLAGS) -Wall -Wno-unused-but-set-variable -mcpu=cell -maltivec $(MACHDEP) $(INCLUDE) -DPLATFORM_PS3
+CXXFLAGS = $(CFLAGS) -std=c++98
 LDFLAGS = $(MACHDEP) -Wl,-Map,$@.map
 
 ifeq ($(EXAMPLE),Triangle)
@@ -64,7 +70,7 @@ endif
 LIBS := -lgcm_sys -lrsx -llv2 -lsysutil -lio -lm -lrt $(wildcard build/shaders/*.o)
 
 CFILES := $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
-CFILES := $(filter-out SpuBatchTransformJob.c, $(CFILES))
+CFILES := $(filter-out SpuBatchTransformJob.c SpuFrustumCullJob.c, $(CFILES))
 CPPFILES := $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.cpp)))
 CPPFILES := $(filter-out gl_renderer.cpp gl_device.cpp WindowGlfw.cpp windowing_glfw.cpp imgui_renderer.cpp diagnostics.cpp, $(CPPFILES))
 CPPFILES += $(EXAMPLE_SRC)
@@ -74,7 +80,7 @@ export VPATH := $(SOURCES) $(EXAMPLE_DIR)
 export BUILDDIR := $(OBJDIR)
 export LD := $(CXX)
 
-export OFILES := $(addprefix $(BUILDDIR)/, $(CPPFILES:.cpp=.o) $(CFILES:.c=.o)) $(SPU_OBJ)
+export OFILES := $(addprefix $(BUILDDIR)/, $(CPPFILES:.cpp=.o) $(CFILES:.c=.o)) $(SPU_BATCH_TRANSFORM_JOB_OBJ) $(SPU_FRUSTUM_CULL_JOB_OBJ)
 
 export INCLUDE := $(foreach dir,$(INCLUDES), -I$(dir)) $(LIBPSL1GHT_INC) -I$(OBJDIR)
 export LIBPATHS := $(LIBPSL1GHT_LIB)
@@ -100,13 +106,21 @@ $(BUILDDIR)/%.o: %.c | $(OBJDIR)
 	@echo $(notdir $<)
 	@$(CC) -MD -MP -MF $(BUILDDIR)/$*.d $(CFLAGS) -c $< -o $@
 
-$(SPU_ELF): $(SPU_SRC) $(SPU_SRCDIR)/SpuBatchTransformJob.h | $(SPU_BUILD_DIR)
+$(SPU_BATCH_TRANSFORM_JOB_ELF): $(SPU_BATCH_TRANSFORM_JOB_SRC) $(SPU_SRCDIR)/SpuBatchTransformJob.h | $(SPU_BUILD_DIR)
 	@echo Building $(notdir $@)
-	@$(SPU_CC) $(SPU_CFLAGS) -o $@ $(SPU_SRC) -L/usr/local/ps3dev/spu/lib -lsputhread
+	@$(SPU_CC) $(SPU_CFLAGS) -o $@ $(SPU_BATCH_TRANSFORM_JOB_SRC) -L/usr/local/ps3dev/spu/lib -lsputhread
 
-$(SPU_OBJ): $(SPU_ELF)
+$(SPU_BATCH_TRANSFORM_JOB_OBJ): $(SPU_BATCH_TRANSFORM_JOB_ELF)
 	@echo Embedding $(notdir $<)
-	@cd "$(SPU_BUILD_DIR)" && powerpc64-ps3-elf-ld -r -b binary -o "$(notdir $(SPU_OBJ))" $(notdir $(SPU_ELF)) && mv "$(notdir $(SPU_OBJ))" "$(abspath $(SPU_OBJ))"
+	@cd "$(SPU_BUILD_DIR)" && powerpc64-ps3-elf-ld -r -b binary -o "$(notdir $(SPU_BATCH_TRANSFORM_JOB_OBJ))" $(notdir $(SPU_BATCH_TRANSFORM_JOB_ELF)) && mv "$(notdir $(SPU_BATCH_TRANSFORM_JOB_OBJ))" "$(abspath $(SPU_BATCH_TRANSFORM_JOB_OBJ))"
+
+$(SPU_FRUSTUM_CULL_JOB_ELF): $(SPU_FRUSTUM_CULL_JOB_SRC) $(SPU_SRCDIR)/SpuFrustumCullJob.h | $(SPU_BUILD_DIR)
+	@echo Building $(notdir $@)
+	@$(SPU_CC) $(SPU_CFLAGS) -o $@ $(SPU_FRUSTUM_CULL_JOB_SRC) -L/usr/local/ps3dev/spu/lib -lsputhread
+
+$(SPU_FRUSTUM_CULL_JOB_OBJ): $(SPU_FRUSTUM_CULL_JOB_ELF)
+	@echo Embedding $(notdir $<)
+	@cd "$(SPU_BUILD_DIR)" && powerpc64-ps3-elf-ld -r -b binary -o "$(notdir $(SPU_FRUSTUM_CULL_JOB_OBJ))" $(notdir $(SPU_FRUSTUM_CULL_JOB_ELF)) && mv "$(notdir $(SPU_FRUSTUM_CULL_JOB_OBJ))" "$(abspath $(SPU_FRUSTUM_CULL_JOB_OBJ))"
 
 $(SPU_BUILD_DIR):
 	@mkdir -p $@

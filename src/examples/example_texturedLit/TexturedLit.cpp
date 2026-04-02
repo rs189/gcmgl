@@ -21,9 +21,9 @@
 #include <sys/process.h>
 #include <sysutil/sysutil.h>
 #include <io/pad.h>
-#else
+#else // PLATFORM_PS3
 #include <GLFW/glfw3.h>
-#endif
+#endif // !PLATFORM_PS3
 
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image.h>
@@ -34,6 +34,26 @@ struct TexturedLitVertex_t
 	CVector2 m_TexCoord;
 	CVector3 m_Normal;
 	uint32 m_Color;
+
+	TexturedLitVertex_t() :
+		m_Position(0.0f, 0.0f, 0.0f),
+		m_TexCoord(0.0f, 0.0f),
+		m_Normal(0.0f, 0.0f, 0.0f),
+		m_Color(0)
+	{
+	}
+
+	TexturedLitVertex_t(
+		const CVector3& position,
+		const CVector2& texCoord,
+		const CVector3& normal,
+		uint32 color) :
+		m_Position(position),
+		m_TexCoord(texCoord),
+		m_Normal(normal),
+		m_Color(color)
+	{
+	}
 };
 
 #define MAX_LIGHTS 8
@@ -71,40 +91,40 @@ int32 RunTexturedLitExample(
 	// Create cube with per-face normals
 	TexturedLitVertex_t vertexData[] = {
 		// front (z = -0.5)
-		{{-0.5f, -0.5f, -0.5f}, {0.0f, 0.0f}, CMaths::Normalise(CVector3(-1.0f, -1.0f, -1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)},
-		{{0.5f, -0.5f, -0.5f}, {1.0f, 0.0f}, CMaths::Normalise(CVector3(1.0f, -1.0f, -1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)},
-		{{0.5f, 0.5f, -0.5f}, {1.0f, 1.0f}, CMaths::Normalise(CVector3(1.0f, 1.0f, -1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)},
-		{{-0.5f, 0.5f, -0.5f}, {0.0f, 1.0f}, CMaths::Normalise(CVector3(-1.0f, 1.0f, -1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)},
+		TexturedLitVertex_t(CVector3(-0.5f, -0.5f, -0.5f), CVector2(0.0f, 0.0f), CMaths::Normalise(CVector3(-1.0f, -1.0f, -1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedLitVertex_t(CVector3(0.5f, -0.5f, -0.5f), CVector2(1.0f, 0.0f), CMaths::Normalise(CVector3(1.0f, -1.0f, -1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedLitVertex_t(CVector3(0.5f, 0.5f, -0.5f), CVector2(1.0f, 1.0f), CMaths::Normalise(CVector3(1.0f, 1.0f, -1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedLitVertex_t(CVector3(-0.5f, 0.5f, -0.5f), CVector2(0.0f, 1.0f), CMaths::Normalise(CVector3(-1.0f, 1.0f, -1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
 
 		// back (z = 0.5)
-		{{0.5f, -0.5f, 0.5f}, {0.0f, 0.0f}, CMaths::Normalise(CVector3(1.0f, -1.0f, 1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)},
-		{{-0.5f, -0.5f, 0.5f}, {1.0f, 0.0f}, CMaths::Normalise(CVector3(-1.0f, -1.0f, 1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)},
-		{{-0.5f, 0.5f, 0.5f}, {1.0f, 1.0f}, CMaths::Normalise(CVector3(-1.0f, 1.0f, 1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)},
-		{{0.5f, 0.5f, 0.5f}, {0.0f, 1.0f}, CMaths::Normalise(CVector3(1.0f, 1.0f, 1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)},
+		TexturedLitVertex_t(CVector3(0.5f, -0.5f, 0.5f), CVector2(0.0f, 0.0f), CMaths::Normalise(CVector3(1.0f, -1.0f, 1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedLitVertex_t(CVector3(-0.5f, -0.5f, 0.5f), CVector2(1.0f, 0.0f), CMaths::Normalise(CVector3(-1.0f, -1.0f, 1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedLitVertex_t(CVector3(-0.5f, 0.5f, 0.5f), CVector2(1.0f, 1.0f), CMaths::Normalise(CVector3(-1.0f, 1.0f, 1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedLitVertex_t(CVector3(0.5f, 0.5f, 0.5f), CVector2(0.0f, 1.0f), CMaths::Normalise(CVector3(1.0f, 1.0f, 1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
 
 		// right (x = 0.5)
-		{{0.5f, -0.5f, -0.5f}, {0.0f, 0.0f}, CMaths::Normalise(CVector3(1.0f, -1.0f, -1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)},
-		{{0.5f, -0.5f, 0.5f}, {1.0f, 0.0f}, CMaths::Normalise(CVector3(1.0f, -1.0f, 1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)},
-		{{0.5f, 0.5f, 0.5f}, {1.0f, 1.0f}, CMaths::Normalise(CVector3(1.0f, 1.0f, 1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)},
-		{{0.5f, 0.5f, -0.5f}, {0.0f, 1.0f}, CMaths::Normalise(CVector3(1.0f, 1.0f, -1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)},
+		TexturedLitVertex_t(CVector3(0.5f, -0.5f, -0.5f), CVector2(0.0f, 0.0f), CMaths::Normalise(CVector3(1.0f, -1.0f, -1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedLitVertex_t(CVector3(0.5f, -0.5f, 0.5f), CVector2(1.0f, 0.0f), CMaths::Normalise(CVector3(1.0f, -1.0f, 1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedLitVertex_t(CVector3(0.5f, 0.5f, 0.5f), CVector2(1.0f, 1.0f), CMaths::Normalise(CVector3(1.0f, 1.0f, 1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedLitVertex_t(CVector3(0.5f, 0.5f, -0.5f), CVector2(0.0f, 1.0f), CMaths::Normalise(CVector3(1.0f, 1.0f, -1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
 
 		// left (x = -0.5)
-		{{-0.5f, -0.5f, 0.5f}, {0.0f, 0.0f}, CMaths::Normalise(CVector3(-1.0f, -1.0f, 1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)},
-		{{-0.5f, -0.5f, -0.5f}, {1.0f, 0.0f}, CMaths::Normalise(CVector3(-1.0f, -1.0f, -1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)},
-		{{-0.5f, 0.5f, -0.5f}, {1.0f, 1.0f}, CMaths::Normalise(CVector3(-1.0f, 1.0f, -1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)},
-		{{-0.5f, 0.5f, 0.5f}, {0.0f, 1.0f}, CMaths::Normalise(CVector3(-1.0f, 1.0f, 1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)},
+		TexturedLitVertex_t(CVector3(-0.5f, -0.5f, 0.5f), CVector2(0.0f, 0.0f), CMaths::Normalise(CVector3(-1.0f, -1.0f, 1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedLitVertex_t(CVector3(-0.5f, -0.5f, -0.5f), CVector2(1.0f, 0.0f), CMaths::Normalise(CVector3(-1.0f, -1.0f, -1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedLitVertex_t(CVector3(-0.5f, 0.5f, -0.5f), CVector2(1.0f, 1.0f), CMaths::Normalise(CVector3(-1.0f, 1.0f, -1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedLitVertex_t(CVector3(-0.5f, 0.5f, 0.5f), CVector2(0.0f, 1.0f), CMaths::Normalise(CVector3(-1.0f, 1.0f, 1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
 
 		// top (y = 0.5)
-		{{-0.5f, 0.5f, -0.5f}, {0.0f, 0.0f}, CMaths::Normalise(CVector3(-1.0f, 1.0f, -1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)},
-		{{0.5f, 0.5f, -0.5f}, {1.0f, 0.0f}, CMaths::Normalise(CVector3(1.0f, 1.0f, -1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)},
-		{{0.5f, 0.5f, 0.5f}, {1.0f, 1.0f}, CMaths::Normalise(CVector3(1.0f, 1.0f, 1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)},
-		{{-0.5f, 0.5f, 0.5f}, {0.0f, 1.0f}, CMaths::Normalise(CVector3(-1.0f, 1.0f, 1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)},
+		TexturedLitVertex_t(CVector3(-0.5f, 0.5f, -0.5f), CVector2(0.0f, 0.0f), CMaths::Normalise(CVector3(-1.0f, 1.0f, -1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedLitVertex_t(CVector3(0.5f, 0.5f, -0.5f), CVector2(1.0f, 0.0f), CMaths::Normalise(CVector3(1.0f, 1.0f, -1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedLitVertex_t(CVector3(0.5f, 0.5f, 0.5f), CVector2(1.0f, 1.0f), CMaths::Normalise(CVector3(1.0f, 1.0f, 1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedLitVertex_t(CVector3(-0.5f, 0.5f, 0.5f), CVector2(0.0f, 1.0f), CMaths::Normalise(CVector3(-1.0f, 1.0f, 1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
 
 		// bottom (y = -0.5)
-		{{-0.5f, -0.5f, 0.5f}, {0.0f, 0.0f}, CMaths::Normalise(CVector3(-1.0f, -1.0f, 1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)},
-		{{0.5f, -0.5f, 0.5f}, {1.0f, 0.0f}, CMaths::Normalise(CVector3(1.0f, -1.0f, 1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)},
-		{{0.5f, -0.5f, -0.5f}, {1.0f, 1.0f}, CMaths::Normalise(CVector3(1.0f, -1.0f, -1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)},
-		{{-0.5f, -0.5f, -0.5f}, {0.0f, 1.0f}, CMaths::Normalise(CVector3(-1.0f, -1.0f, -1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)}
+		TexturedLitVertex_t(CVector3(-0.5f, -0.5f, 0.5f), CVector2(0.0f, 0.0f), CMaths::Normalise(CVector3(-1.0f, -1.0f, 1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedLitVertex_t(CVector3(0.5f, -0.5f, 0.5f), CVector2(1.0f, 0.0f), CMaths::Normalise(CVector3(1.0f, -1.0f, 1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedLitVertex_t(CVector3(0.5f, -0.5f, -0.5f), CVector2(1.0f, 1.0f), CMaths::Normalise(CVector3(1.0f, -1.0f, -1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedLitVertex_t(CVector3(-0.5f, -0.5f, -0.5f), CVector2(0.0f, 1.0f), CMaths::Normalise(CVector3(-1.0f, -1.0f, -1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f))
 	};
 
 	uint32 indexData[] = {
@@ -135,7 +155,7 @@ int32 RunTexturedLitExample(
 	{
 		fullPath = "/dev_hdd0/game/GCGL00001/USRDIR/" + fullPath;
 	}
-#endif
+#endif // PLATFORM_PS3
 	uint8* pRawImageData = stbi_load(
 		fullPath.c_str(),
 		&texWidth,

@@ -593,6 +593,7 @@ int main(uint64 jobEffAddr, uint64 arg1, uint64 arg2, uint64 arg3)
 			JOB_TAG,
 			0,
 			0);
+
 		waitForTag(1u << JOB_TAG);
 
 		if (g_Job.m_Command == SPU_BATCH_CMD_TERMINATE)
@@ -606,7 +607,9 @@ int main(uint64 jobEffAddr, uint64 arg1, uint64 arg2, uint64 arg3)
 				JOB_TAG,
 				0,
 				0);
+
 			waitForTag(1u << JOB_TAG);
+
 			break;
 		}
 
@@ -638,6 +641,7 @@ int main(uint64 jobEffAddr, uint64 arg1, uint64 arg2, uint64 arg3)
 			JOB_TAG,
 			0,
 			0);
+
 		waitForTag(1u << JOB_TAG);
 
 		spu_thread_send_event(0, g_Job.m_Status, 0);

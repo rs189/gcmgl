@@ -13,11 +13,14 @@
 
 #include "tier0/platform.h"
 
-enum class SPUResult_t : uint8
+struct SPUResult_t
 {
-	Success = 0,
-	NotUsed = 1,
-	Error = 2,
+	enum Enum
+	{
+		Success = 0,
+		NotUsed = 1,
+		Error = 2,
+	};
 };
 
 #endif // SPU_COMMON_H

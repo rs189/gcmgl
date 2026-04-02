@@ -281,7 +281,7 @@ void CGlRenderer::SetStencilRef(uint32 stencilRef)
 BufferHandle CGlRenderer::CreateVertexBuffer(
 	const void* pData,
 	uint64 size,
-	BufferUsage_t usage)
+	BufferUsage_t::Enum usage)
 {
 	void* pPtr = CUtlMemory::AlignedAlloc(size, 16);
 	if (!pPtr)
@@ -325,8 +325,8 @@ BufferHandle CGlRenderer::CreateVertexBuffer(
 BufferHandle CGlRenderer::CreateIndexBuffer(
 	const void* pData,
 	uint64 size,
-	IndexFormat_t format,
-	BufferUsage_t usage)
+	IndexFormat_t::Enum format,
+	BufferUsage_t::Enum usage)
 {
 	void* pPtr = CUtlMemory::AlignedAlloc(size, 16);
 	if (!pPtr)
@@ -367,7 +367,7 @@ BufferHandle CGlRenderer::CreateIndexBuffer(
 	return hBuffer;
 }
 
-BufferHandle CGlRenderer::CreateConstantBuffer(uint64 size, BufferUsage_t usage)
+BufferHandle CGlRenderer::CreateConstantBuffer(uint64 size, BufferUsage_t::Enum usage)
 {
 	void* pPtr = CUtlMemory::Alloc(size);
 	if (!pPtr)
@@ -581,11 +581,8 @@ ShaderProgramHandle CGlRenderer::CreateShaderProgram(
 	glDeleteShader(fragmentShader);
 
 	const ShaderProgramHandle hProgram = AllocHandle();
-	const ProgramResource_t programResource = {
-		{},
-		{},
-		glProgram
-	};
+	ProgramResource_t programResource;
+	programResource.m_hId = glProgram;
 	m_ProgramResources.Insert(hProgram, programResource);
 
 	return hProgram;
@@ -609,7 +606,7 @@ void CGlRenderer::DestroyShaderProgram(ShaderProgramHandle hProgram)
 TextureHandle CGlRenderer::CreateTexture2D(
 	uint32 width,
 	uint32 height,
-	TextureFormat_t format,
+	TextureFormat_t::Enum format,
 	const void* pData)
 {
 	GLuint id;
@@ -679,7 +676,7 @@ TextureHandle CGlRenderer::CreateTexture2D(
 
 TextureHandle CGlRenderer::CreateTextureCube(
 	uint32 size,
-	TextureFormat_t format,
+	TextureFormat_t::Enum format,
 	const void** pFaces)
 {
 	GLuint id;
@@ -1166,7 +1163,7 @@ void CGlRenderer::DrawIndexed(
 }
 
 uint32 CGlRenderer::GetVertexSemanticAttributeIndex(
-	VertexSemantic_t vertexSemantic)
+	VertexSemantic_t::Enum vertexSemantic)
 {
 	return 0xFFFFFFFFu;
 }

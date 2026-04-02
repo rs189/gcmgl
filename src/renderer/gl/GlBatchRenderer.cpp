@@ -64,14 +64,14 @@ static void TransformVertices(
 		vertexStride,
 		vertexPosOffset,
 		matrix);
-#else
+#else // SIMD_ENABLED
 	CBatchRenderer::TransformVertices(
 		pDst,
 		vertexCount,
 		vertexStride,
 		vertexPosOffset,
 		matrix);
-#endif
+#endif // !SIMD_ENABLED
 }
 
 static void* BatchTransforms(void* pArg)
@@ -99,6 +99,218 @@ static void* BatchTransforms(void* pArg)
 	}
 
 	return GCMGL_NULL;
+}
+
+#ifdef SIMD_ENABLED
+static void* FrustumCullThreadSSE(void* pArg)
+{
+	CullThreadData_t* pData = static_cast<CullThreadData_t*>(pArg);
+
+	for (uint32 instanceIndex = pData->m_Start; instanceIndex < pData->m_End; instanceIndex++)
+	{
+		const BatchChunkTransform_t& batchChunkTransform = pData->m_pSrcTransforms[instanceIndex];
+
+		const simde__m128 center = simde_mm_set_ps(
+			1.0f,
+			batchChunkTransform.m_Position.m_Z,
+			batchChunkTransform.m_Position.m_Y,
+			batchChunkTransform.m_Position.m_X);
+		const simde__m128 extent = simde_mm_set_ps(
+			0.0f,
+			batchChunkTransform.m_Scale.m_Z * 0.5f,
+			batchChunkTransform.m_Scale.m_Y * 0.5f,
+			batchChunkTransform.m_Scale.m_X * 0.5f);
+
+		bool isVisible = true;
+		for (int32 i = 0; i < 6; i++)
+		{
+			const simde__m128 plane = simde_mm_set_ps(
+				pData->m_pPlanes[i].m_Distance,
+				pData->m_pPlanes[i].m_Normal.m_Z,
+				pData->m_pPlanes[i].m_Normal.m_Y,
+				pData->m_pPlanes[i].m_Normal.m_X);
+			const simde__m128 absPlane = simde_mm_andnot_ps(
+				simde_mm_set1_ps(-0.0f), plane);
+			const simde__m128 r4 = simde_mm_mul_ps(absPlane, extent);
+			const simde__m128 d4 = simde_mm_mul_ps(plane, center);
+
+			float32 r[4], d[4];
+			simde_mm_storeu_ps(r, r4);
+			simde_mm_storeu_ps(d, d4);
+
+			const float32 radius = r[0] + r[1] + r[2];
+			const float32 dist = d[0] + d[1] + d[2] + d[3];
+
+			if (dist + radius < 0.0f)
+			{
+				isVisible = false;
+
+				break;
+			}
+		}
+
+		if (isVisible)
+		{
+			pData->m_pDstTransforms->AddToTail(batchChunkTransform);
+		}
+	}
+
+	return GCMGL_NULL;
+}
+#endif // SIMD_ENABLED
+
+static void* FrustumCullThread(void* pArg)
+{
+	CullThreadData_t* pData = static_cast<CullThreadData_t*>(pArg);
+
+	CBatchRenderer::CullChunk(
+		pData->m_pSrcTransforms,
+		pData->m_Start,
+		pData->m_End,
+		pData->m_pPlanes,
+		*pData->m_pDstTransforms);
+
+	return GCMGL_NULL;
+}
+
+void CGlBatchRenderer::FrustumCullBatch(
+	const CBatch& batch,
+	const Plane_t* pFrustumPlanes,
+	CUtlVector<BatchChunkTransform_t>& batchChunkTransforms)
+{
+	for (int32 chunkIndex = 0; chunkIndex < batch.m_BatchChunks.Count(); chunkIndex++)
+	{
+		const BatchChunk_t& batchChunk = batch.m_BatchChunks[chunkIndex];
+
+		if (batch.m_pCameraPos)
+		{
+			static const float32 s_ChunkCullRadius = 20000.0f;
+			static const float32 s_ChunkCullRadiusSq = s_ChunkCullRadius * s_ChunkCullRadius;
+			const CVector3 chunkOffset = batchChunk.m_Center - *batch.m_pCameraPos;
+			if (chunkOffset.LengthSq() > s_ChunkCullRadiusSq)
+			{
+				continue;
+			}
+		}
+
+		const int32 batchChunkTransformCount = batchChunk.m_BatchChunkTransforms.Count();
+
+#ifdef THREADING_ENABLED
+		if (batchChunkTransformCount > 1)
+		{
+			static const uint32 numThreads = 2;
+			CUtlVector<BatchChunkTransform_t> threadOutput[numThreads];
+			CullThreadData_t cullThreadData[numThreads];
+			const uint32 halfCount = uint32(batchChunkTransformCount) / 2;
+			pthread_t threads[numThreads];
+
+			for (uint32 j = 0; j < numThreads; j++)
+			{
+				cullThreadData[j].m_pSrcTransforms =
+					batchChunk.m_BatchChunkTransforms.Base();
+				cullThreadData[j].m_pDstTransforms = &threadOutput[j];
+				cullThreadData[j].m_pPlanes = pFrustumPlanes;
+				cullThreadData[j].m_Start = j == 0 ? 0 : halfCount;
+				cullThreadData[j].m_End =
+					j == 0 ? halfCount : uint32(batchChunkTransformCount);
+
+				const int32 threadCreateResult = pthread_create(
+					&threads[j],
+					GCMGL_NULL,
+#ifdef SIMD_ENABLED
+					FrustumCullThreadSSE,
+#else // SIMD_ENABLED
+					FrustumCullThread,
+#endif // !SIMD_ENABLED
+					&cullThreadData[j]);
+				if (threadCreateResult != 0)
+				{
+					Warning(
+						"[GlBatchRenderer] Failed to create thread %d: %d\n",
+						j,
+						threadCreateResult);
+				}
+			}
+
+			for (uint32 j = 0; j < numThreads; j++)
+			{
+				pthread_join(threads[j], GCMGL_NULL);
+			}
+
+			for (uint32 j = 0; j < numThreads; j++)
+			{
+				for (int32 resultIndex = 0;
+					resultIndex < threadOutput[j].Count();
+					resultIndex++)
+				{
+					batchChunkTransforms.AddToTail(
+						threadOutput[j][resultIndex]);
+				}
+			}
+
+			continue;
+		}
+#endif // THREADING_ENABLED
+
+#ifdef SIMD_ENABLED
+		for (int32 instanceIndex = 0; instanceIndex < batchChunkTransformCount; instanceIndex++)
+		{
+			const BatchChunkTransform_t& transform =
+				batchChunk.m_BatchChunkTransforms[instanceIndex];
+
+			const simde__m128 center = simde_mm_set_ps(
+				1.0f,
+				transform.m_Position.m_Z,
+				transform.m_Position.m_Y,
+				transform.m_Position.m_X);
+			const simde__m128 extent = simde_mm_set_ps(
+				0.0f,
+				transform.m_Scale.m_Z * 0.5f,
+				transform.m_Scale.m_Y * 0.5f,
+				transform.m_Scale.m_X * 0.5f);
+
+			bool isVisible = true;
+			for (int32 i = 0; i < 6; i++)
+			{
+				const simde__m128 plane = simde_mm_set_ps(
+					pFrustumPlanes[i].m_Distance,
+					pFrustumPlanes[i].m_Normal.m_Z,
+					pFrustumPlanes[i].m_Normal.m_Y,
+					pFrustumPlanes[i].m_Normal.m_X);
+				const simde__m128 absPlane = simde_mm_andnot_ps(
+					simde_mm_set1_ps(-0.0f), plane);
+				const simde__m128 r4 = simde_mm_mul_ps(absPlane, extent);
+				const simde__m128 d4 = simde_mm_mul_ps(plane, center);
+
+				float32 r[4], d[4];
+				simde_mm_storeu_ps(r, r4);
+				simde_mm_storeu_ps(d, d4);
+
+				const float32 radius = r[0] + r[1] + r[2];
+				const float32 dist = d[0] + d[1] + d[2] + d[3];
+
+				if (dist + radius < 0.0f)
+				{
+					isVisible = false;
+
+					break;
+				}
+			}
+
+			if (isVisible)
+			{
+				batchChunkTransforms.AddToTail(transform);
+			}
+		}
+#else // SIMD_ENABLED
+		CBatchRenderer::CullChunk(
+			batchChunk.m_BatchChunkTransforms.Base(),
+			0,
+			uint32(batchChunkTransformCount),
+			pFrustumPlanes,
+			batchChunkTransforms);
+#endif // !SIMD_ENABLED
+	}
 }
 
 void CGlBatchRenderer::DrawBatchedChunk(
@@ -178,17 +390,17 @@ void CGlBatchRenderer::DrawBatchedChunk(
 			batchThreadData[i].m_VertexPosOffset = vertexPosOffset;
 			batchThreadData[i].m_HasVertexPos = hasVertexPos;
 
-			int32 threadResult = pthread_create(
+			int32 threadCreateResult = pthread_create(
 				&threads[i],
 				GCMGL_NULL,
 				BatchTransforms,
 				&batchThreadData[i]);
-			if (threadResult != 0)
+			if (threadCreateResult != 0)
 			{
 				Warning(
 					"[GlBatchRenderer] Failed to create thread %d: %d\n",
 					i,
-					threadResult);
+					threadCreateResult);
 			}
 		}
 
@@ -198,7 +410,7 @@ void CGlBatchRenderer::DrawBatchedChunk(
 		}
 	}
 #endif // THREADING_ENABLED
-	else
+#ifndef THREADING_ENABLED
 	{
 		for (uint32 i = 0; i < chunkSize; i++)
 		{
@@ -219,6 +431,7 @@ void CGlBatchRenderer::DrawBatchedChunk(
 			}
 		}
 	}
+#endif // !THREADING_ENABLED
 
 	if (stagingVertexBuffer.m_hId == 0)
 	{
@@ -408,17 +621,17 @@ void CGlBatchRenderer::DrawIndexedBatchedChunk(
 			batchThreadData[i].m_VertexPosOffset = vertexPosOffset;
 			batchThreadData[i].m_HasVertexPos = hasVertexPos;
 
-			int32 threadResult = pthread_create(
+			int32 threadCreateResult = pthread_create(
 				&threads[i],
 				GCMGL_NULL,
 				BatchIndexedTransforms,
 				&batchThreadData[i]);
-			if (threadResult != 0)
+			if (threadCreateResult != 0)
 			{
 				Warning(
 					"[GlBatchRenderer] Failed to create thread %d: %d\n",
 					i,
-					threadResult);
+					threadCreateResult);
 			}
 		}
 
@@ -428,7 +641,7 @@ void CGlBatchRenderer::DrawIndexedBatchedChunk(
 		}
 	}
 #endif // THREADING_ENABLED
-	else
+#ifndef THREADING_ENABLED
 	{
 		for (uint32 i = 0; i < chunkSize; i++)
 		{
@@ -456,6 +669,7 @@ void CGlBatchRenderer::DrawIndexedBatchedChunk(
 			}
 		}
 	}
+#endif // !THREADING_ENABLED
 
 	if (stagingVertexBuffer.m_hId == 0)
 	{

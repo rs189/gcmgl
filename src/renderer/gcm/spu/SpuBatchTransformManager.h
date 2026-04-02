@@ -27,7 +27,7 @@ public:
 	bool Initialize();
 	void Shutdown();
 
-	SPUResult_t BeginBatch(
+	SPUResult_t::Enum BeginBatch(
 		const char* pSrcVertices,
 		const uint32* pSrcIndices,
 		const BatchChunkTransform_t* pTransforms,
@@ -39,7 +39,7 @@ public:
 		uint32 vertexStride,
 		uint32 vertexPosOffset,
 		uint32 baseVertex);
-	SPUResult_t WaitBatch();
+	SPUResult_t::Enum WaitBatch();
 private:
 	static const uint32 s_BatchTransformSpuCount = 2;
 	sysSpuImage m_SpuImage;

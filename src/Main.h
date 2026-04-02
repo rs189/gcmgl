@@ -13,7 +13,7 @@
 
 #include "tier0/platform.h"
 
-#if !defined(PLATFORM_PS3)
+#ifndef PLATFORM_PS3
 //#define GCMGL_DIAGNOSTICS
 #endif
 

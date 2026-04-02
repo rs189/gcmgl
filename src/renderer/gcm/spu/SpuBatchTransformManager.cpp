@@ -279,7 +279,7 @@ void CSpuBatchTransformManager::Shutdown()
 	sysSpuImageClose(&m_SpuImage);
 }
 
-SPUResult_t CSpuBatchTransformManager::BeginBatch(
+SPUResult_t::Enum CSpuBatchTransformManager::BeginBatch(
 	const char* pSrcVertices,
 	const uint32* pSrcIndices,
 	const BatchChunkTransform_t* pTransforms,
@@ -404,7 +404,7 @@ SPUResult_t CSpuBatchTransformManager::BeginBatch(
 	return hasError ? SPUResult_t::Error : SPUResult_t::Success;
 }
 
-SPUResult_t CSpuBatchTransformManager::WaitBatch()
+SPUResult_t::Enum CSpuBatchTransformManager::WaitBatch()
 {
 	bool hasError = false;
 

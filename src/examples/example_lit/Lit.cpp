@@ -21,9 +21,9 @@
 #include <sys/process.h>
 #include <sysutil/sysutil.h>
 #include <io/pad.h>
-#else
+#else // PLATFORM_PS3
 #include <GLFW/glfw3.h>
-#endif
+#endif // !PLATFORM_PS3
 
 struct LitVertex_t
 {

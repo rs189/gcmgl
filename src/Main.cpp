@@ -70,9 +70,9 @@ int main(int argc, char* argv[])
 	CWindowManager windowManager;
 #ifdef PLATFORM_PS3
 	if (!windowManager.Start(WindowBackendPs3, windowConfig))
-#else
+#else // PLATFORM_PS3
 	if (!windowManager.Start(WindowBackendGlfw, windowConfig))
-#endif
+#endif // !PLATFORM_PS3
 	{
 		Error("[ERROR][Game] Failed to start window manager\n");
 

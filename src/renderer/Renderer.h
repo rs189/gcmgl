@@ -107,25 +107,46 @@ struct Rect_t
 	}
 };
 
-enum class BufferUsage_t
+struct BufferUsage_t
 {
-	Static,
-	Dynamic,
-	Immutable
+	enum Enum
+	{
+		Static,
+		Dynamic,
+		Immutable
+	};
 };
 
-enum class IndexFormat_t
+struct IndexFormat_t
 {
-	UInt16,
-	UInt32
+	enum Enum
+	{
+		UInt16,
+		UInt32
+	};
 };
 
-enum class TextureFormat_t
+struct TextureFormat_t
 {
-	R8, RG8, RGB8, RGBA8,
-	R16F, RG16F, RGB16F, RGBA16F,
-	R32F, RG32F, RGB32F, RGBA32F,
-	Depth16, Depth24, Depth32F, Depth24Stencil8
+	enum Enum
+	{
+		R8,
+		RG8,
+		RGB8,
+		RGBA8,
+		R16F,
+		RG16F,
+		RGB16F,
+		RGBA16F,
+		R32F,
+		RG32F,
+		RGB32F,
+		RGBA32F,
+		Depth16,
+		Depth24,
+		Depth32F,
+		Depth24Stencil8
+	};
 };
 
 enum ShaderStage_t
@@ -135,46 +156,52 @@ enum ShaderStage_t
 	ShaderStageAll = ShaderStageVertex | ShaderStageFragment
 };
 
-enum class VertexFormat_t : uint32
+struct VertexFormat_t
 {
-	Unspecified = 0,
-	Float = 1,
-	Float2 = 2,
-	Float3 = 3,
-	Float4 = 4,
-	UByte4_Norm = 5
+	enum Enum
+	{
+		Unspecified = 0,
+		Float = 1,
+		Float2 = 2,
+		Float3 = 3,
+		Float4 = 4,
+		UByte4_Norm = 5
+	};
 };
 
-enum class VertexSemantic_t
+struct VertexSemantic_t
 {
-	Unspecified = 0,
-	Position = 1,
-	Weight = 2,
-	Normal = 3,
-	Color0 = 4,
-	Color1 = 5,
-	Fog = 6,
-	PointSize = 7,
-	EdgeFlag = 8,
-	TexCoord0 = 9,
-	TexCoord1 = 10,
-	TexCoord2 = 11,
-	TexCoord3 = 12,
-	TexCoord4 = 13,
-	TexCoord5 = 14,
-	TexCoord6 = 15,
-	Tangent = 16,
-	TexCoord7 = 17,
-	Binormal = 18
+	enum Enum
+	{
+		Unspecified = 0,
+		Position = 1,
+		Weight = 2,
+		Normal = 3,
+		Color0 = 4,
+		Color1 = 5,
+		Fog = 6,
+		PointSize = 7,
+		EdgeFlag = 8,
+		TexCoord0 = 9,
+		TexCoord1 = 10,
+		TexCoord2 = 11,
+		TexCoord3 = 12,
+		TexCoord4 = 13,
+		TexCoord5 = 14,
+		TexCoord6 = 15,
+		Tangent = 16,
+		TexCoord7 = 17,
+		Binormal = 18
+	};
 };
 
 struct VertexAttribute_t
 {
 	CFixedString m_Name;
-	VertexFormat_t m_Format;
+	VertexFormat_t::Enum m_Format;
 	uint32 m_Offset;
 	uint32 m_Location;
-	VertexSemantic_t m_VertexSemantic;
+	VertexSemantic_t::Enum m_VertexSemantic;
 };
 
 class CVertexLayout
@@ -191,7 +218,7 @@ public:
 		const CFixedString& name,
 		uint32 format,
 		uint32 offset,
-		VertexSemantic_t vertexSemantic,
+		VertexSemantic_t::Enum vertexSemantic,
 		uint32 location = 0);
 
 	void SetStride(uint32 vertexStride);
@@ -405,26 +432,42 @@ struct Plane_t
 	}
 };
 
-enum class StateDirtyFlags_t : uint32
+struct CullThreadData_t
 {
-	None = 0,
-	Program = 1 << 0,
-	VertexBuffer = 1 << 1,
-	IndexBuffer = 1 << 2,
-	BlendState = 1 << 3,
-	DepthStencilState = 1 << 4,
-	Uniforms = 1 << 5,
-	All = 0xFFFFFFFF
+	const BatchChunkTransform_t* m_pSrcTransforms;
+	CUtlVector<BatchChunkTransform_t>* m_pDstTransforms;
+	const Plane_t* m_pPlanes;
+	uint32 m_Start;
+	uint32 m_End;
 };
 
-INLINE StateDirtyFlags_t operator|(StateDirtyFlags_t a, StateDirtyFlags_t b)
+struct StateDirtyFlags_t
 {
-	return static_cast<StateDirtyFlags_t>(uint32(a) | uint32(b));
+	enum Enum
+	{
+		None = 0,
+		Program = 1 << 0,
+		VertexBuffer = 1 << 1,
+		IndexBuffer = 1 << 2,
+		BlendState = 1 << 3,
+		DepthStencilState = 1 << 4,
+		Uniforms = 1 << 5,
+		All = 0xFFFFFFFF
+	};
+};
+
+INLINE StateDirtyFlags_t::Enum operator|(
+	StateDirtyFlags_t::Enum a,
+	StateDirtyFlags_t::Enum b)
+{
+	return static_cast<StateDirtyFlags_t::Enum>(uint32(a) | uint32(b));
 }
 
-INLINE StateDirtyFlags_t operator&(StateDirtyFlags_t a, StateDirtyFlags_t b)
+INLINE StateDirtyFlags_t::Enum operator&(
+	StateDirtyFlags_t::Enum a,
+	StateDirtyFlags_t::Enum b)
 {
-	return static_cast<StateDirtyFlags_t>(uint32(a) & uint32(b));
+	return static_cast<StateDirtyFlags_t::Enum>(uint32(a) & uint32(b));
 }
 
 class IRenderer
@@ -454,15 +497,15 @@ public:
 	virtual BufferHandle CreateVertexBuffer(
 		const void* pData,
 		uint64 size,
-		BufferUsage_t usage) = 0;
+		BufferUsage_t::Enum usage) = 0;
 	virtual BufferHandle CreateIndexBuffer(
 		const void* pData,
 		uint64 size,
-		IndexFormat_t format,
-		BufferUsage_t usage) = 0;
+		IndexFormat_t::Enum format,
+		BufferUsage_t::Enum usage) = 0;
 	virtual BufferHandle CreateConstantBuffer(
 		uint64 size,
-		BufferUsage_t usage) = 0;
+		BufferUsage_t::Enum usage) = 0;
 	virtual void UpdateBuffer(
 		BufferHandle hBuffer,
 		const void* pData,
@@ -483,11 +526,11 @@ public:
 	virtual TextureHandle CreateTexture2D(
 		uint32 width,
 		uint32 height,
-		TextureFormat_t format,
+		TextureFormat_t::Enum format,
 		const void* pData = GCMGL_NULL) = 0;
 	virtual TextureHandle CreateTextureCube(
 		uint32 size,
-		TextureFormat_t format,
+		TextureFormat_t::Enum format,
 		const void** ppFaces = GCMGL_NULL) = 0;
 	virtual void SetTexture(
 		TextureHandle hTexture,
@@ -619,7 +662,7 @@ protected:
 	PipelineState_t m_PipelineState;
 	CUtlMap<CFixedString, ShaderProgramHandle> m_ShaderCache;
 	CUtlMap<UniformBlockLayoutHandle, UniformBlockLayout_t> m_UniformBlockLayouts;
-	StateDirtyFlags_t m_StateDirtyFlags;
+	StateDirtyFlags_t::Enum m_StateDirtyFlags;
 	uint32 m_NextHandle;
 };
 

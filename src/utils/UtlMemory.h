@@ -56,9 +56,9 @@ public:
 		return _aligned_malloc(
 			static_cast<size_t>(size),
 			static_cast<size_t>(alignment));
-#else
+#else // PLATFORM_PS3 || PLATFORM_LINUX || _WIN32
 		return memalign(alignment, uint32(size));
-#endif
+#endif // PLATFORM_PS3 || _WIN32
 	}
 
 	/**
@@ -74,11 +74,11 @@ public:
 			return;
 		}
 
-#if defined(_WIN32)
+#ifdef _WIN32
 		_aligned_free(pPtr);
-#else
+#else // _WIN32
 		free(pPtr);
-#endif
+#endif // !_WIN32
 	}
 };
 

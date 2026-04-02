@@ -65,12 +65,19 @@ protected:
 		uint32 startIndex,
 		int32 baseVertex) = 0;
 
-	void FrustumCullBatch(
+	virtual void FrustumCullBatch(
 		const CBatch& batch,
 		const Plane_t* pFrustumPlanes,
 		CUtlVector<BatchChunkTransform_t>& batchChunkTransforms);
 public:
 	static bool ShouldUpdateChunk(float32 distanceToCamera, uint64 frameCount);
+
+	static void CullChunk(
+		const BatchChunkTransform_t* pSrcTransforms,
+		uint32 start,
+		uint32 end,
+		const Plane_t* pPlanes,
+		CUtlVector<BatchChunkTransform_t>& transforms);
 
 	static void TransformVertices(
 		char* pDst,
@@ -103,6 +110,7 @@ public:
 		uint32& outOffset);
 protected:
 	CUtlVector<BatchChunkTransform_t> m_BatchChunkTransformsScratch;
+	CUtlVector<BatchChunkTransform_t> m_CullSrcScratch;
 	uint32 m_VertexPosOffset;
 	bool m_HasVertexPos;
 };

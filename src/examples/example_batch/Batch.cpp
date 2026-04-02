@@ -24,9 +24,9 @@
 #include <sys/process.h>
 #include <sysutil/sysutil.h>
 #include <io/pad.h>
-#else
+#else // PLATFORM_PS3
 #include <GLFW/glfw3.h>
-#endif
+#endif // !PLATFORM_PS3
 
 int32 RunBatchExample(
 	CWindowManager& windowManager,
@@ -57,15 +57,15 @@ int32 RunBatchExample(
 
 	// Create cube
 	Vertex_t vertexData[] = {
-		{{-0.5f, -0.5f, -0.5f}, Vertex_t::PackColor(1.0f, 0.0f, 0.0f)}, // red
-		{{0.5f, -0.5f, -0.5f}, Vertex_t::PackColor(1.0f, 1.0f, 0.0f)}, // yellow
-		{{0.5f, 0.5f, -0.5f}, Vertex_t::PackColor(0.0f, 1.0f, 0.0f)}, // green
-		{{-0.5f, 0.5f, -0.5f}, Vertex_t::PackColor(0.0f, 0.0f, 1.0f)}, // blue
+		Vertex_t(CVector3(-0.5f, -0.5f, -0.5f), Vertex_t::PackColor(1.0f, 0.0f, 0.0f)), // red
+		Vertex_t(CVector3(0.5f, -0.5f, -0.5f), Vertex_t::PackColor(1.0f, 1.0f, 0.0f)), // yellow
+		Vertex_t(CVector3(0.5f, 0.5f, -0.5f), Vertex_t::PackColor(0.0f, 1.0f, 0.0f)), // green
+		Vertex_t(CVector3(-0.5f, 0.5f, -0.5f), Vertex_t::PackColor(0.0f, 0.0f, 1.0f)), // blue
 
-		{{-0.5f, -0.5f, 0.5f}, Vertex_t::PackColor(1.0f, 0.0f, 1.0f)}, // magenta
-		{{0.5f, -0.5f, 0.5f}, Vertex_t::PackColor(1.0f, 1.0f, 1.0f)}, // white
-		{{0.5f, 0.5f, 0.5f}, Vertex_t::PackColor(0.0f, 1.0f, 1.0f)}, // cyan
-		{{-0.5f, 0.5f, 0.5f}, Vertex_t::PackColor(0.0f, 0.0f, 0.0f)} // black
+		Vertex_t(CVector3(-0.5f, -0.5f, 0.5f), Vertex_t::PackColor(1.0f, 0.0f, 1.0f)), // magenta
+		Vertex_t(CVector3(0.5f, -0.5f, 0.5f), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)), // white
+		Vertex_t(CVector3(0.5f, 0.5f, 0.5f), Vertex_t::PackColor(0.0f, 1.0f, 1.0f)), // cyan
+		Vertex_t(CVector3(-0.5f, 0.5f, 0.5f), Vertex_t::PackColor(0.0f, 0.0f, 0.0f)) // black
 	};
 
 	uint32 indexData[] = {
