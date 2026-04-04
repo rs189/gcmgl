@@ -231,16 +231,15 @@ void waitFlip()
 
 void flip()
 {
-	if(!first_fb) waitFlip();
-	else gcmResetFlipStatus();
-
+	//if(!first_fb) waitFlip();
+	//else gcmResetFlipStatus();
 	rsxFlushBuffer(context);
 
-	gcmSetFlip(context,curr_fb);
+	gcmSetFlip(context, curr_fb);
 	rsxFlushBuffer(context);
 
 	gcmSetWaitFlip(context);
-	rsxFlushBuffer(context);
+	//rsxFlushBuffer(context);
 
 	curr_fb ^= 1;
 	setRenderTarget(curr_fb);
