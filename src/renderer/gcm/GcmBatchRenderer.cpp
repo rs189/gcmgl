@@ -310,6 +310,27 @@ void CGcmBatchRenderer::FrustumCullBatch(
 
 		const int32 batchChunkTransformCount = batchChunk.m_BatchChunkTransforms.Count();
 
+		const FrustumVisibility_t::Enum frustumVisibility = GetAABBFrustumVisibility(
+			batchChunk.m_Center,
+			batchChunk.m_Extent,
+			pFrustumPlanes);
+
+		if (frustumVisibility == FrustumVisibility_t::Outside)
+		{
+			continue;
+		}
+
+		if (frustumVisibility == FrustumVisibility_t::Inside)
+		{
+			for (int32 j = 0; j < batchChunkTransformCount; j++)
+			{
+				batchChunkTransforms.AddToTail(
+					batchChunk.m_BatchChunkTransforms[j]);
+			}
+
+			continue;
+		}
+
 #if defined(THREADING_ENABLED) && defined(GCMGL_THREADING_FRUSTUM_CULL_ENABLED)
 		if (batchChunkTransformCount > 1)
 		{

@@ -322,3 +322,24 @@ bool CRenderer::TestAABBFrustum(
 
 	return true;
 }
+
+FrustumVisibility_t::Enum CRenderer::GetAABBFrustumVisibility(
+	const CVector3& center,
+	const CVector3& extent,
+	const Plane_t* pPlanes)
+{
+	FrustumVisibility_t::Enum frustumVisibility = FrustumVisibility_t::Inside;
+	for (int32 i = 0; i < 6; i++)
+	{
+		const float32 r =
+			extent.m_X * CMaths::Abs(pPlanes[i].m_Normal.m_X) +
+			extent.m_Y * CMaths::Abs(pPlanes[i].m_Normal.m_Y) +
+			extent.m_Z * CMaths::Abs(pPlanes[i].m_Normal.m_Z);
+		const float32 distance = pPlanes[i].m_Normal.Dot(center) + pPlanes[i].m_Distance;
+
+		if (distance + r < 0.0f) return FrustumVisibility_t::Outside;
+		if (distance - r < 0.0f) frustumVisibility = FrustumVisibility_t::Partial;
+	}
+
+	return frustumVisibility;
+}

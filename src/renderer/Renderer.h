@@ -303,6 +303,7 @@ struct BatchChunk_t
 {
 	CUtlVector<BatchChunkTransform_t> m_BatchChunkTransforms;
 	CVector3 m_Center;
+	CVector3 m_Extent;
 };
 
 class CBatch
@@ -361,6 +362,10 @@ public:
 						minBounds.m_X + (x + 0.5f) * chunkSize,
 						minBounds.m_Y + (y + 0.5f) * chunkSize,
 						minBounds.m_Z + (z + 0.5f) * chunkSize);
+					batchChunk.m_Extent = CVector3(
+						chunkSize * 0.5f,
+						chunkSize * 0.5f,
+						chunkSize * 0.5f);
 					batchChunk.m_BatchChunkTransforms.RemoveAll();
 				}
 			}
@@ -439,6 +444,16 @@ struct CullThreadData_t
 	const Plane_t* m_pPlanes;
 	uint32 m_Start;
 	uint32 m_End;
+};
+
+struct FrustumVisibility_t
+{
+	enum Enum
+	{
+		Outside,
+		Partial,
+		Inside
+	};
 };
 
 struct StateDirtyFlags_t
@@ -653,6 +668,10 @@ protected:
 		const CVector3& center,
 		const CVector3& extent,
 		const Plane_t* pPlanes) GCMGL_OVERRIDE;
+	virtual FrustumVisibility_t::Enum GetAABBFrustumVisibility(
+		const CVector3& center,
+		const CVector3& extent,
+		const Plane_t* pPlanes);
 
 	uint32 AllocHandle()
 	{

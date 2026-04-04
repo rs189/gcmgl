@@ -43,7 +43,30 @@ void CBatchRenderer::FrustumCullBatch(
 			}
 		}
 
+		const FrustumVisibility_t::Enum frustumVisibility = GetAABBFrustumVisibility(
+			batchChunk.m_Center,
+			batchChunk.m_Extent,
+			pFrustumPlanes);
+
+		if (frustumVisibility == FrustumVisibility_t::Outside)
+		{
+			continue;
+		}
+
 		const int32 batchChunkTransformCount = batchChunk.m_BatchChunkTransforms.Count();
+
+		if (frustumVisibility == FrustumVisibility_t::Inside)
+		{
+			for (int32 j = 0; j < batchChunkTransformCount; j++)
+			{
+				batchChunkTransforms.AddToTail(
+					batchChunk.m_BatchChunkTransforms[j]);
+			}
+
+			continue;
+		}
+
+		// Partial intersection — test per instance
 		for (int32 j = 0; j < batchChunkTransformCount; j++)
 		{
 			const BatchChunkTransform_t& batchChunkTransform =

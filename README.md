@@ -169,6 +169,7 @@ gcmgl is a C++ graphics library targeting PlayStation 3 (GCM) and Linux (x86_64,
 ### BatchChunk_t
 - `CUtlVector<BatchChunkTransform_t> m_BatchChunkTransforms`
 - `CVector3 m_Center`
+- `CVector3 m_Extent`
 
 ### CBatch
 - `CUtlVector<BatchChunk_t> m_BatchChunks`
@@ -181,6 +182,11 @@ gcmgl is a C++ graphics library targeting PlayStation 3 (GCM) and Linux (x86_64,
 ### Plane_t
 - `CVector3 m_Normal`
 - `float32 m_Distance`
+
+### FrustumVisibility_t
+- `Outside`
+- `Partial`
+- `Inside`
 
 ### IRenderer / CRenderer
 - `bool Init(const RendererDesc_t& desc)`
@@ -227,6 +233,7 @@ gcmgl is a C++ graphics library targeting PlayStation 3 (GCM) and Linux (x86_64,
 - `void FlushPipelineState()`
 - `void ExtractFrustumPlanes(const CMatrix4& mvp, Plane_t* pPlanes)`
 - `bool TestAABBFrustum(const CVector3& center, const CVector3& extent, const Plane_t* pPlanes)`
+- `FrustumVisibility_t::Enum GetAABBFrustumVisibility(const CVector3& center, const CVector3& extent, const Plane_t* pPlanes)`
 
 ### IBatchRenderer / CBatchRenderer
 - `void DrawBatched(uint32 vertexCount, const CBatch& batch, const CMatrix4& viewProjection, uint32 startVertex = 0)`
