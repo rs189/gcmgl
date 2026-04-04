@@ -13,27 +13,23 @@
 #include <malloc.h>
 #include <rsx/rsx.h>
 
-#ifndef PS3_SPU_ENABLED
 #include <sys/thread.h>
 #include <lv2/thread.h>
 #ifdef SIMD_ENABLED
 #include <altivec.h>
 #undef bool
-#endif
-#endif
+#endif // SIMD_ENABLED
 
 #ifdef PS3_SPU_ENABLED
 #include "spu/SpuBatchTransformManager.h"
-#endif
+#endif // PS3_SPU_ENABLED
 
 CGcmBatchRenderer::CGcmBatchRenderer()
 #ifdef PS3_SPU_ENABLED
 	:
 	m_HasPendingBatch(false)
-#endif
+#endif // PS3_SPU_ENABLED
 {
-#ifdef PS3_SPU_ENABLED
-#endif
 }
 
 CGcmBatchRenderer::~CGcmBatchRenderer()
@@ -56,7 +52,6 @@ void CGcmBatchRenderer::EndFrame()
 }
 #endif // PS3_SPU_ENABLED
 
-#ifndef PS3_SPU_ENABLED
 #ifdef SIMD_ENABLED
 static void FrustumCullThreadVMX(void* pArg)
 {
@@ -135,8 +130,6 @@ static void FrustumCullThread(void* pArg)
 
 	sysThreadExit(0);
 }
-#endif // !PS3_SPU_ENABLED
-
 
 #ifdef PS3_SPU_ENABLED
 void CGcmBatchRenderer::FlushPendingBatches()
@@ -223,21 +216,21 @@ static void TransformVertices(
 	uint32 vertexPosOffset,
 	const CMatrix4& matrix)
 {
-#ifdef SIMD_ENABLED
+#if defined(SIMD_ENABLED) && defined(GCMGL_SIMD_TRANSFORM_ENABLED)
 	TransformVerticesVMX(
 		pDst,
 		vertexCount,
 		vertexStride,
 		vertexPosOffset,
 		matrix);
-#else // SIMD_ENABLED
+#else // SIMD_ENABLED && GCMGL_SIMD_TRANSFORM_ENABLED
 	CBatchRenderer::TransformVertices(
 		pDst,
 		vertexCount,
 		vertexStride,
 		vertexPosOffset,
 		matrix);
-#endif // !SIMD_ENABLED
+#endif // !SIMD_ENABLED || !GCMGL_SIMD_TRANSFORM_ENABLED
 }
 
 static void BatchTransformsThread(void* pArg)
@@ -267,6 +260,160 @@ static void BatchTransformsThread(void* pArg)
 }
 #endif // !PS3_SPU_ENABLED
 
+void CGcmBatchRenderer::FrustumCullBatch(
+	const CBatch& batch,
+	const Plane_t* pFrustumPlanes,
+	CUtlVector<BatchChunkTransform_t>& batchChunkTransforms)
+{
+	for (int32 chunkIndex = 0; chunkIndex < batch.m_BatchChunks.Count(); chunkIndex++)
+	{
+		const BatchChunk_t& batchChunk = batch.m_BatchChunks[chunkIndex];
+
+		if (batch.m_pCameraPos)
+		{
+			static const float32 s_ChunkCullRadius = 20000.0f;
+			static const float32 s_ChunkCullRadiusSq = s_ChunkCullRadius * s_ChunkCullRadius;
+			const CVector3 chunkOffset = batchChunk.m_Center - *batch.m_pCameraPos;
+			if (chunkOffset.LengthSq() > s_ChunkCullRadiusSq)
+			{
+				continue;
+			}
+		}
+
+		const int32 batchChunkTransformCount = batchChunk.m_BatchChunkTransforms.Count();
+
+#if defined(THREADING_ENABLED) && defined(GCMGL_THREADING_FRUSTUM_CULL_ENABLED)
+		if (batchChunkTransformCount > 1)
+		{
+			static const uint32 numThreads = 2;
+			CUtlVector<BatchChunkTransform_t> threadOutput[numThreads];
+			CullThreadData_t cullThreadData[numThreads];
+			const uint32 halfCount = uint32(batchChunkTransformCount) / 2;
+			sys_ppu_thread_t threadIDs[numThreads];
+
+#if defined(SIMD_ENABLED) && defined(GCMGL_SIMD_FRUSTUM_CULL_ENABLED)
+			void (*cullThreadEntry)(void*) = FrustumCullThreadVMX;
+#else // SIMD_ENABLED && GCMGL_SIMD_FRUSTUM_CULL_ENABLED
+			void (*cullThreadEntry)(void*) = FrustumCullThread;
+#endif // !SIMD_ENABLED || !GCMGL_SIMD_FRUSTUM_CULL_ENABLED
+
+			for (uint32 j = 0; j < numThreads; j++)
+			{
+				cullThreadData[j].m_pSrcTransforms =
+					batchChunk.m_BatchChunkTransforms.Base();
+				cullThreadData[j].m_pDstTransforms = &threadOutput[j];
+				cullThreadData[j].m_pPlanes = pFrustumPlanes;
+				cullThreadData[j].m_Start = j == 0 ? 0 : halfCount;
+				cullThreadData[j].m_End =
+					j == 0 ? halfCount : uint32(batchChunkTransformCount);
+
+				const int32 threadCreateResult = sysThreadCreate(
+					&threadIDs[j],
+					cullThreadEntry,
+					&cullThreadData[j],
+					1500,
+					16 * 1024,
+					THREAD_JOINABLE,
+					const_cast<char*>("FrustumCullThread"));
+				if (threadCreateResult != 0)
+				{
+					Warning(
+						"[GcmBatchRenderer] Failed to create cull thread %d: %d\n",
+						j,
+						threadCreateResult);
+				}
+			}
+
+			for (uint32 j = 0; j < numThreads; j++)
+			{
+				uint64 exitCode;
+				sysThreadJoin(
+					threadIDs[j],
+					reinterpret_cast<u64*>(&exitCode));
+			}
+
+			for (uint32 j = 0; j < numThreads; j++)
+			{
+				for (int32 k = 0; k < threadOutput[j].Count(); k++)
+				{
+					batchChunkTransforms.AddToTail(threadOutput[j][k]);
+				}
+			}
+
+			continue;
+		}
+#endif // THREADING_ENABLED && GCMGL_THREADING_FRUSTUM_CULL_ENABLED
+
+#if defined(SIMD_ENABLED) && defined(GCMGL_SIMD_FRUSTUM_CULL_ENABLED)
+		vector float planes[6];
+		for (int32 j = 0; j < 6; j++)
+		{
+			planes[j] = (vector float){
+				pFrustumPlanes[j].m_Normal.m_X,
+				pFrustumPlanes[j].m_Normal.m_Y,
+				pFrustumPlanes[j].m_Normal.m_Z,
+				pFrustumPlanes[j].m_Distance
+			};
+		}
+
+		const vector float zero = (vector float){ 0.0f, 0.0f, 0.0f, 0.0f };
+
+		for (int32 j = 0; j < batchChunkTransformCount; j++)
+		{
+			const BatchChunkTransform_t& t = batchChunk.m_BatchChunkTransforms[j];
+			const vector float center = (vector float){
+				t.m_Position.m_X,
+				t.m_Position.m_Y,
+				t.m_Position.m_Z,
+				1.0f
+			};
+			const vector float extent = (vector float){
+				t.m_Scale.m_X * 0.5f,
+				t.m_Scale.m_Y * 0.5f,
+				t.m_Scale.m_Z * 0.5f,
+				0.0f
+			};
+
+			bool isVisible = true;
+			for (int32 k = 0; k < 6; k++)
+			{
+				const vector float absPlane = vec_abs(planes[k]);
+				const vector float r4 = vec_madd(absPlane, extent, zero);
+				const vector float d4 = vec_madd(planes[k], center, zero);
+				const float32 radius =
+					vec_extract(r4, 0) +
+					vec_extract(r4, 1) +
+					vec_extract(r4, 2);
+				const float32 dist =
+					vec_extract(d4, 0) +
+					vec_extract(d4, 1) +
+					vec_extract(d4, 2) +
+					vec_extract(d4, 3);
+
+				if (dist + radius < 0.0f)
+				{
+					isVisible = false;
+
+					break;
+				}
+			}
+
+			if (isVisible)
+			{
+				batchChunkTransforms.AddToTail(t);
+			}
+		}
+#else // SIMD_ENABLED && GCMGL_SIMD_FRUSTUM_CULL_ENABLED
+		CBatchRenderer::CullChunk(
+			batchChunk.m_BatchChunkTransforms.Base(),
+			0,
+			uint32(batchChunkTransformCount),
+			pFrustumPlanes,
+			batchChunkTransforms);
+#endif // !SIMD_ENABLED || !GCMGL_SIMD_FRUSTUM_CULL_ENABLED
+	}
+}
+
 void CGcmBatchRenderer::DrawBatched(
 	uint32 vertexCount,
 	const CBatch& batch,
@@ -281,7 +428,7 @@ void CGcmBatchRenderer::DrawBatched(
 
 #ifndef PS3_SPU_ENABLED
 	rsxFlushBuffer(context);
-#endif
+#endif // !PS3_SPU_ENABLED
 }
 
 void CGcmBatchRenderer::DrawIndexedBatched(
@@ -302,7 +449,7 @@ void CGcmBatchRenderer::DrawIndexedBatched(
 
 #ifndef PS3_SPU_ENABLED
 	rsxFlushBuffer(context);
-#endif
+#endif // !PS3_SPU_ENABLED
 }
 
 void CGcmBatchRenderer::DrawBatchedChunk(
@@ -355,7 +502,7 @@ void CGcmBatchRenderer::DrawBatchedChunk(
 	const uint32 vertexPosOffset = m_VertexPosOffset;
 	const bool hasVertexPos = m_HasVertexPos;
 
-#ifdef PS3_SPU_ENABLED
+#if defined(PS3_SPU_ENABLED) && defined(GCMGL_SPU_BATCH_TRANSFORM_ENABLED)
 	if (hasVertexPos && m_pSpuBatchTransformManager)
 	{
 		m_pSpuBatchTransformManager->BeginBatch(
@@ -381,8 +528,8 @@ void CGcmBatchRenderer::DrawBatchedChunk(
 				uint64(vertexCount) * vertexStride);
 		}
 	}
-#else // PS3_SPU_ENABLED
-#ifdef THREADING_ENABLED
+#else // PS3_SPU_ENABLED && GCMGL_SPU_BATCH_TRANSFORM_ENABLED
+#if defined(THREADING_ENABLED) && defined(GCMGL_THREADING_TRANSFORM_ENABLED)
 	const uint32 numThreads = (chunkSize > 1) ? 2 : 1;
 	if (numThreads > 1)
 	{
@@ -434,8 +581,8 @@ void CGcmBatchRenderer::DrawBatchedChunk(
 			sysThreadJoin(threadIDs[i], reinterpret_cast<u64*>(&threadExitCode));
 		}
 	}
-#endif // THREADING_ENABLED
-#ifndef THREADING_ENABLED
+#endif // THREADING_ENABLED && GCMGL_THREADING_TRANSFORM_ENABLED
+#if !defined(THREADING_ENABLED) || !defined(GCMGL_THREADING_TRANSFORM_ENABLED)
 	{
 		for (uint32 i = 0; i < chunkSize; i++)
 		{
@@ -456,8 +603,8 @@ void CGcmBatchRenderer::DrawBatchedChunk(
 			}
 		}
 	}
-#endif // !THREADING_ENABLED
-#endif // !PS3_SPU_ENABLED
+#endif // !THREADING_ENABLED || !GCMGL_THREADING_TRANSFORM_ENABLED
+#endif // !PS3_SPU_ENABLED || !GCMGL_SPU_BATCH_TRANSFORM_ENABLED
 
 	const BufferResource_t stagingVertexBufferResource = {
 		stagingVertexBuffer.m_pPtr,
@@ -630,7 +777,7 @@ void CGcmBatchRenderer::DrawIndexedBatchedChunk(
 	const uint32 vertexPosOffset = m_VertexPosOffset;
 	const bool hasVertexPos = m_HasVertexPos;
 
-#ifdef PS3_SPU_ENABLED
+#if defined(PS3_SPU_ENABLED) && defined(GCMGL_SPU_BATCH_TRANSFORM_ENABLED)
 	if (hasVertexPos && m_pSpuBatchTransformManager)
 	{
 		m_pSpuBatchTransformManager->BeginBatch(
@@ -661,8 +808,8 @@ void CGcmBatchRenderer::DrawIndexedBatchedChunk(
 			}
 		}
 	}
-#else // PS3_SPU_ENABLED
-#ifdef THREADING_ENABLED
+#else // PS3_SPU_ENABLED && GCMGL_SPU_BATCH_TRANSFORM_ENABLED
+#if defined(THREADING_ENABLED) && defined(GCMGL_THREADING_TRANSFORM_ENABLED)
 	const uint32 numThreads = (chunkSize > 1) ? 2 : 1;
 	if (numThreads > 1)
 	{
@@ -714,8 +861,8 @@ void CGcmBatchRenderer::DrawIndexedBatchedChunk(
 			sysThreadJoin(threadIDs[i], reinterpret_cast<u64*>(&threadExitCode));
 		}
 	}
-#endif // THREADING_ENABLED
-#ifndef THREADING_ENABLED
+#endif // THREADING_ENABLED && GCMGL_THREADING_TRANSFORM_ENABLED
+#if !defined(THREADING_ENABLED) || !defined(GCMGL_THREADING_TRANSFORM_ENABLED)
 	{
 		for (uint32 i = 0; i < chunkSize; i++)
 		{
@@ -743,8 +890,8 @@ void CGcmBatchRenderer::DrawIndexedBatchedChunk(
 			}
 		}
 	}
-#endif // !THREADING_ENABLED
-#endif // !PS3_SPU_ENABLED
+#endif // !THREADING_ENABLED || !GCMGL_THREADING_TRANSFORM_ENABLED
+#endif // !PS3_SPU_ENABLED || !GCMGL_SPU_BATCH_TRANSFORM_ENABLED
 
 	const BufferResource_t stagingVertexBufferResource = {
 		stagingVertexBuffer.m_pPtr,

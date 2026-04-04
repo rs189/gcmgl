@@ -38,6 +38,10 @@ public:
 		uint32 startIndex = 0,
 		int32 baseVertex = 0) GCMGL_OVERRIDE;
 protected:
+	virtual void FrustumCullBatch(
+		const CBatch& batch,
+		const Plane_t* pFrustumPlanes,
+		CUtlVector<BatchChunkTransform_t>& batchChunkTransforms) GCMGL_OVERRIDE;
 	virtual void DrawBatchedChunk(
 		uint32 vertexCount,
 		const CUtlVector<BatchChunkTransform_t>& batchChunkTransforms,
