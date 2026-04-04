@@ -315,7 +315,23 @@ static void transformVertices()
 	uint32 dstBufferIndex = 0;
 	uint32 dstVertexCount = 0;
 
+	const uint32 vertexCount = g_Job.m_VertexCount;
+	const uint32 srcFitsInOneBlock = (vertexCount <= verticesPerBlock);
+	if (srcFitsInOneBlock)
+	{
+		dmaGet(
+			g_SrcBuffer[0],
+			g_Job.m_SrcVerticesEffAddr,
+			(vertexCount * vertexStride + 15u) & ~15u,
+			SRC_TAG0);
+	}
+
 	dmaGet(g_TransformBuffer[0], g_Job.m_TransformsEffAddr, 48, MATRIX_TAG0);
+
+	if (srcFitsInOneBlock)
+	{
+		waitForTag(1u << SRC_TAG0);
+	}
 
 	for (uint32 batchIndex = 0; batchIndex < g_Job.m_BatchCount; batchIndex++)
 	{
@@ -324,7 +340,7 @@ static void transformVertices()
 		const uint32 transformTag = transformBufferIndex ? MATRIX_TAG1 : MATRIX_TAG0;
 		const uint32 nextTransformTag = nextTransformBufferIndex ? MATRIX_TAG1 : MATRIX_TAG0;
 
-		// Prefetch
+		// Prefetch next transform
 		if (batchIndex + 1u < g_Job.m_BatchCount)
 		{
 			uint64 nextTransformEffAddr = g_Job.m_TransformsEffAddr + (batchIndex + 1u) * g_Job.m_TransformStride;
@@ -342,48 +358,58 @@ static void transformVertices()
 			matrix,
 			g_TransformBuffer[transformBufferIndex]);
 		const vec_float4* pMatrix = matrix;
-		const uint32 vertexCount = g_Job.m_VertexCount;
 		uint64 srcEffAddr = g_Job.m_SrcVerticesEffAddr;
 		uint32 srcBufferIndex = 0;
 		uint32 srcVertexCount = 0;
 
-		uint32 vertexCountsBuffer[2] = {
-			(vertexCount < verticesPerBlock) ? vertexCount : verticesPerBlock,
-			0
-		};
-		dmaGet(
-			g_SrcBuffer[0],
-			srcEffAddr,
-			vertexCountsBuffer[0] * vertexStride,
-			SRC_TAG0);
-		srcEffAddr += vertexCountsBuffer[0] * vertexStride;
+		uint32 vertexCountsBuffer[2];
+
+		if (!srcFitsInOneBlock)
+		{
+			vertexCountsBuffer[0] = verticesPerBlock;
+			vertexCountsBuffer[1] = 0;
+			dmaGet(
+				g_SrcBuffer[0],
+				srcEffAddr,
+				vertexCountsBuffer[0] * vertexStride,
+				SRC_TAG0);
+			srcEffAddr += vertexCountsBuffer[0] * vertexStride;
+		}
+		else
+		{
+			vertexCountsBuffer[0] = vertexCount;
+			vertexCountsBuffer[1] = 0;
+		}
 
 		uint32 loadedVerticesCount = vertexCountsBuffer[0];
 
 		uint32 j = 0;
 		while (j < vertexCount)
 		{
-			waitForTag(1u << (srcBufferIndex ? SRC_TAG1 : SRC_TAG0));
-
-			// Prefetch
-			if (srcVertexCount == 0 && loadedVerticesCount < vertexCount)
+			if (!srcFitsInOneBlock)
 			{
-				uint32 pendingCount = vertexCount - loadedVerticesCount;
-				if (pendingCount > verticesPerBlock)
-				{
-					pendingCount = verticesPerBlock;
-				}
+				waitForTag(1u << (srcBufferIndex ? SRC_TAG1 : SRC_TAG0));
 
-				vertexCountsBuffer[srcBufferIndex ^ 1u] = pendingCount;
-				uint32 pendingCountBytes = (pendingCount * vertexStride + 15u) & ~15u;
-				uint32 nextSrcTag = (srcBufferIndex ^ 1u) ? SRC_TAG1 : SRC_TAG0;
-				dmaGet(
-					g_SrcBuffer[srcBufferIndex ^ 1u],
-					srcEffAddr,
-					pendingCountBytes,
-					nextSrcTag);
-				srcEffAddr += pendingCount * vertexStride;
-				loadedVerticesCount += pendingCount;
+				// Prefetch next src block
+				if (srcVertexCount == 0 && loadedVerticesCount < vertexCount)
+				{
+					uint32 pendingCount = vertexCount - loadedVerticesCount;
+					if (pendingCount > verticesPerBlock)
+					{
+						pendingCount = verticesPerBlock;
+					}
+
+					vertexCountsBuffer[srcBufferIndex ^ 1u] = pendingCount;
+					uint32 pendingCountBytes = (pendingCount * vertexStride + 15u) & ~15u;
+					uint32 nextSrcTag = (srcBufferIndex ^ 1u) ? SRC_TAG1 : SRC_TAG0;
+					dmaGet(
+						g_SrcBuffer[srcBufferIndex ^ 1u],
+						srcEffAddr,
+						pendingCountBytes,
+						nextSrcTag);
+					srcEffAddr += pendingCount * vertexStride;
+					loadedVerticesCount += pendingCount;
+				}
 			}
 
 			uint32 srcRemaining = vertexCountsBuffer[srcBufferIndex] - srcVertexCount;
