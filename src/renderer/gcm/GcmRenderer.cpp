@@ -25,13 +25,11 @@
 #ifdef PS3_SPU_ENABLED
 #include "platform/ps3/spu/SpuCommon.h"
 #include "spu/SpuBatchTransformManager.h"
-#include "spu/SpuFrustumCullManager.h"
 #endif
 
  CGcmRenderer::CGcmRenderer() :
 #ifdef PS3_SPU_ENABLED
 	m_pSpuBatchTransformManager(GCMGL_NULL),
-	m_pSpuFrustumCullManager(GCMGL_NULL),
 #endif
 	m_StagingIndex(0),
 	m_pHostAddr(GCMGL_NULL),
@@ -146,21 +144,7 @@ bool CGcmRenderer::Init(const RendererDesc_t& rendererDesc)
 		}
 	}
 
-	void* pSpuFrustumCullManagerMemory = CUtlMemory::Alloc(
-		sizeof(CSpuFrustumCullManager));
-	if (pSpuFrustumCullManagerMemory)
-	{
-		m_pSpuFrustumCullManager = new(pSpuFrustumCullManagerMemory) CSpuFrustumCullManager();
-		if (!m_pSpuFrustumCullManager->Initialize())
-		{
-			m_pSpuFrustumCullManager->~CSpuFrustumCullManager();
-			CUtlMemory::Free(pSpuFrustumCullManagerMemory);
-			m_pSpuFrustumCullManager = GCMGL_NULL;
-		}
-	}
 #endif // PS3_SPU_ENABLED
-
-	return true;
 }
 
 void CGcmRenderer::Shutdown()
@@ -176,13 +160,6 @@ void CGcmRenderer::Shutdown()
 		m_pSpuBatchTransformManager = GCMGL_NULL;
 	}
 
-	if (m_pSpuFrustumCullManager)
-	{
-		m_pSpuFrustumCullManager->Shutdown();
-		m_pSpuFrustumCullManager->~CSpuFrustumCullManager();
-		CUtlMemory::Free(m_pSpuFrustumCullManager);
-		m_pSpuFrustumCullManager = GCMGL_NULL;
-	}
 #endif // PS3_SPU_ENABLED
 
 	rsxFlushBuffer(context);

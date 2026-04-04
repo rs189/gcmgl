@@ -20,7 +20,6 @@
 
 #ifdef PS3_SPU_ENABLED
 class CSpuBatchTransformManager;
-class CSpuFrustumCullManager;
 #endif
 
 class CGcmRenderer : public virtual CRenderer
@@ -171,7 +170,6 @@ protected:
 	CUtlMap<BufferHandle, BufferResource_t> m_BufferResources;
 #ifdef PS3_SPU_ENABLED
 	CSpuBatchTransformManager* m_pSpuBatchTransformManager;
-	CSpuFrustumCullManager* m_pSpuFrustumCullManager;
 #endif
 	int32 m_StagingIndex;
 private:

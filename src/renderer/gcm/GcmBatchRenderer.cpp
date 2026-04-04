@@ -24,23 +24,15 @@
 
 #ifdef PS3_SPU_ENABLED
 #include "spu/SpuBatchTransformManager.h"
-#include "spu/SpuFrustumCullManager.h"
 #endif
 
 CGcmBatchRenderer::CGcmBatchRenderer()
 #ifdef PS3_SPU_ENABLED
 	:
-	m_CullIndex(0),
 	m_HasPendingBatch(false)
 #endif
 {
 #ifdef PS3_SPU_ENABLED
-	m_pCullOutput[0] = GCMGL_NULL;
-	m_pCullOutput[1] = GCMGL_NULL;
-	m_pCullCount[0] = GCMGL_NULL;
-	m_pCullCount[1] = GCMGL_NULL;
-	m_CullOutputCapacity[0] = 0;
-	m_CullOutputCapacity[1] = 0;
 #endif
 }
 
@@ -53,37 +45,12 @@ void CGcmBatchRenderer::Shutdown()
 {
 	FlushPendingBatches();
 
-	if (m_pSpuFrustumCullManager)
-	{
-		m_pSpuFrustumCullManager->WaitCull();
-	}
-
-	for (uint32 bufferIndex = 0; bufferIndex < 2; bufferIndex++)
-	{
-		if (m_pCullOutput[bufferIndex])
-		{
-			rsxFree(m_pCullOutput[bufferIndex]);
-			m_pCullOutput[bufferIndex] = GCMGL_NULL;
-		}
-
-		if (m_pCullCount[bufferIndex])
-		{
-			rsxFree(m_pCullCount[bufferIndex]);
-			m_pCullCount[bufferIndex] = GCMGL_NULL;
-		}
-	}
-
 	CGcmRenderer::Shutdown();
 }
 
 void CGcmBatchRenderer::EndFrame()
 {
 	FlushPendingBatches();
-
-	if (m_pSpuFrustumCullManager)
-	{
-		m_pSpuFrustumCullManager->WaitCull();
-	}
 
 	CGcmRenderer::EndFrame();
 }
@@ -170,225 +137,6 @@ static void FrustumCullThread(void* pArg)
 }
 #endif // !PS3_SPU_ENABLED
 
-void CGcmBatchRenderer::FrustumCullBatch(
-	const CBatch& batch,
-	const Plane_t* pFrustumPlanes,
-	CUtlVector<BatchChunkTransform_t>& batchChunkTransforms)
-{
-	if (!m_pSpuFrustumCullManager)
-	{
-#ifndef PS3_SPU_ENABLED
-		for (int32 chunkIndex = 0; chunkIndex < batch.m_BatchChunks.Count(); chunkIndex++)
-		{
-			const BatchChunk_t& batchChunk = batch.m_BatchChunks[chunkIndex];
-
-			if (batch.m_pCameraPos)
-			{
-				static const float32 s_ChunkCullRadius = 20000.0f;
-				static const float32 s_ChunkCullRadiusSq = s_ChunkCullRadius * s_ChunkCullRadius;
-				const CVector3 chunkOffset = batchChunk.m_Center - *batch.m_pCameraPos;
-				if (chunkOffset.LengthSq() > s_ChunkCullRadiusSq)
-				{
-					continue;
-				}
-			}
-
-			const int32 batchChunkTransformCount = batchChunk.m_BatchChunkTransforms.Count();
-
-#ifdef THREADING_ENABLED
-			if (batchChunkTransformCount > 1)
-			{
-				static const uint32 numThreads = 2;
-				CUtlVector<BatchChunkTransform_t> threadOutput[numThreads];
-				CullThreadData_t cullThreadData[numThreads];
-				const uint32 halfCount = uint32(batchChunkTransformCount) / 2;
-				sys_ppu_thread_t threadIDs[numThreads];
-
-#ifdef SIMD_ENABLED
-				void (*cullThreadEntry)(void*) = FrustumCullThreadVMX;
-#else // SIMD_ENABLED
-				void (*cullThreadEntry)(void*) = FrustumCullThread;
-#endif // !SIMD_ENABLED
-
-				for (uint32 j = 0; j < numThreads; j++)
-				{
-					cullThreadData[j].m_pSrcTransforms =
-						batchChunk.m_BatchChunkTransforms.Base();
-					cullThreadData[j].m_pDstTransforms = &threadOutput[j];
-					cullThreadData[j].m_pPlanes = pFrustumPlanes;
-					cullThreadData[j].m_Start = j == 0 ? 0 : halfCount;
-					cullThreadData[j].m_End =
-						j == 0 ? halfCount : uint32(batchChunkTransformCount);
-
-					const int32 threadCreateResult = sysThreadCreate(
-						&threadIDs[j],
-						cullThreadEntry,
-						&cullThreadData[j],
-						1500,
-						16 * 1024,
-						THREAD_JOINABLE,
-						const_cast<char*>("FrustumCullThread"));
-					if (threadCreateResult != 0)
-					{
-						Warning(
-							"[GcmBatchRenderer] Failed to create cull thread %d: %d\n",
-							j,
-							threadCreateResult);
-					}
-				}
-
-				for (uint32 j = 0; j < numThreads; j++)
-				{
-					uint64 exitCode;
-					sysThreadJoin(
-						threadIDs[j],
-						reinterpret_cast<u64*>(&exitCode));
-				}
-
-				for (uint32 j = 0; j < numThreads; j++)
-				{
-					for (int32 resultIndex = 0;
-						resultIndex < threadOutput[j].Count();
-						resultIndex++)
-					{
-						batchChunkTransforms.AddToTail(
-							threadOutput[j][resultIndex]);
-					}
-				}
-
-				continue;
-			}
-#endif // THREADING_ENABLED
-
-#ifdef SIMD_ENABLED
-			vector float planes[6];
-			for (int32 j = 0; j < 6; j++)
-			{
-				planes[j] = (vector float){
-					pFrustumPlanes[j].m_Normal.m_X,
-					pFrustumPlanes[j].m_Normal.m_Y,
-					pFrustumPlanes[j].m_Normal.m_Z,
-					pFrustumPlanes[j].m_Distance
-				};
-			}
-
-			const vector float zero = (vector float){ 0.0f, 0.0f, 0.0f, 0.0f };
-
-			for (int32 instanceIndex = 0; instanceIndex < batchChunkTransformCount; instanceIndex++)
-			{
-				const BatchChunkTransform_t& transform =
-					batchChunk.m_BatchChunkTransforms[instanceIndex];
-
-				const vector float center = (vector float){
-					transform.m_Position.m_X,
-					transform.m_Position.m_Y,
-					transform.m_Position.m_Z,
-					1.0f
-				};
-				const vector float extent = (vector float){
-					transform.m_Scale.m_X * 0.5f,
-					transform.m_Scale.m_Y * 0.5f,
-					transform.m_Scale.m_Z * 0.5f,
-					0.0f
-				};
-
-				bool isVisible = true;
-				for (int32 k = 0; k < 6; k++)
-				{
-					const vector float absPlane = vec_abs(planes[k]);
-					const vector float r4 = vec_madd(absPlane, extent, zero);
-					const float32 radius =
-						vec_extract(r4, 0) +
-						vec_extract(r4, 1) +
-						vec_extract(r4, 2);
-					const vector float d4 = vec_madd(planes[k], center, zero);
-					const float32 dist =
-						vec_extract(d4, 0) +
-						vec_extract(d4, 1) +
-						vec_extract(d4, 2) +
-						vec_extract(d4, 3);
-
-					if (dist + radius < 0.0f)
-					{
-						isVisible = false;
-
-						break;
-					}
-				}
-
-				if (isVisible)
-				{
-					batchChunkTransforms.AddToTail(transform);
-				}
-			}
-#else // SIMD_ENABLED
-			CBatchRenderer::CullChunk(
-				batchChunk.m_BatchChunkTransforms.Base(),
-				0,
-				uint32(batchChunkTransformCount),
-				pFrustumPlanes,
-				batchChunkTransforms);
-#endif // !SIMD_ENABLED
-		}
-#endif // !PS3_SPU_ENABLED
-
-		return;
-	}
-
-#ifdef PS3_SPU_ENABLED
-	const uint32 cullReadIndex = m_CullIndex ^ 1u;
-	if (m_pCullOutput[cullReadIndex] && m_pCullCount[cullReadIndex])
-	{
-		const uint32 cullCount = *m_pCullCount[cullReadIndex];
-		for (uint32 i = 0; i < cullCount; i++)
-		{
-			batchChunkTransforms.AddToTail(m_pCullOutput[cullReadIndex][i]);
-		}
-	}
-
-	const uint32 batchCount = batch.GetCount();
-	if (batchCount == 0) return;
-
-	if (m_CullOutputCapacity[m_CullIndex] < batchCount)
-	{
-		if (m_pCullOutput[m_CullIndex])
-		{
-			rsxFree(m_pCullOutput[m_CullIndex]);
-		}
-
-		if (m_pCullCount[m_CullIndex])
-		{
-			rsxFree(m_pCullCount[m_CullIndex]);
-		}
-
-		m_pCullOutput[m_CullIndex] = static_cast<BatchChunkTransform_t*>(
-			rsxMemalign(128, batchCount * sizeof(BatchChunkTransform_t)));
-		m_pCullCount[m_CullIndex] = static_cast<uint32*>(rsxMemalign(16, 16));
-		m_CullOutputCapacity[m_CullIndex] = batchCount;
-	}
-
-	m_CullSrcScratch.RemoveAll();
-	for (int32 i = 0; i < batch.m_BatchChunks.Count(); i++)
-	{
-		const BatchChunk_t& batchChunk = batch.m_BatchChunks[i];
-		for (int32 j = 0; j < batchChunk.m_BatchChunkTransforms.Count(); j++)
-		{
-			m_CullSrcScratch.AddToTail(batchChunk.m_BatchChunkTransforms[j]);
-		}
-	}
-
-	*m_pCullCount[m_CullIndex] = 0;
-
-	m_pSpuFrustumCullManager->BeginCull(
-		m_CullSrcScratch.Base(),
-		m_pCullOutput[m_CullIndex],
-		m_pCullCount[m_CullIndex],
-		uint32(m_CullSrcScratch.Count()),
-		pFrustumPlanes);
-
-	m_CullIndex ^= 1u;
-#endif // PS3_SPU_ENABLED
-}
 
 #ifdef PS3_SPU_ENABLED
 void CGcmBatchRenderer::FlushPendingBatches()
