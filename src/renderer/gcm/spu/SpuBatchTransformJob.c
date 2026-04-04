@@ -489,8 +489,15 @@ static void processIndices()
 		return;
 	}
 
-	const uint32 indicesPerBlock = SPU_BUFFER_SIZE / 4u; // 4 bytes per index
-	const uint32 blockBytes = SPU_BUFFER_SIZE;
+	const uint32 indexCount = g_Job.m_IndexCount;
+	const uint32 indicesPerBlock = SPU_BUFFER_SIZE / 4u;
+
+	uint32 loadCount = indexCount < indicesPerBlock ? indexCount : indicesPerBlock;
+	uint32 loadBytes = (loadCount * 4u + 15u) & ~15u;
+	dmaGet(g_IndexSrcBuffer[0], g_Job.m_SrcIndicesEffAddr, loadBytes, SRC_TAG0);
+
+	waitForTag(1u << SRC_TAG0);
+
 	uint64 dstEffAddr = g_Job.m_DstIndicesEffAddr;
 	uint32 dstBufferIndex = 0;
 	uint32 dstIndexCount = 0;
@@ -499,70 +506,26 @@ static void processIndices()
 	{
 		const uint32 indexOffset = (uint32)((uint64)g_Job.m_BaseVertex + (uint64)batchIndex * g_Job.m_VertexCount);
 		const vec_uint4 indexOffsetSplat = spu_splats(indexOffset);
-		const uint32 indexCount = g_Job.m_IndexCount;
-		uint64 srcEffAddr = g_Job.m_SrcIndicesEffAddr;
-		uint32 srcBufferIndex = 0;
-		uint32 srcIndexCount = 0;
-
-		uint32 indexCountsBuffer[2] = {
-			(indexCount < indicesPerBlock) ? indexCount : indicesPerBlock,
-			0
-		};
-		uint32 pendingCountBytes = (indexCountsBuffer[0] * 4u + 15u) & ~15u;
-		dmaGet(g_IndexSrcBuffer[0], srcEffAddr, pendingCountBytes, SRC_TAG0);
-		srcEffAddr += indexCountsBuffer[0] * 4u;
-
-		uint32 loadedIndexCount = indexCountsBuffer[0];
 
 		uint32 j = 0;
 		while (j < indexCount)
 		{
-			waitForTag(1u << (srcBufferIndex ? SRC_TAG1 : SRC_TAG0));
-
-			// Prefetch
-			if (srcIndexCount == 0 && loadedIndexCount < indexCount)
-			{
-				uint32 pendingCount = indexCount - loadedIndexCount;
-				if (pendingCount > indicesPerBlock)
-				{
-					pendingCount = indicesPerBlock;
-				}
-
-				indexCountsBuffer[srcBufferIndex ^ 1u] = pendingCount;
-				uint32 nextPendingBytes = (pendingCount * 4u + 15u) & ~15u;
-				uint32 nextSrcTag = (srcBufferIndex ^ 1u) ? SRC_TAG1 : SRC_TAG0;
-				dmaGet(
-					g_IndexSrcBuffer[srcBufferIndex ^ 1u],
-					srcEffAddr,
-					nextPendingBytes,
-					nextSrcTag);
-				srcEffAddr += pendingCount * 4u;
-				loadedIndexCount += pendingCount;
-			}
-
-			uint32 srcRemaining = indexCountsBuffer[srcBufferIndex] - srcIndexCount;
 			uint32 dstRemaining = indicesPerBlock - dstIndexCount;
+			uint32 srcRemaining = indexCount - j;
 			uint32 chunkCount = srcRemaining < dstRemaining ? srcRemaining : dstRemaining;
 
 			processIndexChunk(
 				(uint32*)g_DstBuffer[dstBufferIndex] + dstIndexCount,
-				(uint32*)g_IndexSrcBuffer[srcBufferIndex] + srcIndexCount,
+				(uint32*)g_IndexSrcBuffer[0] + j,
 				chunkCount,
 				indexOffsetSplat);
 
 			j += chunkCount;
 			dstIndexCount += chunkCount;
-			srcIndexCount += chunkCount;
-
-			if (srcIndexCount == indexCountsBuffer[srcBufferIndex])
-			{
-				srcIndexCount = 0;
-				srcBufferIndex ^= 1u;
-			}
 
 			if (dstIndexCount == indicesPerBlock)
 			{
-				flushDstBlock(&dstBufferIndex, &dstEffAddr, blockBytes);
+				flushDstBlock(&dstBufferIndex, &dstEffAddr, SPU_BUFFER_SIZE);
 				dstIndexCount = 0;
 			}
 		}
