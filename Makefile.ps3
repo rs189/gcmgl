@@ -67,9 +67,9 @@ endif
 LIBS := -lgcm_sys -lrsx -llv2 -lsysutil -lio -lm -lrt $(wildcard build/shaders/*.o)
 
 CFILES := $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
-CFILES := $(filter-out SpuBatchTransformJob.c SpuFrustumCullJob.c, $(CFILES))
+CFILES := $(filter-out SpuBatchTransformJob.c, $(CFILES))
 CPPFILES := $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.cpp)))
-CPPFILES := $(filter-out GlRenderer.cpp GlBatchRenderer.cpp WindowGlfw.cpp DiagnosticsReporter.cpp SpuFrustumCullManager.cpp, $(CPPFILES))
+CPPFILES := $(filter-out GlRenderer.cpp GlBatchRenderer.cpp WindowGlfw.cpp DiagnosticsReporter.cpp, $(CPPFILES))
 CPPFILES += $(EXAMPLE_SRC)
 
 export OUTPUT := $(BUILD)/$(TARGET)
