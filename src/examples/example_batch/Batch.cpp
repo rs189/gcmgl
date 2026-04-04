@@ -19,6 +19,11 @@
 #include <stdio.h>
 #include <math.h>
 
+#ifdef GCMGL_DIAGNOSTICS
+#include "utils/NetPerfReporter.h"
+#include "utils/PerfTimer.h"
+#endif // GCMGL_DIAGNOSTICS
+
 #ifdef PLATFORM_PS3
 #include <sysmodule/sysmodule.h>
 #include <sys/process.h>
@@ -37,6 +42,13 @@ int32 RunBatchExample(
 	bool isRunning = true;
 
 	CTime::Initialize();
+
+#ifdef GCMGL_DIAGNOSTICS
+#ifdef PLATFORM_PS3
+	sysModuleLoad(SYSMODULE_NET);
+#endif // PLATFORM_PS3
+	CNetPerfReporter::Init("192.168.8.195", 9000);
+#endif // GCMGL_DIAGNOSTICS
 
 	float64 startTime = CTime::GetTime();
 
@@ -163,6 +175,10 @@ int32 RunBatchExample(
 
 		CTime::Update();
 
+#ifdef GCMGL_DIAGNOSTICS
+		const uint64 frameStartUs = PerfTimer_Now();
+#endif // GCMGL_DIAGNOSTICS
+
 		rotationY += CTime::GetDeltaTime() * 30.0f;
 
 		pRenderer->BeginFrame();
@@ -250,9 +266,20 @@ int32 RunBatchExample(
 			0);
 
 		pRenderer->EndFrame();
+
+#ifdef GCMGL_DIAGNOSTICS
+		CNetPerfReporter::Add("frame_us", PerfTimer_Now() - frameStartUs);
+		CNetPerfReporter::Flush(static_cast<float32>(CTime::GetDeltaTime()));
+#endif // GCMGL_DIAGNOSTICS
 	}
 
 	// Cleanup
+#ifdef GCMGL_DIAGNOSTICS
+	CNetPerfReporter::Shutdown();
+#ifdef PLATFORM_PS3
+	sysModuleUnload(SYSMODULE_NET);
+#endif // PLATFORM_PS3
+#endif // GCMGL_DIAGNOSTICS
 	pRenderer->DestroyBuffer(hVertexBuffer);
 	pRenderer->DestroyBuffer(hIndexBuffer);
 	pRenderer->DestroyBuffer(hConstantBuffer);

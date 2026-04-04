@@ -9,6 +9,11 @@
 #include "GcmBatchRenderer.h"
 #include "tier0/dbg.h"
 #include "mathsfury/Maths.h"
+#include "Main.h"
+#ifdef GCMGL_DIAGNOSTICS
+#include "utils/NetPerfReporter.h"
+#include "utils/PerfTimer.h"
+#endif // GCMGL_DIAGNOSTICS
 #include <string.h>
 #include <malloc.h>
 #include <rsx/rsx.h>
@@ -141,7 +146,15 @@ void CGcmBatchRenderer::FlushPendingBatches()
 
 	if (m_pSpuBatchTransformManager)
 	{
+#ifdef GCMGL_DIAGNOSTICS
+		const uint64 waitStart = PerfTimer_Now();
+#endif // GCMGL_DIAGNOSTICS
 		m_pSpuBatchTransformManager->WaitBatch();
+#ifdef GCMGL_DIAGNOSTICS
+		CNetPerfReporter::Add(
+			"spu_transform_wait_us",
+			PerfTimer_Now() - waitStart);
+#endif // GCMGL_DIAGNOSTICS
 	}
 
 	const PendingDrawState_t& pendingDrawState = m_PendingDrawState;
@@ -159,14 +172,26 @@ void CGcmBatchRenderer::FlushPendingBatches()
 		m_PipelineState.m_hIndexBuffer = pendingDrawState.m_hIndexBuffer;
 		m_PipelineState.m_IndexOffset = 0;
 
+#ifdef GCMGL_DIAGNOSTICS
+		const uint64 drawStart = PerfTimer_Now();
+#endif // GCMGL_DIAGNOSTICS
 		DrawIndexed(
 			pendingDrawState.m_TotalIndices,
 			pendingDrawState.m_StartIndex,
 			pendingDrawState.m_BaseVertex);
+#ifdef GCMGL_DIAGNOSTICS
+		CNetPerfReporter::Add("draw_us", PerfTimer_Now() - drawStart);
+#endif // GCMGL_DIAGNOSTICS
 	}
 	else
 	{
+#ifdef GCMGL_DIAGNOSTICS
+		const uint64 drawStart = PerfTimer_Now();
+#endif // GCMGL_DIAGNOSTICS
 		Draw(pendingDrawState.m_TotalVertices);
+#ifdef GCMGL_DIAGNOSTICS
+		CNetPerfReporter::Add("draw_us", PerfTimer_Now() - drawStart);
+#endif // GCMGL_DIAGNOSTICS
 	}
 
 	m_HasPendingBatch = false;
@@ -265,6 +290,9 @@ void CGcmBatchRenderer::FrustumCullBatch(
 	const Plane_t* pFrustumPlanes,
 	CUtlVector<BatchChunkTransform_t>& batchChunkTransforms)
 {
+#ifdef GCMGL_DIAGNOSTICS
+	const uint64 cullStart = PerfTimer_Now();
+#endif // GCMGL_DIAGNOSTICS
 	for (int32 chunkIndex = 0; chunkIndex < batch.m_BatchChunks.Count(); chunkIndex++)
 	{
 		const BatchChunk_t& batchChunk = batch.m_BatchChunks[chunkIndex];
@@ -412,6 +440,9 @@ void CGcmBatchRenderer::FrustumCullBatch(
 			batchChunkTransforms);
 #endif // !SIMD_ENABLED || !GCMGL_SIMD_FRUSTUM_CULL_ENABLED
 	}
+#ifdef GCMGL_DIAGNOSTICS
+	CNetPerfReporter::Add("cull_us", PerfTimer_Now() - cullStart);
+#endif // GCMGL_DIAGNOSTICS
 }
 
 void CGcmBatchRenderer::DrawBatched(
@@ -505,6 +536,9 @@ void CGcmBatchRenderer::DrawBatchedChunk(
 #if defined(PS3_SPU_ENABLED) && defined(GCMGL_SPU_BATCH_TRANSFORM_ENABLED)
 	if (hasVertexPos && m_pSpuBatchTransformManager)
 	{
+#ifdef GCMGL_DIAGNOSTICS
+		const uint64 spuBeginStart = PerfTimer_Now();
+#endif // GCMGL_DIAGNOSTICS
 		m_pSpuBatchTransformManager->BeginBatch(
 			pSrcVertexData,
 			GCMGL_NULL,
@@ -517,6 +551,11 @@ void CGcmBatchRenderer::DrawBatchedChunk(
 			vertexStride,
 			vertexPosOffset,
 			0);
+#ifdef GCMGL_DIAGNOSTICS
+		CNetPerfReporter::Add(
+			"spu_transform_begin_us",
+			PerfTimer_Now() - spuBeginStart);
+#endif // GCMGL_DIAGNOSTICS
 	}
 	else
 	{
@@ -575,15 +614,30 @@ void CGcmBatchRenderer::DrawBatchedChunk(
 			}
 		}
 
-		for (uint32 i = 0; i < numThreads; i++)
 		{
-			uint64 threadExitCode = 0;
-			sysThreadJoin(threadIDs[i], reinterpret_cast<u64*>(&threadExitCode));
+#ifdef GCMGL_DIAGNOSTICS
+			const uint64 threadedTransformStart = PerfTimer_Now();
+#endif // GCMGL_DIAGNOSTICS
+			for (uint32 i = 0; i < numThreads; i++)
+			{
+				uint64 threadExitCode = 0;
+				sysThreadJoin(
+					threadIDs[i],
+					reinterpret_cast<u64*>(&threadExitCode));
+			}
+#ifdef GCMGL_DIAGNOSTICS
+			CNetPerfReporter::Add(
+				"ppu_transform_threaded_us",
+				PerfTimer_Now() - threadedTransformStart);
+#endif // GCMGL_DIAGNOSTICS
 		}
 	}
 #endif // THREADING_ENABLED && GCMGL_THREADING_TRANSFORM_ENABLED
 #if !defined(THREADING_ENABLED) || !defined(GCMGL_THREADING_TRANSFORM_ENABLED)
 	{
+#ifdef GCMGL_DIAGNOSTICS
+		const uint64 ppuTransformStart = PerfTimer_Now();
+#endif // GCMGL_DIAGNOSTICS
 		for (uint32 i = 0; i < chunkSize; i++)
 		{
 			char* pChunkVertexDst = pDstVertexData + uint64(i) * vertexCount * vertexStride;
@@ -602,6 +656,11 @@ void CGcmBatchRenderer::DrawBatchedChunk(
 					batchChunkTransforms[chunkStart + i].ToMatrix());
 			}
 		}
+#ifdef GCMGL_DIAGNOSTICS
+		CNetPerfReporter::Add(
+			"ppu_transform_us",
+			PerfTimer_Now() - ppuTransformStart);
+#endif // GCMGL_DIAGNOSTICS
 	}
 #endif // !THREADING_ENABLED || !GCMGL_THREADING_TRANSFORM_ENABLED
 #endif // !PS3_SPU_ENABLED || !GCMGL_SPU_BATCH_TRANSFORM_ENABLED
@@ -855,15 +914,28 @@ void CGcmBatchRenderer::DrawIndexedBatchedChunk(
 			}
 		}
 
-		for (uint32 i = 0; i < numThreads; i++)
 		{
-			uint64 threadExitCode;
-			sysThreadJoin(threadIDs[i], reinterpret_cast<u64*>(&threadExitCode));
+#ifdef GCMGL_DIAGNOSTICS
+			const uint64 threadedTransformStart = PerfTimer_Now();
+#endif // GCMGL_DIAGNOSTICS
+			for (uint32 i = 0; i < numThreads; i++)
+			{
+				uint64 threadExitCode;
+				sysThreadJoin(threadIDs[i], reinterpret_cast<u64*>(&threadExitCode));
+			}
+#ifdef GCMGL_DIAGNOSTICS
+			CNetPerfReporter::Add(
+				"ppu_transform_threaded_us",
+				PerfTimer_Now() - threadedTransformStart);
+#endif // GCMGL_DIAGNOSTICS
 		}
 	}
 #endif // THREADING_ENABLED && GCMGL_THREADING_TRANSFORM_ENABLED
 #if !defined(THREADING_ENABLED) || !defined(GCMGL_THREADING_TRANSFORM_ENABLED)
 	{
+#ifdef GCMGL_DIAGNOSTICS
+		const uint64 ppuTransformStart = PerfTimer_Now();
+#endif // GCMGL_DIAGNOSTICS
 		for (uint32 i = 0; i < chunkSize; i++)
 		{
 			char* pBatchVertexDst = pDstVertexData + uint64(i) * vertexCount * vertexStride;
@@ -889,6 +961,11 @@ void CGcmBatchRenderer::DrawIndexedBatchedChunk(
 				pBatchIndexDst[j] = pSrcIndices[j] + vertexBase;
 			}
 		}
+#ifdef GCMGL_DIAGNOSTICS
+		CNetPerfReporter::Add(
+			"ppu_transform_us",
+			PerfTimer_Now() - ppuTransformStart);
+#endif // GCMGL_DIAGNOSTICS
 	}
 #endif // !THREADING_ENABLED || !GCMGL_THREADING_TRANSFORM_ENABLED
 #endif // !PS3_SPU_ENABLED || !GCMGL_SPU_BATCH_TRANSFORM_ENABLED
