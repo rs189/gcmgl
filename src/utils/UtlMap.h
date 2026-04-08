@@ -27,32 +27,65 @@ public:
 	};
 
 	CUtlMap() :
+		m_pElements(new Node_t[MAX_ELEMENTS]),
 		m_Count(0)
 	{
+		if (!m_pElements)
+		{
+			Error(
+				"CUtlMap: Failed to allocate memory for %d elements\n",
+				MAX_ELEMENTS);
+		}
 	}
 
-	CUtlMap(const CUtlMap& other)
+	CUtlMap(const CUtlMap& other) :
+		m_pElements(new Node_t[MAX_ELEMENTS]),
+		m_Count(other.m_Count)
 	{
-		m_Count = other.m_Count;
-		for (int32 i = 0; i < m_Count; i++)
+		if (LIKELY(m_pElements))
 		{
-			m_Elements[i] = other.m_Elements[i];
+			for (int32 i = 0; i < m_Count; i++)
+			{
+				m_pElements[i] = other.m_pElements[i];
+			}
+		}
+		else
+		{
+			Error(
+				"CUtlMap: Failed to allocate memory for %d elements during copy\n",
+				MAX_ELEMENTS);
+
+			m_Count = 0;
 		}
 	}
 
 	~CUtlMap()
 	{
 		RemoveAll();
+
+		if (m_pElements)
+		{
+			delete[] m_pElements;
+			m_pElements = GCMGL_NULL;
+		}
 	}
 
 	CUtlMap& operator=(const CUtlMap& other)
 	{
 		if (this != &other)
 		{
-			m_Count = other.m_Count;
-			for (int32 i = 0; i < m_Count; i++)
+			if (UNLIKELY(!m_pElements))
 			{
-				m_Elements[i] = other.m_Elements[i];
+				m_pElements = new Node_t[MAX_ELEMENTS];
+			}
+
+			if (LIKELY(m_pElements))
+			{
+				m_Count = other.m_Count;
+				for (int32 i = 0; i < m_Count; i++)
+				{
+					m_pElements[i] = other.m_pElements[i];
+				}
 			}
 		}
 
@@ -61,10 +94,18 @@ public:
 
 	V& operator[](const K& key)
 	{
+		if (UNLIKELY(!m_pElements))
+		{
+			Error("CUtlMap: Accessing NULL elements!\n");
+
+			static V s_Dummy;
+			return s_Dummy;
+		}
+
 		int32 index = Find(key);
 		if (index != -1)
 		{
-			return m_Elements[index].m_Value;
+			return m_pElements[index].m_Value;
 		}
 
 		AssertMsg(m_Count < MAX_ELEMENTS, "CUtlMap: Exceeded maximum capacity");
@@ -74,21 +115,28 @@ public:
 		// Shift elements forward
 		for (int32 i = m_Count; i > insertPos; --i)
 		{
-			m_Elements[i] = m_Elements[i - 1];
+			m_pElements[i] = m_pElements[i - 1];
 		}
 
-		m_Elements[insertPos].m_Key = key;
+		m_pElements[insertPos].m_Key = key;
 		m_Count++;
 
-		return m_Elements[insertPos].m_Value;
+		return m_pElements[insertPos].m_Value;
 	}
 
 	int32 Insert(const K& key, const V& value)
 	{
+		if (UNLIKELY(!m_pElements))
+		{
+			Error("CUtlMap: Inserting into NULL map!\n");
+
+			return -1;
+		}
+
 		int32 index = Find(key);
 		if (index != -1)
 		{
-			m_Elements[index].m_Value = value;
+			m_pElements[index].m_Value = value;
 
 			return index;
 		}
@@ -105,11 +153,11 @@ public:
 		// Shift elements forward
 		for (int32 i = m_Count; i > insertPos; --i)
 		{
-			m_Elements[i] = m_Elements[i - 1];
+			m_pElements[i] = m_pElements[i - 1];
 		}
 
-		m_Elements[insertPos].m_Key = key;
-		m_Elements[insertPos].m_Value = value;
+		m_pElements[insertPos].m_Key = key;
+		m_pElements[insertPos].m_Value = value;
 		m_Count++;
 
 		return insertPos;
@@ -117,6 +165,11 @@ public:
 
 	int32 Find(const K& key) const
 	{
+		if (UNLIKELY(!m_pElements))
+		{
+			return -1;
+		}
+
 		// Binary search
 		int32 low = 0;
 		int32 high = m_Count - 1;
@@ -126,13 +179,13 @@ public:
 			int32 mid = low + (high - low) / 2;
 			
 			// Needs operator== and operator< on type K
-			if (m_Elements[mid].m_Key == key)
+			if (m_pElements[mid].m_Key == key)
 			{
 				return mid;
 			}
 			
 			// Store in ascending order
-			if (m_Elements[mid].m_Key < key)
+			if (m_pElements[mid].m_Key < key)
 			{
 				low = mid + 1;
 			}
@@ -147,9 +200,9 @@ public:
 
 	void RemoveAt(int32 index)
 	{
-		if (UNLIKELY(index < 0 || index >= m_Count))
+		if (UNLIKELY(!m_pElements || index < 0 || index >= m_Count))
 		{
-			AssertMsg(false, "CUtlMap: Index out of bounds");
+			AssertMsg(false, "CUtlMap: Index out of bounds or NULL map");
 
 			return;
 		}
@@ -157,7 +210,7 @@ public:
 		// Shift elements down
 		for (int32 i = index; i < m_Count - 1; i++)
 		{
-			m_Elements[i] = m_Elements[i + 1];
+			m_pElements[i] = m_pElements[i + 1];
 		}
 
 		m_Count--;
@@ -188,12 +241,12 @@ public:
 
 	Index_t FirstInorder() const
 	{
-		return m_Count > 0 ? 0 : InvalidIndex();
+		return (m_pElements && m_Count > 0) ? 0 : InvalidIndex();
 	}
 
 	Index_t NextInorder(Index_t i) const
 	{
-		if (i >= 0 && i < m_Count - 1)
+		if (m_pElements && i >= 0 && i < m_Count - 1)
 		{
 			return i + 1;
 		}
@@ -224,42 +277,47 @@ public:
 	const K& Key(int32 index) const
 	{
 		AssertMsg(
-			index >= 0 && index < m_Count,
-			"CUtlMap: Index out of bounds");
+			m_pElements && index >= 0 && index < m_Count,
+			"CUtlMap: Index out of bounds or NULL map");
 
-		return m_Elements[index].m_Key;
+		return m_pElements[index].m_Key;
 	}
 
 	V& Element(int32 index)
 	{
 		AssertMsg(
-			index >= 0 && index < m_Count,
-			"CUtlMap: Index out of bounds");
+			m_pElements && index >= 0 && index < m_Count,
+			"CUtlMap: Index out of bounds or NULL map");
 
-		return m_Elements[index].m_Value;
+		return m_pElements[index].m_Value;
 	}
 
 	const V& Element(int32 index) const
 	{
 		AssertMsg(
-			index >= 0 && index < m_Count,
-			"CUtlMap: Index out of bounds");
+			m_pElements && index >= 0 && index < m_Count,
+			"CUtlMap: Index out of bounds or NULL map");
 
-		return m_Elements[index].m_Value;
+		return m_pElements[index].m_Value;
 	}
 
-	static const int32 InvalidIndex()
+	static int32 InvalidIndex()
 	{
 		return -1;
 	}
 
 	bool IsValidIndex(int32 index) const
 	{
-		return index >= 0 && index < m_Count;
+		return m_pElements && index >= 0 && index < m_Count;
 	}
 private:
 	int32 FindInsertionPos(const K& key) const
 	{
+		if (UNLIKELY(!m_pElements))
+		{
+			return 0;
+		}
+
 		// Binary search for insertion point
 		int32 low = 0;
 		int32 high = m_Count - 1;
@@ -267,7 +325,7 @@ private:
 		while (low <= high)
 		{
 			int32 mid = low + (high - low) / 2;
-			if (m_Elements[mid].m_Key < key)
+			if (m_pElements[mid].m_Key < key)
 			{
 				low = mid + 1;
 			}
@@ -280,7 +338,7 @@ private:
 		return low;
 	}
 
-	Node_t m_Elements[MAX_ELEMENTS];
+	Node_t* m_pElements;
 	int32 m_Count;
 };
 
