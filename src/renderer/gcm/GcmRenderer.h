@@ -68,6 +68,12 @@ public:
 	virtual void DestroyBuffer(BufferHandle hBuffer) GCMGL_OVERRIDE;
 	virtual void* MapBuffer(BufferHandle hBuffer) GCMGL_OVERRIDE;
 	virtual void UnmapBuffer(BufferHandle hBuffer) GCMGL_OVERRIDE;
+	virtual BufferHandle BuildInstancedVertexBuffer(
+		BufferHandle hVertexBuffer,
+		BufferHandle hIndexBuffer,
+		uint32 indexCount,
+		uint32 instanceCount,
+		uint32 vertexStride) GCMGL_OVERRIDE;
 
 	// Shaders
 	virtual ShaderProgramHandle CreateShaderProgram(
@@ -129,9 +135,21 @@ public:
 		const CMatrix4* pViewProjection = GCMGL_NULL,
 		const CVector3* pAABBCenter = GCMGL_NULL,
 		const CVector3* pAABBExtent = GCMGL_NULL) GCMGL_OVERRIDE;
+	virtual void DrawInstanced(
+		uint32 vertexCount,
+		uint32 instanceCount,
+		const CMatrix4* pMatrices,
+		const CVertexLayout* pInstanceLayout = GCMGL_NULL) GCMGL_OVERRIDE;
+	virtual void DrawIndexedInstanced(
+		uint32 indexCount,
+		uint32 instanceCount,
+		const CMatrix4* pMatrices,
+		uint32 startIndex = 0,
+		const CVertexLayout* pInstanceLayout = GCMGL_NULL) GCMGL_OVERRIDE;
 
 	// Pipeline
-	uint32 GetVertexSemanticAttributeIndex(VertexSemantic_t::Enum vertexSemantic);
+	uint32 GetVertexSemanticAttributeIndex(
+		VertexSemantic_t::Enum vertexSemantic);
 	virtual void BindVertexAttributes(
 		const CVertexLayout* pLayout,
 		uint32 vertexStride,
@@ -167,12 +185,13 @@ protected:
 
 	StagingBuffer_t m_StagingVertexBuffer[2];
 	StagingBuffer_t m_StagingIndexBuffer[2];
+	StagingBuffer_t m_InstanceBuffer;
 	CUtlMap<BufferHandle, BufferResource_t> m_BufferResources;
 #ifdef PS3_SPU_ENABLED
 	CSpuBatchTransformManager* m_pSpuBatchTransformManager;
 #endif
 	int32 m_StagingIndex;
-private:
+protected:
 	struct ProgramResource_t
 	{
 		CUtlMap<CFixedString, rsxProgramConst*> m_VertexProgramConstCache;
@@ -188,6 +207,8 @@ private:
 		uint32 m_FragmentProgramSize;
 	};
 
+	CUtlMap<ShaderProgramHandle, ProgramResource_t> m_ProgramResources;
+private:
 	struct TextureResource_t
 	{
 		void* m_pBuffer;
@@ -211,7 +232,6 @@ private:
 		bool m_IsDirty;
 	};
 
-	CUtlMap<ShaderProgramHandle, ProgramResource_t> m_ProgramResources;
 	CUtlMap<ShaderProgramHandle, CUtlMap<uint32, UniformShadow_t> > m_ProgramUniformShadows;
 	CUtlMap<ShaderProgramHandle, CUtlMap<uint32, BoundUniform_t> > m_ProgramUniformBuffers;
 	CUtlMap<TextureHandle, TextureResource_t> m_TextureResources;

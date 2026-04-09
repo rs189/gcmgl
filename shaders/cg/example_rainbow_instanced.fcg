@@ -1,0 +1,25 @@
+//===----------------------------------------------------------------------===//
+//
+// Part of the gcmgl, under the MIT License.
+// See LICENSE for license information.
+// SPDX-License-Identifier: MIT
+//
+//===----------------------------------------------------------------------===//
+
+struct PS_INPUT
+{
+    float3 color : COLOR;
+};
+
+struct PS_OUTPUT
+{
+    float4 color : COLOR;
+};
+
+PS_OUTPUT main(PS_INPUT input)
+{
+    PS_OUTPUT output;
+    output.color = float4(input.color, 1.0);
+
+    return output;
+}

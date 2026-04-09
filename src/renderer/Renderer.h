@@ -584,6 +584,14 @@ public:
 	virtual void ApplyVertexConstants(ShaderProgramHandle hProgram) = 0;
 	virtual void ApplyFragmentConstants(ShaderProgramHandle hProgram) = 0;
 
+	virtual void ExtractFrustumPlanes(
+		const CMatrix4& mvp,
+		Plane_t* pPlanes) = 0;
+	virtual bool TestAABBFrustum(
+		const CVector3& center,
+		const CVector3& extent,
+		const Plane_t* pPlanes) = 0;
+
 	virtual void Draw(
 		uint32 vertexCount,
 		uint32 startVertex = 0,
@@ -609,17 +617,20 @@ public:
 		const CMatrix4& viewProjection,
 		uint32 startIndex = 0,
 		int32 baseVertex = 0) = 0;
+	virtual void DrawInstanced(
+		uint32 vertexCount,
+		uint32 instanceCount,
+		const CMatrix4* pMatrices,
+		const CVertexLayout* pInstanceLayout = GCMGL_NULL) = 0;
+	virtual void DrawIndexedInstanced(
+		uint32 indexCount,
+		uint32 instanceCount,
+		const CMatrix4* pMatrices,
+		uint32 startIndex = 0,
+		const CVertexLayout* pInstanceLayout = GCMGL_NULL) = 0;
 
 	virtual void SetPipelineState(const PipelineState_t& state) = 0;
 	virtual void FlushPipelineState() = 0;
-
-	virtual void ExtractFrustumPlanes(
-		const CMatrix4& mvp,
-		Plane_t* pPlanes) = 0;
-	virtual bool TestAABBFrustum(
-		const CVector3& center,
-		const CVector3& extent,
-		const Plane_t* pPlanes) = 0;
 };
 
 class CRenderer : public virtual IRenderer
@@ -653,11 +664,6 @@ public:
 	virtual void SetPipelineState(const PipelineState_t& state) GCMGL_OVERRIDE;
 	virtual void FlushPipelineState() GCMGL_OVERRIDE;
 protected:
-	virtual void FlushProgramState() = 0;
-	virtual void BindVertexAttributes(
-		const CVertexLayout* pLayout,
-		uint32 vertexStride,
-		uint32 offset) = 0;
 	virtual void SetBlendState(const BlendState_t& state) = 0;
 	virtual void SetDepthStencilState(const DepthStencilState_t& state) = 0;
 
@@ -672,6 +678,12 @@ protected:
 		const CVector3& center,
 		const CVector3& extent,
 		const Plane_t* pPlanes);
+	
+	virtual void BindVertexAttributes(
+		const CVertexLayout* pLayout,
+		uint32 vertexStride,
+		uint32 offset) = 0;
+	virtual void FlushProgramState() = 0;
 
 	uint32 AllocHandle()
 	{

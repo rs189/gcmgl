@@ -84,10 +84,36 @@ bool PipelineState_t::operator==(const PipelineState_t& other) const
 		m_BlendState.m_IsEnabled == other.m_BlendState.m_IsEnabled;
 }
 
-
 BufferHandle CRenderer::CreateStagingBuffer(uint64 size)
 {
 	return CreateConstantBuffer(size, BufferUsage_t::Dynamic);
+}
+
+ShaderProgramHandle CRenderer::GetOrCreateShaderProgram(
+	const CFixedString& shaderName)
+{
+	CUtlMap<CFixedString, ShaderProgramHandle>::Index_t index = m_ShaderCache.Find(shaderName);
+	if (index != m_ShaderCache.InvalidIndex())
+	{
+		return m_ShaderCache.Element(index);
+	}
+
+	ShaderProgramHandle hProgram = CreateShaderProgram(shaderName);
+	if (hProgram != 0)
+	{
+		m_ShaderCache.Insert(shaderName, hProgram);
+	}
+
+	return hProgram;
+}
+
+void CRenderer::ClearShaderCache()
+{
+	for (CUtlMap<CFixedString, ShaderProgramHandle>::Index_t i = m_ShaderCache.FirstInorder(); i != m_ShaderCache.InvalidIndex(); i = m_ShaderCache.NextInorder(i))
+	{
+		DestroyShaderProgram(m_ShaderCache.Element(i));
+	}
+	m_ShaderCache.RemoveAll();
 }
 
 void CRenderer::SetShaderProgram(ShaderProgramHandle hProgram)
@@ -217,33 +243,6 @@ void CRenderer::FlushPipelineState()
 	}
 
 	m_StateDirtyFlags = StateDirtyFlags_t::None;
-}
-
-ShaderProgramHandle CRenderer::GetOrCreateShaderProgram(
-	const CFixedString& shaderName)
-{
-	CUtlMap<CFixedString, ShaderProgramHandle>::Index_t index = m_ShaderCache.Find(shaderName);
-	if (index != m_ShaderCache.InvalidIndex())
-	{
-		return m_ShaderCache.Element(index);
-	}
-
-	ShaderProgramHandle hProgram = CreateShaderProgram(shaderName);
-	if (hProgram != 0)
-	{
-		m_ShaderCache.Insert(shaderName, hProgram);
-	}
-
-	return hProgram;
-}
-
-void CRenderer::ClearShaderCache()
-{
-	for (CUtlMap<CFixedString, ShaderProgramHandle>::Index_t i = m_ShaderCache.FirstInorder(); i != m_ShaderCache.InvalidIndex(); i = m_ShaderCache.NextInorder(i))
-	{
-		DestroyShaderProgram(m_ShaderCache.Element(i));
-	}
-	m_ShaderCache.RemoveAll();
 }
 
 void CRenderer::ExtractFrustumPlanes(const CMatrix4& mvp, Plane_t* pPlanes)

@@ -28,10 +28,8 @@ gcmgl is a C++ graphics library targeting PlayStation 3 (GCM) and Linux (x86_64,
 ### Handles
 - `BufferHandle`
 - `ShaderProgramHandle`
-- `MaterialHandle`
 - `TextureHandle`
 - `SamplerHandle`
-- `RenderTargetHandle`
 - `UniformBlockLayoutHandle`
 
 ### RendererDesc_t
@@ -188,8 +186,8 @@ gcmgl is a C++ graphics library targeting PlayStation 3 (GCM) and Linux (x86_64,
 - `Partial`
 - `Inside`
 
-### IRenderer / CRenderer
-- `bool Init(const RendererDesc_t& desc)`
+### IRenderer
+- `bool Init(const RendererDesc_t& rendererDesc)`
 - `void Shutdown()`
 - `void SetEnvironment()`
 - `void BeginFrame()`
@@ -201,11 +199,11 @@ gcmgl is a C++ graphics library targeting PlayStation 3 (GCM) and Linux (x86_64,
 - `BufferHandle CreateVertexBuffer(const void* pData, uint64 size, BufferUsage_t::Enum usage)`
 - `BufferHandle CreateIndexBuffer(const void* pData, uint64 size, IndexFormat_t::Enum format, BufferUsage_t::Enum usage)`
 - `BufferHandle CreateConstantBuffer(uint64 size, BufferUsage_t::Enum usage)`
+- `BufferHandle CreateStagingBuffer(uint64 size)`
 - `void UpdateBuffer(BufferHandle hBuffer, const void* pData, uint64 size, uint64 offset = 0)`
-- `void DestroyBuffer(BufferHandle hBuffer)`
 - `void* MapBuffer(BufferHandle hBuffer)`
 - `void UnmapBuffer(BufferHandle hBuffer)`
-- `BufferHandle CreateStagingBuffer(uint64 size)`
+- `void DestroyBuffer(BufferHandle hBuffer)`
 - `ShaderProgramHandle CreateShaderProgram(const CFixedString& shaderName)`
 - `ShaderProgramHandle GetOrCreateShaderProgram(const CFixedString& shaderName)`
 - `void DestroyShaderProgram(ShaderProgramHandle hProgram)`
@@ -223,27 +221,19 @@ gcmgl is a C++ graphics library targeting PlayStation 3 (GCM) and Linux (x86_64,
 - `void SetConstantBuffer(BufferHandle hBuffer, UniformBlockLayoutHandle hLayout, uint32 slot, ShaderStage_t stage)`
 - `void SetBlendState(const BlendState_t& state)`
 - `void SetDepthStencilState(const DepthStencilState_t& state)`
-- `void ApplyVertexConstants(ShaderProgramHandle hProgram)`
-- `void ApplyFragmentConstants(ShaderProgramHandle hProgram)`
+- `void SetPipelineState(const PipelineState_t& state)`
 - `void Draw(uint32 vertexCount, uint32 startVertex = 0, const CMatrix4* pViewProjection = GCMGL_NULL, const CVector3* pAABBCenter = GCMGL_NULL, const CVector3* pAABBExtent = GCMGL_NULL)`
 - `void DrawIndexed(uint32 indexCount, uint32 startIndex = 0, int32 baseVertex = 0, const CMatrix4* pViewProjection = GCMGL_NULL, const CVector3* pAABBCenter = GCMGL_NULL, const CVector3* pAABBExtent = GCMGL_NULL)`
 - `void DrawBatched(uint32 vertexCount, const CBatch& batch, const CMatrix4& viewProjection, uint32 startVertex = 0)`
 - `void DrawIndexedBatched(uint32 indexCount, uint32 vertexCount, const CBatch& batch, const CMatrix4& viewProjection, uint32 startIndex = 0, int32 baseVertex = 0)`
-- `void SetPipelineState(const PipelineState_t& state)`
-- `void FlushPipelineState()`
+- `void DrawInstanced(uint32 vertexCount, uint32 instanceCount, const CMatrix4* pMatrices, const CVertexLayout* pInstanceLayout = GCMGL_NULL)`
+- `void DrawIndexedInstanced(uint32 indexCount, uint32 instanceCount, const CMatrix4* pMatrices, uint32 startIndex = 0, const CVertexLayout* pInstanceLayout = GCMGL_NULL)`
 - `void ExtractFrustumPlanes(const CMatrix4& mvp, Plane_t* pPlanes)`
 - `bool TestAABBFrustum(const CVector3& center, const CVector3& extent, const Plane_t* pPlanes)`
 - `FrustumVisibility_t::Enum GetAABBFrustumVisibility(const CVector3& center, const CVector3& extent, const Plane_t* pPlanes)`
 
-### IBatchRenderer / CBatchRenderer
-- `void DrawBatched(uint32 vertexCount, const CBatch& batch, const CMatrix4& viewProjection, uint32 startVertex = 0)`
-- `void DrawIndexedBatched(uint32 indexCount, uint32 vertexCount, const CBatch& batch, const CMatrix4& viewProjection, uint32 startIndex = 0, int32 baseVertex = 0)`
-- `static bool ShouldUpdateChunk(float32 distanceToCamera, uint64 frameCount)`
-- `static void CullChunk(const BatchChunkTransform_t* pSrcTransforms, uint32 start, uint32 end, const Plane_t* pPlanes, CUtlVector<BatchChunkTransform_t>& transforms)`
-- `static void TransformVertices(char* pDst, uint32 vertexCount, uint32 vertexStride, uint32 vertexPosOffset, const CMatrix4& matrix)`
-- `static void ProcessBatch(char* pVertexDst, const char* pVertexSrc, uint32 vertexCount, uint32 vertexStride, uint32 vertexPosOffset, bool hasVertexPos, const CMatrix4& matrix)`
-- `static void ProcessIndexedBatch(char* pVertexDst, const char* pVertexSrc, uint32* pIndexDst, const uint32* pIndexSrc, uint32 vertexCount, uint32 indexCount, uint32 batchIndex, uint32 vertexStride, uint32 vertexPosOffset, bool hasVertexPos, const CMatrix4& matrix)`
-- `static bool FindVertexPosOffset(const CVertexLayout* pLayout, uint32& outOffset)`
+### CGcmRenderer
+- `BufferHandle BuildInstancedVertexBuffer(BufferHandle hVertexBuffer, BufferHandle hIndexBuffer, uint32 indexCount, uint32 instanceCount, uint32 vertexStride)`
 
 ## Build
 
@@ -267,7 +257,7 @@ Build using the provided scripts:
 
 ## Examples
 
-Build scripts prompt for an example to build: `Triangle`, `Cube`, `Shader`, `Textured`, `Lit`, `TexturedLit`, or `Batch`.
+Build scripts prompt for an example to build: `Triangle`, `Cube`, `Shader`, `Textured`, `Lit`, `TexturedLit`, `Batch`, or `BatchInstanced`.
 
 - Triangle
 ![Triangle](media/Triangle.png)
@@ -283,6 +273,8 @@ Build scripts prompt for an example to build: `Triangle`, `Cube`, `Shader`, `Tex
 ![TexturedLit](media/TexturedLit.png)
 - Batch
 ![Batch](media/Batch.png)
+- BatchInstanced
+![BatchInstanced](media/Batch.png)
 
 ## License
 gcmgl is licensed under the [MIT License](LICENSE).

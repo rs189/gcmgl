@@ -1,0 +1,26 @@
+//===----------------------------------------------------------------------===//
+//
+// Part of the gcmgl, under the MIT License.
+// See LICENSE for license information.
+// SPDX-License-Identifier: MIT
+//
+//===----------------------------------------------------------------------===//
+
+void main(
+	float3 position : POSITION,
+	float4 color : COLOR0,
+	float4 modelCol0 : TEXCOORD1,
+	float4 modelCol1 : TEXCOORD2,
+	float4 modelCol2 : TEXCOORD3,
+	float4 modelCol3 : TEXCOORD4,
+
+	out float4 oPosition : POSITION,
+	out float3 oColor : COLOR,
+
+	uniform float4x4 viewProjection)
+{
+	float4x4 model = float4x4(modelCol0, modelCol1, modelCol2, modelCol3);
+	float4 worldPos = mul(model, float4(position, 1.0));
+	oPosition = mul(viewProjection, worldPos);
+	oColor = color.rgb;
+}

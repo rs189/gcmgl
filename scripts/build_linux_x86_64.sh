@@ -11,6 +11,7 @@ echo "4 - Textured"
 echo "5 - Lit"
 echo "6 - TexturedLit"
 echo "7 - Batch"
+echo "8 - BatchInstanced"
 read -p "Select an example to build: " choice
 choice=${choice:-1}
 
@@ -35,6 +36,9 @@ case $choice in
 		;;
 	7)
 		EXAMPLE="Batch"
+		;;
+	8)
+		EXAMPLE="BatchInstanced"
 		;;
 	*)
 		echo "Invalid choice"

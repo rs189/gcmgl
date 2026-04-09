@@ -1162,6 +1162,164 @@ void CGlRenderer::DrawIndexed(
 		reinterpret_cast<void*>(static_cast<uintptr_t>(indexOffset)));
 }
 
+void CGlRenderer::DrawInstanced(
+	uint32 vertexCount,
+	uint32 instanceCount,
+	const CMatrix4* pMatrices,
+	const CVertexLayout* pInstanceLayout)
+{
+	if (instanceCount == 0 || !pInstanceLayout) return;
+
+	const ShaderProgramHandle hProgram = m_PipelineState.m_hShaderProgram;
+	if (!hProgram) return;
+
+	int32 programIndex = m_ProgramResources.Find(hProgram);
+	if (programIndex == m_ProgramResources.InvalidIndex()) return;
+
+	ProgramResource_t& programResource = m_ProgramResources.Element(
+		programIndex);
+	CUtlMap<CFixedString, int32>& attributeMap = programResource.m_AttributeLocations;
+
+	ApplyVertexConstants(hProgram);
+	ApplyFragmentConstants(hProgram);
+
+	const CUtlVector<VertexAttribute_t>& attributes = pInstanceLayout->GetAttributes();
+
+	uint32 id;
+	glGenBuffers(1, &id);
+	glBindBuffer(GL_ARRAY_BUFFER, id);
+	glBufferData(
+		GL_ARRAY_BUFFER,
+		instanceCount * 16 * sizeof(float32),
+		pMatrices[0].m_Data,
+		GL_DYNAMIC_DRAW);
+
+	for (int32 i = 0; i < attributes.Count(); i++)
+	{
+		const VertexAttribute_t& attribute = attributes[i];
+		if (attribute.m_Name.IsEmpty()) continue;
+
+		int32 attributeMapIndex = attributeMap.Find(attribute.m_Name);
+		int32 loc = (attributeMapIndex != attributeMap.InvalidIndex())
+			? attributeMap.Element(attributeMapIndex)
+			: glGetAttribLocation(
+				programResource.m_hId,
+				attribute.m_Name.AsCharPtr());
+		if (attributeMapIndex == attributeMap.InvalidIndex())
+			attributeMap.Insert(attribute.m_Name, loc);
+
+		if (loc < 0) continue;
+		glEnableVertexAttribArray(loc);
+		glVertexAttribPointer(
+			loc, 4, GL_FLOAT, GL_FALSE,
+			int32(pInstanceLayout->GetStride()),
+			reinterpret_cast<void*>(uint64(attribute.m_Offset)));
+		glVertexAttribDivisor(loc, 1);
+	}
+
+	FlushPipelineState();
+
+	glDrawArraysInstanced(
+		GL_TRIANGLES,
+		0,
+		int32(vertexCount),
+		int32(instanceCount));
+
+	for (int32 i = 0; i < attributes.Count(); i++)
+	{
+		const VertexAttribute_t& attribute = attributes[i];
+		if (attribute.m_Name.IsEmpty()) continue;
+		int32 attributeMapIndex = attributeMap.Find(attribute.m_Name);
+		if (attributeMapIndex != attributeMap.InvalidIndex())
+		{
+			int32 loc = attributeMap.Element(attributeMapIndex);
+			if (loc >= 0) glVertexAttribDivisor(loc, 0);
+		}
+	}
+
+	glDeleteBuffers(1, &id);
+}
+
+void CGlRenderer::DrawIndexedInstanced(
+	uint32 indexCount,
+	uint32 instanceCount,
+	const CMatrix4* pMatrices,
+	uint32 startIndex,
+	const CVertexLayout* pInstanceLayout)
+{
+	if (instanceCount == 0 || !pInstanceLayout) return;
+
+	const ShaderProgramHandle hProgram = m_PipelineState.m_hShaderProgram;
+	if (!hProgram) return;
+
+	int32 programIndex = m_ProgramResources.Find(hProgram);
+	if (programIndex == m_ProgramResources.InvalidIndex()) return;
+
+	ProgramResource_t& programResource = m_ProgramResources.Element(
+		programIndex);
+	CUtlMap<CFixedString, int32>& attributeMap = programResource.m_AttributeLocations;
+
+	ApplyVertexConstants(hProgram);
+	ApplyFragmentConstants(hProgram);
+
+	const CUtlVector<VertexAttribute_t>& attributes = pInstanceLayout->GetAttributes();
+
+	uint32 id;
+	glGenBuffers(1, &id);
+	glBindBuffer(GL_ARRAY_BUFFER, id);
+	glBufferData(
+		GL_ARRAY_BUFFER,
+		instanceCount * 16 * sizeof(float32),
+		pMatrices[0].m_Data,
+		GL_DYNAMIC_DRAW);
+
+	for (int32 i = 0; i < attributes.Count(); i++)
+	{
+		const VertexAttribute_t& attribute = attributes[i];
+		if (attribute.m_Name.IsEmpty()) continue;
+
+		int32 attributeMapIndex = attributeMap.Find(attribute.m_Name);
+		int32 loc = (attributeMapIndex != attributeMap.InvalidIndex())
+			? attributeMap.Element(attributeMapIndex)
+			: glGetAttribLocation(
+				programResource.m_hId,
+				attribute.m_Name.AsCharPtr());
+		if (attributeMapIndex == attributeMap.InvalidIndex())
+			attributeMap.Insert(attribute.m_Name, loc);
+
+		if (loc < 0) continue;
+		glEnableVertexAttribArray(loc);
+		glVertexAttribPointer(
+			loc, 4, GL_FLOAT, GL_FALSE,
+			int32(pInstanceLayout->GetStride()),
+			reinterpret_cast<void*>(uint64(attribute.m_Offset)));
+		glVertexAttribDivisor(loc, 1);
+	}
+
+	FlushPipelineState();
+
+	glDrawElementsInstanced(
+		GL_TRIANGLES,
+		int32(indexCount),
+		GL_UNSIGNED_INT,
+		reinterpret_cast<void*>(uint64(startIndex) * sizeof(uint32)),
+		int32(instanceCount));
+
+	for (int32 i = 0; i < attributes.Count(); i++)
+	{
+		const VertexAttribute_t& attribute = attributes[i];
+		if (attribute.m_Name.IsEmpty()) continue;
+		int32 attributeMapIndex = attributeMap.Find(attribute.m_Name);
+		if (attributeMapIndex != attributeMap.InvalidIndex())
+		{
+			int32 loc = attributeMap.Element(attributeMapIndex);
+			if (loc >= 0) glVertexAttribDivisor(loc, 0);
+		}
+	}
+
+	glDeleteBuffers(1, &id);
+}
+
 uint32 CGlRenderer::GetVertexSemanticAttributeIndex(
 	VertexSemantic_t::Enum vertexSemantic)
 {

@@ -123,6 +123,17 @@ public:
 		const CMatrix4* pViewProjection = GCMGL_NULL,
 		const CVector3* pAABBCenter = GCMGL_NULL,
 		const CVector3* pAABBExtent = GCMGL_NULL) GCMGL_OVERRIDE;
+	virtual void DrawInstanced(
+		uint32 vertexCount,
+		uint32 instanceCount,
+		const CMatrix4* pMatrices,
+		const CVertexLayout* pInstanceLayout = GCMGL_NULL) GCMGL_OVERRIDE;
+	virtual void DrawIndexedInstanced(
+		uint32 indexCount,
+		uint32 instanceCount,
+		const CMatrix4* pMatrices,
+		uint32 startIndex = 0,
+		const CVertexLayout* pInstanceLayout = GCMGL_NULL) GCMGL_OVERRIDE;
 
 	// Pipeline
 	uint32 GetVertexSemanticAttributeIndex(VertexSemantic_t::Enum vertexSemantic);
@@ -158,7 +169,7 @@ protected:
 	StagingBuffer_t m_StagingIndexBuffer[2];
 	CUtlMap<BufferHandle, BufferResource_t> m_BufferResources;
 	int32 m_StagingIndex;
-private:
+protected:
 	struct ProgramResource_t
 	{
 		CUtlMap<CFixedString, int32> m_AttributeLocations;
@@ -166,6 +177,8 @@ private:
 		uint32 m_hId;
 	};
 
+	CUtlMap<ShaderProgramHandle, ProgramResource_t> m_ProgramResources;
+private:
 	struct TextureResource_t
 	{
 		uint32 m_hId;
@@ -189,7 +202,6 @@ private:
 		bool m_IsDirty;
 	};
 
-	CUtlMap<ShaderProgramHandle, ProgramResource_t> m_ProgramResources;
 	CUtlMap<ShaderProgramHandle, CUtlMap<uint32, UniformShadow_t> > m_ProgramUniformShadows;
 	CUtlMap<ShaderProgramHandle, CUtlMap<uint32, BoundUniform_t> > m_ProgramUniformBuffers;
 	CUtlMap<TextureHandle, TextureResource_t> m_TextureResources;

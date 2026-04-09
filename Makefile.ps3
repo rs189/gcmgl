@@ -50,6 +50,10 @@ else ifeq ($(EXAMPLE),Batch)
 	CFLAGS += -DEXAMPLE_BATCH
 	EXAMPLE_SRC = Batch.cpp
 	EXAMPLE_DIR = src/examples/example_batch
+else ifeq ($(EXAMPLE),BatchInstanced)
+	CFLAGS += -DEXAMPLE_BATCH_INSTANCED
+	EXAMPLE_SRC = BatchInstanced.cpp
+	EXAMPLE_DIR = src/examples/example_batchInstanced
 else ifeq ($(EXAMPLE),Textured)
 	CFLAGS += -DEXAMPLE_TEXTURED
 	EXAMPLE_SRC = Textured.cpp

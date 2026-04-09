@@ -19,6 +19,7 @@
 
 #ifdef PLATFORM_PS3
 #include "rsxutil/rsxutil.h"
+#include "renderer/gcm/GcmRenderer.h"
 #endif
 
 int RunTriangleExample(
@@ -56,6 +57,17 @@ int RunBatchExample(
 	class IRenderer* pRenderer,
 	class IWindow* pWnd,
 	const struct WindowConfig_t& windowConfig);
+#ifdef EXAMPLE_BATCH_INSTANCED
+int RunBatchInstancedExample(
+	class CWindowManager& windowManager,
+#ifdef PLATFORM_PS3
+	class CGcmRenderer* pRenderer,
+#else
+	class IRenderer* pRenderer,
+#endif
+	class IWindow* pWnd,
+	const struct WindowConfig_t& windowConfig);
+#endif // EXAMPLE_BATCH_INSTANCED
 
 int main(int argc, char* argv[])
 {
@@ -155,6 +167,16 @@ int main(int argc, char* argv[])
 	result = RunBatchExample(
 		windowManager,
 		pRenderer,
+		pWindow,
+		windowConfig);
+#elif defined(EXAMPLE_BATCH_INSTANCED)
+	result = RunBatchInstancedExample(
+		windowManager,
+#ifdef PLATFORM_PS3
+		reinterpret_cast<CGcmRenderer*>(pRenderer),
+#else
+		pRenderer,
+#endif
 		pWindow,
 		windowConfig);
 #endif

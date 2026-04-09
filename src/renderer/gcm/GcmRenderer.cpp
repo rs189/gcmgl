@@ -479,6 +479,8 @@ void CGcmRenderer::UpdateBuffer(
 		reinterpret_cast<uint8*>(bufferResource.m_pPtr) + offset,
 		pData,
 		updateSize);
+
+	__sync_synchronize();
 }
 
 void CGcmRenderer::DestroyBuffer(BufferHandle hBuffer)
@@ -513,6 +515,60 @@ void* CGcmRenderer::MapBuffer(BufferHandle hBuffer)
 void CGcmRenderer::UnmapBuffer(BufferHandle hBuffer)
 {
 	Warning("[GCMRenderer] UnmapBuffer not implemented\n");
+}
+
+BufferHandle CGcmRenderer::BuildInstancedVertexBuffer(
+	BufferHandle hVertexBuffer,
+	BufferHandle hIndexBuffer,
+	uint32 indexCount,
+	uint32 instanceCount,
+	uint32 vertexStride)
+{
+	int32 vertexBufferIndex = m_BufferResources.Find(hVertexBuffer);
+	int32 indexBufferIndex = m_BufferResources.Find(hIndexBuffer);
+	if (vertexBufferIndex == m_BufferResources.InvalidIndex() ||
+		indexBufferIndex == m_BufferResources.InvalidIndex())
+	{
+		return 0;
+	}
+
+	const uint32 expandedSize = instanceCount * indexCount * vertexStride;
+	const uint32 alignedSize = (expandedSize + 127) & ~127;
+
+	void* pExpanded = rsxMemalign(128, alignedSize);
+	if (!pExpanded) return 0;
+
+	const uint8* pSrc = reinterpret_cast<const uint8*>(
+		m_BufferResources.Element(vertexBufferIndex).m_pPtr);
+	const uint32* pIndices = reinterpret_cast<const uint32*>(
+		m_BufferResources.Element(indexBufferIndex).m_pPtr);
+	uint8* pDst = reinterpret_cast<uint8*>(pExpanded);
+
+	for (uint32 i = 0; i < instanceCount; i++)
+	{
+		for (uint32 j = 0; j < indexCount; j++)
+		{
+			memcpy(
+				pDst + (i * indexCount + j) * vertexStride,
+				pSrc + pIndices[j] * vertexStride,
+				vertexStride);
+		}
+	}
+
+	__sync_synchronize();
+
+	uint32 offset;
+	rsxAddressToOffset(pExpanded, &offset);
+
+	BufferResource_t bufferResource;
+	bufferResource.m_pPtr = pExpanded;
+	bufferResource.m_Offset = offset;
+	bufferResource.m_Size = expandedSize;
+
+	const BufferHandle hBuffer = AllocHandle();
+	m_BufferResources.Insert(hBuffer, bufferResource);
+
+	return hBuffer;
 }
 
 ShaderProgramHandle CGcmRenderer::CreateShaderProgram(const CFixedString& shaderName)
@@ -1309,6 +1365,141 @@ void CGcmRenderer::DrawIndexed(
 		GCM_INDEX_TYPE_32B,
 		GCM_LOCATION_RSX);
 }
+
+#ifdef SHADER_INSTANCING_ENABLED
+void CGcmRenderer::DrawInstanced(
+	uint32 vertexCount,
+	uint32 instanceCount,
+	const CMatrix4* pMatrices,
+	const CVertexLayout* pInstanceLayout)
+{
+	if (instanceCount == 0 || !pInstanceLayout) return;
+
+	const ShaderProgramHandle hProgram = m_PipelineState.m_hShaderProgram;
+	if (!hProgram) return;
+
+	int32 programIndex = m_ProgramResources.Find(hProgram);
+	if (programIndex == m_ProgramResources.InvalidIndex()) return;
+
+	const CUtlVector<VertexAttribute_t>& attributes = pInstanceLayout->GetAttributes();
+	const uint32 instanceStride = pInstanceLayout->GetStride();
+	const uint32 alignedSize = ((instanceCount * instanceStride) + 127) & ~127;
+
+	if (m_InstanceBuffer.m_Size < alignedSize)
+	{
+		if (m_InstanceBuffer.m_pPtr) rsxFree(m_InstanceBuffer.m_pPtr);
+		m_InstanceBuffer.m_pPtr = rsxMemalign(128, alignedSize);
+		m_InstanceBuffer.m_Size = alignedSize;
+		rsxAddressToOffset(m_InstanceBuffer.m_pPtr, &m_InstanceBuffer.m_Offset);
+	}
+
+	float32* pInst = reinterpret_cast<float32*>(m_InstanceBuffer.m_pPtr);
+	for (uint32 i = 0; i < instanceCount; i++)
+	{
+		const CMatrix4& m = pMatrices[i];
+		for (uint32 row = 0; row < 4; row++)
+		{
+			*pInst++ = m.m_Data[row];
+			*pInst++ = m.m_Data[4 + row];
+			*pInst++ = m.m_Data[8 + row];
+			*pInst++ = m.m_Data[12 + row];
+		}
+	}
+
+	__sync_synchronize();
+
+	FlushPipelineState();
+
+	ApplyVertexConstants(hProgram);
+	ApplyFragmentConstants(hProgram);
+
+	rsxSetFrequencyDividerOperation(context, GCM_FREQUENCY_DIVIDE);
+
+	for (int32 i = 0; i < attributes.Count(); i++)
+	{
+		const VertexAttribute_t& attribute = attributes[i];
+		if (attribute.m_VertexSemantic == VertexSemantic_t::Unspecified)
+		{
+			continue;
+		}
+
+		const uint32 attributeLocation = GetVertexSemanticAttributeIndex(
+			attribute.m_VertexSemantic);
+		if (attributeLocation == 0xFFFFFFFF) continue;
+
+		rsxBindVertexArrayAttrib(
+			context,
+			attributeLocation,
+			uint16(vertexCount),
+			m_InstanceBuffer.m_Offset + attribute.m_Offset,
+			uint8(instanceStride),
+			4,
+			GCM_VERTEX_DATA_TYPE_F32,
+			GCM_LOCATION_RSX);
+	}
+
+	rsxInvalidateVertexCache(context);
+	rsxInvalidateTextureCache(context, GCM_INVALIDATE_TEXTURE);
+
+	rsxDrawVertexArray(
+		context,
+		GCM_TYPE_TRIANGLES,
+		0,
+		instanceCount * vertexCount);
+
+	rsxSetFrequencyDividerOperation(context, GCM_FREQUENCY_MODULO);
+
+	for (int32 i = 0; i < attributes.Count(); i++)
+	{
+		const VertexAttribute_t& attribute = attributes[i];
+		if (attribute.m_VertexSemantic == VertexSemantic_t::Unspecified)
+		{
+			continue;
+		}
+
+		const uint32 attributeLocation = GetVertexSemanticAttributeIndex(
+			attribute.m_VertexSemantic);
+		if (attributeLocation == 0xFFFFFFFF) continue;
+
+		rsxBindVertexArrayAttrib(
+			context,
+			attributeLocation,
+			0, 0, 0, 4,
+			GCM_VERTEX_DATA_TYPE_F32,
+			GCM_LOCATION_RSX);
+	}
+
+	rsxFlushBuffer(context);
+}
+
+void CGcmRenderer::DrawIndexedInstanced(
+	uint32 indexCount,
+	uint32 instanceCount,
+	const CMatrix4* pMatrices,
+	uint32 startIndex,
+	const CVertexLayout* pInstanceLayout)
+{
+	DrawInstanced(indexCount, instanceCount, pMatrices, pInstanceLayout);
+}
+#else // !SHADER_INSTANCING_ENABLED
+void CGcmRenderer::DrawInstanced(
+	uint32 vertexCount,
+	uint32 instanceCount,
+	const CMatrix4* pMatrices,
+	const CVertexLayout* pInstanceLayout)
+{
+	Warning("[GCMRenderer] DrawInstanced not implemented\n");
+}
+void CGcmRenderer::DrawIndexedInstanced(
+	uint32 indexCount,
+	uint32 instanceCount,
+	const CMatrix4* pMatrices,
+	uint32 startIndex,
+	const CVertexLayout* pInstanceLayout)
+{
+	Warning("[GCMRenderer] DrawIndexedInstanced not implemented\n");
+}
+#endif // !SHADER_INSTANCING_ENABLED
 
 uint32 CGcmRenderer::GetVertexSemanticAttributeIndex(
 	VertexSemantic_t::Enum vertexSemantic)
