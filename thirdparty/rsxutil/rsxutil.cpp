@@ -231,8 +231,9 @@ void waitFlip()
 
 void flip()
 {
-	//if(!first_fb) waitFlip();
-	//else gcmResetFlipStatus();
+	if(!first_fb) waitFlip();
+	else gcmResetFlipStatus();
+
 	rsxFlushBuffer(context);
 
 	gcmSetFlip(context, curr_fb);
