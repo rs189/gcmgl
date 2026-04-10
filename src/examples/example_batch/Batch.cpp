@@ -43,12 +43,12 @@ int32 RunBatchExample(
 
 	CTime::Initialize();
 
-#ifdef GCMGL_DIAGNOSTICS
 #ifdef PLATFORM_PS3
+#ifdef GCMGL_DIAGNOSTICS
 	sysModuleLoad(SYSMODULE_NET);
-#endif // PLATFORM_PS3
 	CNetPerfReporter::Init("192.168.8.195", 9000);
 #endif // GCMGL_DIAGNOSTICS
+#endif // PLATFORM_PS3
 
 	float64 startTime = CTime::GetTime();
 
@@ -283,19 +283,21 @@ int32 RunBatchExample(
 
 		pRenderer->EndFrame();
 
+#ifdef PLATFORM_PS3
 #ifdef GCMGL_DIAGNOSTICS
 		CNetPerfReporter::Add("frame_us", PerfTimer_Now() - frameStartUs);
 		CNetPerfReporter::Flush(static_cast<float32>(CTime::GetDeltaTime()));
 #endif // GCMGL_DIAGNOSTICS
+#endif // PLATFORM_PS3
 	}
 
 	// Cleanup
+#ifdef PLATFORM_PS3
 #ifdef GCMGL_DIAGNOSTICS
 	CNetPerfReporter::Shutdown();
-#ifdef PLATFORM_PS3
 	sysModuleUnload(SYSMODULE_NET);
-#endif // PLATFORM_PS3
 #endif // GCMGL_DIAGNOSTICS
+#endif // PLATFORM_PS3
 	pRenderer->DestroyBuffer(hVertexBuffer);
 	pRenderer->DestroyBuffer(hIndexBuffer);
 	pRenderer->DestroyBuffer(hConstantBuffer);

@@ -12,6 +12,7 @@
 #pragma once
 
 #include "renderer/Renderer.h"
+#include "renderer/gcm/GcmPostProcessingRenderer.h"
 #include "rsxutil/rsxutil.h"
 #include <rsx/rsx.h>
 #include <rsx/gcm_sys.h>
@@ -20,7 +21,7 @@
 
 #ifdef PS3_SPU_ENABLED
 class CSpuBatchTransformManager;
-#endif
+#endif // PS3_SPU_ENABLED
 
 class CGcmRenderer : public virtual CRenderer
 {
@@ -68,12 +69,6 @@ public:
 	virtual void DestroyBuffer(BufferHandle hBuffer) GCMGL_OVERRIDE;
 	virtual void* MapBuffer(BufferHandle hBuffer) GCMGL_OVERRIDE;
 	virtual void UnmapBuffer(BufferHandle hBuffer) GCMGL_OVERRIDE;
-	virtual BufferHandle BuildInstancedVertexBuffer(
-		BufferHandle hVertexBuffer,
-		BufferHandle hIndexBuffer,
-		uint32 indexCount,
-		uint32 instanceCount,
-		uint32 vertexStride) GCMGL_OVERRIDE;
 
 	// Shaders
 	virtual ShaderProgramHandle CreateShaderProgram(
@@ -158,7 +153,7 @@ public:
 protected:
 #ifdef PS3_SPU_ENABLED
 	void MarkUniformsDirty(ShaderProgramHandle hProgram);
-#endif
+#endif // PS3_SPU_ENABLED
 
 	struct BufferResource_t
 	{
@@ -169,10 +164,10 @@ protected:
 
 	struct StagingBuffer_t
 	{
-		StagingBuffer_t() : 
-			m_pPtr(GCMGL_NULL), 
-			m_Offset(0), 
-			m_Size(0), 
+		StagingBuffer_t() :
+			m_pPtr(GCMGL_NULL),
+			m_Offset(0),
+			m_Size(0),
 			m_hBuffer(0)
 		{
 		}
@@ -183,15 +178,30 @@ protected:
 		BufferHandle m_hBuffer;
 	};
 
+	static const int32 s_MaxInstanceStagingBuffers = 16;
+	StagingBuffer_t m_InstanceBuffers[s_MaxInstanceStagingBuffers];
 	StagingBuffer_t m_StagingVertexBuffer[2];
 	StagingBuffer_t m_StagingIndexBuffer[2];
-	StagingBuffer_t m_InstanceBuffer;
 	CUtlMap<BufferHandle, BufferResource_t> m_BufferResources;
+
+	struct InstanceCache_t
+	{
+		const CMatrix4* m_pMatrices;
+		BufferHandle m_hVertexBuffer;
+		BufferHandle m_hExpandedBuffer;
+		BufferHandle m_hInstanceBuffer;
+		uint32 m_InstanceCount;
+	};
+	CUtlVector<InstanceCache_t> m_InstanceCache;
+
 #ifdef PS3_SPU_ENABLED
 	CSpuBatchTransformManager* m_pSpuBatchTransformManager;
-#endif
+#endif // PS3_SPU_ENABLED
+	int32 m_InstanceBufferIndex;
 	int32 m_StagingIndex;
-protected:
+
+	GcmPostProcessState_t m_PostProcessState;
+private:
 	struct ProgramResource_t
 	{
 		CUtlMap<CFixedString, rsxProgramConst*> m_VertexProgramConstCache;
@@ -208,7 +218,7 @@ protected:
 	};
 
 	CUtlMap<ShaderProgramHandle, ProgramResource_t> m_ProgramResources;
-private:
+
 	struct TextureResource_t
 	{
 		void* m_pBuffer;

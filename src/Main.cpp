@@ -60,11 +60,7 @@ int RunBatchExample(
 #ifdef EXAMPLE_BATCH_INSTANCED
 int RunBatchInstancedExample(
 	class CWindowManager& windowManager,
-#ifdef PLATFORM_PS3
-	class CGcmRenderer* pRenderer,
-#else
 	class IRenderer* pRenderer,
-#endif
 	class IWindow* pWnd,
 	const struct WindowConfig_t& windowConfig);
 #endif // EXAMPLE_BATCH_INSTANCED
@@ -86,7 +82,7 @@ int main(int argc, char* argv[])
 	if (!windowManager.Start(WindowBackendGlfw, windowConfig))
 #endif // !PLATFORM_PS3
 	{
-		Error("[ERROR][Game] Failed to start window manager\n");
+		Error("[Game] Failed to start window manager\n");
 
 		return 1;
 	}
@@ -96,7 +92,7 @@ int main(int argc, char* argv[])
 	IRenderer* pRenderer = CreateRenderer();
 	if (!pRenderer)
 	{
-		Error("[ERROR][Game] Failed to create renderer\n");
+		Error("[Game] Failed to create renderer\n");
 
 		return 1;
 	}
@@ -110,7 +106,7 @@ int main(int argc, char* argv[])
 	};
 	if (!pRenderer->Init(rendererDesc))
 	{
-		Error("[ERROR][Game] Failed to initialize renderer\n");
+		Error("[Game] Failed to initialize renderer\n");
 
 		return 1;
 	}
@@ -172,11 +168,7 @@ int main(int argc, char* argv[])
 #elif defined(EXAMPLE_BATCH_INSTANCED)
 	result = RunBatchInstancedExample(
 		windowManager,
-#ifdef PLATFORM_PS3
-		reinterpret_cast<CGcmRenderer*>(pRenderer),
-#else
 		pRenderer,
-#endif
 		pWindow,
 		windowConfig);
 #endif

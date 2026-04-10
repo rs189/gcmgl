@@ -22,8 +22,14 @@
 
 CGlRenderer::CGlRenderer() :
 	m_StagingIndex(0),
+	m_InstanceBufferIndex(0),
 	m_pWindow(GCMGL_NULL)
 {
+	for (int32 i = 0; i < s_MaxInstanceStagingBuffers; i++)
+	{
+		m_InstanceVertexBuffers[i] = 0;
+		m_InstanceVertexBufferSizes[i] = 0;
+	}
 }
 
 CGlRenderer::~CGlRenderer()
@@ -92,7 +98,7 @@ bool CGlRenderer::Init(const RendererDesc_t& rendererDesc)
 	glShadeModel(GL_SMOOTH);
 	glDepthMask(GL_TRUE);
 	glFrontFace(GL_CCW);
-	
+
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
 
@@ -202,6 +208,16 @@ void CGlRenderer::Shutdown()
 	}
 	m_BufferResources.RemoveAll();
 
+	for (int32 i = 0; i < s_MaxInstanceStagingBuffers; i++)
+	{
+		if (m_InstanceVertexBuffers[i])
+		{
+			glDeleteBuffers(1, &m_InstanceVertexBuffers[i]);
+			m_InstanceVertexBuffers[i] = 0;
+			m_InstanceVertexBufferSizes[i] = 0;
+		}
+	}
+
 	ClearShaderCache();
 }
 
@@ -213,6 +229,8 @@ void CGlRenderer::SetEnvironment()
 void CGlRenderer::BeginFrame()
 {
 	m_StateDirtyFlags = StateDirtyFlags_t::All;
+	m_InstanceBufferIndex = 0;
+	m_StagingIndex = 0;
 
 	SetEnvironment();
 }
@@ -275,7 +293,7 @@ void CGlRenderer::SetScissor(const Rect_t& rect)
 
 void CGlRenderer::SetStencilRef(uint32 stencilRef)
 {
-	glStencilFunc(GL_ALWAYS, static_cast<GLint>(stencilRef), 0xFF); 
+	glStencilFunc(GL_ALWAYS, static_cast<GLint>(stencilRef), 0xFF);
 }
 
 BufferHandle CGlRenderer::CreateVertexBuffer(
@@ -308,7 +326,7 @@ BufferHandle CGlRenderer::CreateVertexBuffer(
 		static_cast<GLsizeiptr>(size),
 		pPtr,
 		usage == BufferUsage_t::Static ? GL_STATIC_DRAW : GL_DYNAMIC_DRAW);
-	
+
 	const BufferHandle hBuffer = AllocHandle();
 	const BufferResource_t bufferResource = {
 		size,
@@ -318,7 +336,7 @@ BufferHandle CGlRenderer::CreateVertexBuffer(
 		true
 	};
 	m_BufferResources.Insert(hBuffer, bufferResource);
-	
+
 	return hBuffer;
 }
 
@@ -353,7 +371,7 @@ BufferHandle CGlRenderer::CreateIndexBuffer(
 		static_cast<GLsizeiptr>(size),
 		pPtr,
 		usage == BufferUsage_t::Static ? GL_STATIC_DRAW : GL_DYNAMIC_DRAW);
-	
+
 	const BufferHandle hBuffer = AllocHandle();
 	const BufferResource_t bufferResource = {
 		size,
@@ -363,7 +381,7 @@ BufferHandle CGlRenderer::CreateIndexBuffer(
 		true
 	};
 	m_BufferResources.Insert(hBuffer, bufferResource);
-	
+
 	return hBuffer;
 }
 
@@ -388,7 +406,7 @@ BufferHandle CGlRenderer::CreateConstantBuffer(uint64 size, BufferUsage_t::Enum 
 		false
 	};
 	m_BufferResources.Insert(hBuffer, bufferResource);
-	
+
 	return hBuffer;
 }
 
@@ -448,7 +466,7 @@ void CGlRenderer::DestroyBuffer(BufferHandle hBuffer)
 			CUtlMemory::Free(bufferResource.m_pPtr);
 		}
 	}
-	
+
 	m_BufferResources.RemoveAt(bufferIndex);
 }
 
@@ -599,7 +617,7 @@ void CGlRenderer::DestroyShaderProgram(ShaderProgramHandle hProgram)
 	}
 
 	glDeleteProgram(m_ProgramResources.Element(programIndex).m_hId);
-	
+
 	m_ProgramResources.RemoveAt(programIndex);
 }
 
@@ -659,7 +677,7 @@ TextureHandle CGlRenderer::CreateTexture2D(
 		glFormat,
 		glType,
 		pData);
-	
+
 	const TextureHandle hTexture = AllocHandle();
 	const TextureResource_t textureResource = {
 		id,
@@ -670,7 +688,7 @@ TextureHandle CGlRenderer::CreateTexture2D(
 		false
 	};
 	m_TextureResources.Insert(hTexture, textureResource);
-	
+
 	return hTexture;
 }
 
@@ -701,7 +719,7 @@ TextureHandle CGlRenderer::CreateTextureCube(
 			GL_UNSIGNED_BYTE,
 			pFaces ? pFaces[i] : GCMGL_NULL);
 	}
-	
+
 	const TextureHandle hTexture = AllocHandle();
 	const TextureResource_t textureResource = {
 		id,
@@ -733,7 +751,7 @@ void CGlRenderer::SetTexture(
 
 		return;
 	}
-	
+
 	const TextureResource_t& textureResource = m_TextureResources.Element(
 		textureIndex);
 
@@ -906,7 +924,7 @@ void CGlRenderer::ApplyVertexConstants(ShaderProgramHandle hProgram)
 
 		const float32* pBufferData = reinterpret_cast<const float32*>(
 			m_BufferResources.Element(bufferIndex).m_pPtr);
-		
+
 		bool hasChanged = uniformShadow.m_IsDirty || memcmp(uniformShadow.m_Data.Base(), pBufferData, uniformLayout.m_Size) != 0;
 		if (!hasChanged) continue;
 
@@ -941,7 +959,7 @@ void CGlRenderer::ApplyVertexConstants(ShaderProgramHandle hProgram)
 
 			const GLfloat* pElementData = reinterpret_cast<const GLfloat*>(
 				pShadowData + (uint32(uniformNameIndex) * uniformBytes));
-			
+
 			if (uniformBytes == 64)
 			{
 				glUniformMatrix4fv(uniformLocation, 1, GL_FALSE, pElementData);
@@ -1185,14 +1203,34 @@ void CGlRenderer::DrawInstanced(
 
 	const CUtlVector<VertexAttribute_t>& attributes = pInstanceLayout->GetAttributes();
 
-	uint32 id;
-	glGenBuffers(1, &id);
-	glBindBuffer(GL_ARRAY_BUFFER, id);
-	glBufferData(
-		GL_ARRAY_BUFFER,
-		instanceCount * 16 * sizeof(float32),
-		pMatrices[0].m_Data,
-		GL_DYNAMIC_DRAW);
+	uint64 uploadSize = uint64(instanceCount) * 16 * sizeof(float32);
+	uint32& instanceVertexBuffer = m_InstanceVertexBuffers[m_InstanceBufferIndex];
+	uint64& instanceVertexBufferSize = m_InstanceVertexBufferSizes[m_InstanceBufferIndex];
+
+	if (instanceVertexBuffer == 0)
+	{
+		glGenBuffers(1, &instanceVertexBuffer);
+	}
+
+	glBindBuffer(GL_ARRAY_BUFFER, instanceVertexBuffer);
+
+	if (uploadSize > instanceVertexBufferSize)
+	{
+		glBufferData(
+			GL_ARRAY_BUFFER,
+			uploadSize,
+			pMatrices[0].m_Data,
+			GL_DYNAMIC_DRAW);
+		instanceVertexBufferSize = uploadSize;
+	}
+	else
+	{
+		glBufferSubData(
+			GL_ARRAY_BUFFER,
+			0,
+			uploadSize,
+			pMatrices[0].m_Data);
+	}
 
 	for (int32 i = 0; i < attributes.Count(); i++)
 	{
@@ -1206,7 +1244,9 @@ void CGlRenderer::DrawInstanced(
 				programResource.m_hId,
 				attribute.m_Name.AsCharPtr());
 		if (attributeMapIndex == attributeMap.InvalidIndex())
+		{
 			attributeMap.Insert(attribute.m_Name, loc);
+		}
 
 		if (loc < 0) continue;
 		glEnableVertexAttribArray(loc);
@@ -1225,6 +1265,8 @@ void CGlRenderer::DrawInstanced(
 		int32(vertexCount),
 		int32(instanceCount));
 
+	m_InstanceBufferIndex = (m_InstanceBufferIndex + 1) % s_MaxInstanceStagingBuffers;
+
 	for (int32 i = 0; i < attributes.Count(); i++)
 	{
 		const VertexAttribute_t& attribute = attributes[i];
@@ -1233,11 +1275,12 @@ void CGlRenderer::DrawInstanced(
 		if (attributeMapIndex != attributeMap.InvalidIndex())
 		{
 			int32 loc = attributeMap.Element(attributeMapIndex);
-			if (loc >= 0) glVertexAttribDivisor(loc, 0);
+			if (loc >= 0)
+			{
+				glVertexAttribDivisor(loc, 0);
+			}
 		}
 	}
-
-	glDeleteBuffers(1, &id);
 }
 
 void CGlRenderer::DrawIndexedInstanced(
@@ -1264,14 +1307,50 @@ void CGlRenderer::DrawIndexedInstanced(
 
 	const CUtlVector<VertexAttribute_t>& attributes = pInstanceLayout->GetAttributes();
 
-	uint32 id;
-	glGenBuffers(1, &id);
-	glBindBuffer(GL_ARRAY_BUFFER, id);
-	glBufferData(
-		GL_ARRAY_BUFFER,
-		instanceCount * 16 * sizeof(float32),
-		pMatrices[0].m_Data,
-		GL_DYNAMIC_DRAW);
+	const uint32 instanceStride = pInstanceLayout->GetStride();
+	const uint64 uploadSize = uint64(instanceCount) * instanceStride;
+	uint32& instanceVertexBuffer = m_InstanceVertexBuffers[m_InstanceBufferIndex];
+	uint64& instanceVertexBufferSize = m_InstanceVertexBufferSizes[m_InstanceBufferIndex];
+
+	CUtlVector<float32> transposedData;
+	transposedData.SetCount(int32(instanceCount) * 16);
+	for (uint32 i = 0; i < instanceCount; i++)
+	{
+		const CMatrix4& matrix = pMatrices[i];
+		float32* p = transposedData.Base() + i * 16;
+		for (int32 row = 0; row < 4; row++)
+		{
+			p[row * 4 + 0] = matrix.m_Data[row];
+			p[row * 4 + 1] = matrix.m_Data[4 + row];
+			p[row * 4 + 2] = matrix.m_Data[8 + row];
+			p[row * 4 + 3] = matrix.m_Data[12 + row];
+		}
+	}
+
+	if (instanceVertexBuffer == 0)
+	{
+		glGenBuffers(1, &instanceVertexBuffer);
+	}
+
+	glBindBuffer(GL_ARRAY_BUFFER, instanceVertexBuffer);
+
+	if (uploadSize > instanceVertexBufferSize)
+	{
+		glBufferData(
+			GL_ARRAY_BUFFER,
+			uploadSize,
+			transposedData.Base(),
+			GL_DYNAMIC_DRAW);
+		instanceVertexBufferSize = uploadSize;
+	}
+	else
+	{
+		glBufferSubData(
+			GL_ARRAY_BUFFER,
+			0,
+			uploadSize,
+			transposedData.Base());
+	}
 
 	for (int32 i = 0; i < attributes.Count(); i++)
 	{
@@ -1285,13 +1364,15 @@ void CGlRenderer::DrawIndexedInstanced(
 				programResource.m_hId,
 				attribute.m_Name.AsCharPtr());
 		if (attributeMapIndex == attributeMap.InvalidIndex())
+		{
 			attributeMap.Insert(attribute.m_Name, loc);
+		}
 
 		if (loc < 0) continue;
 		glEnableVertexAttribArray(loc);
 		glVertexAttribPointer(
 			loc, 4, GL_FLOAT, GL_FALSE,
-			int32(pInstanceLayout->GetStride()),
+			int32(instanceStride),
 			reinterpret_cast<void*>(uint64(attribute.m_Offset)));
 		glVertexAttribDivisor(loc, 1);
 	}
@@ -1305,6 +1386,8 @@ void CGlRenderer::DrawIndexedInstanced(
 		reinterpret_cast<void*>(uint64(startIndex) * sizeof(uint32)),
 		int32(instanceCount));
 
+	m_InstanceBufferIndex = (m_InstanceBufferIndex + 1) % s_MaxInstanceStagingBuffers;
+
 	for (int32 i = 0; i < attributes.Count(); i++)
 	{
 		const VertexAttribute_t& attribute = attributes[i];
@@ -1313,11 +1396,12 @@ void CGlRenderer::DrawIndexedInstanced(
 		if (attributeMapIndex != attributeMap.InvalidIndex())
 		{
 			int32 loc = attributeMap.Element(attributeMapIndex);
-			if (loc >= 0) glVertexAttribDivisor(loc, 0);
+			if (loc >= 0)
+			{
+				glVertexAttribDivisor(loc, 0);
+			}
 		}
 	}
-
-	glDeleteBuffers(1, &id);
 }
 
 uint32 CGlRenderer::GetVertexSemanticAttributeIndex(
@@ -1337,7 +1421,7 @@ void CGlRenderer::BindVertexAttributes(
 
 		return;
 	}
-	
+
 	if (m_PipelineState.m_hVertexBuffer == 0)
 	{
 		Warning("[GLRenderer] Invalid vertex buffer bound\n");
@@ -1363,7 +1447,7 @@ void CGlRenderer::BindVertexAttributes(
 		Warning(
 			"[GLRenderer] Invalid shader program handle: %d\n",
 			m_PipelineState.m_hShaderProgram);
-		
+
 		return;
 	}
 
@@ -1444,7 +1528,7 @@ void CGlRenderer::BindVertexAttributes(
 
 				break;
 		}
-		
+
 		uint32 attributeOffset = attribute.m_Offset + offset;
 		glVertexAttribPointer(
 			static_cast<GLuint>(loc),
@@ -1467,7 +1551,7 @@ void CGlRenderer::FlushProgramState()
 		Warning(
 			"[GCMRenderer] Invalid shader program handle: %d\n",
 			m_PipelineState.m_hShaderProgram);
-		
+
 		glUseProgram(0);
 
 		return;
@@ -1483,7 +1567,7 @@ IRenderer* CreateRenderer()
 	{
 		return new(pRendererMemory) CGlBatchRenderer();
 	}
-	
+
 	return GCMGL_NULL;
 }
 

@@ -11,9 +11,6 @@
 #include "window/WindowManager.h"
 #include "renderer/Renderer.h"
 #include "renderer/BatchRenderer.h"
-#ifdef PLATFORM_PS3
-#include "renderer/gcm/GcmRenderer.h"
-#endif
 #include "utils/Time.h"
 #include "mathsfury/Maths.h"
 #include "mathsfury/Quaternion.h"
@@ -36,13 +33,21 @@
 #include <GLFW/glfw3.h>
 #endif // !PLATFORM_PS3
 
+static const int32 CHUNK_SIZE = 1000;
+static const int32 MAX_INSTANCES = 50000;
+static const int32 MAX_CHUNKS = (MAX_INSTANCES + CHUNK_SIZE - 1) / CHUNK_SIZE;
+
+struct InstanceChunk_t
+{
+	CUtlVector<CMatrix4> m_Matrices;
+	int32 m_InstanceCount;
+	CVector3 m_AABBCenter;
+	CVector3 m_AABBExtent;
+};
+
 int32 RunBatchInstancedExample(
 	CWindowManager& windowManager,
-#ifdef PLATFORM_PS3
-	CGcmRenderer* pRenderer,
-#else
 	IRenderer* pRenderer,
-#endif
 	IWindow* pWindow,
 	const WindowConfig_t& windowConfig)
 {
@@ -50,19 +55,18 @@ int32 RunBatchInstancedExample(
 
 	CTime::Initialize();
 
-#ifdef GCMGL_DIAGNOSTICS
 #ifdef PLATFORM_PS3
+#ifdef GCMGL_DIAGNOSTICS
 	sysModuleLoad(SYSMODULE_NET);
-#endif // PLATFORM_PS3
 	CNetPerfReporter::Init("192.168.8.195", 9000);
 #endif // GCMGL_DIAGNOSTICS
+#endif // PLATFORM_PS3
 
 	float64 startTime = CTime::GetTime();
-
 	float32 rotationY = 0.0f;
 
 	CCamera camera;
-	camera.m_Position = CVector3(0.0f, 2.5f, 9.33f);
+	camera.m_Position = CVector3(0.0f, 5.0f, 9.33f);
 
 	// Create shader
 	ShaderProgramHandle hShaderProgram = pRenderer->CreateShaderProgram(
@@ -70,27 +74,38 @@ int32 RunBatchInstancedExample(
 	if (hShaderProgram == 0)
 	{
 		Error(
-			"[BatchInstanced] Failed to create shader 'example_rainbow_instanced'\n");
+			"[BatchInstanced] Failed to create shader program 'example_rainbow_instanced'\n");
 
 		return 1;
 	}
 
-	const int32 rows = 100;
-	const int32 columns = 100;
-	const float32 spacing = 3.0f;
-	const int32 instanceCount = rows * columns;
-
 	// Create cube
-	Vertex_t vertexData[] = {
-		Vertex_t(CVector3(-0.5f, -0.5f, -0.5f), Vertex_t::PackColor(1.0f, 0.0f, 0.0f)), // red
-		Vertex_t(CVector3(0.5f, -0.5f, -0.5f), Vertex_t::PackColor(1.0f, 1.0f, 0.0f)), // yellow
-		Vertex_t(CVector3(0.5f, 0.5f, -0.5f), Vertex_t::PackColor(0.0f, 1.0f, 0.0f)), // green
-		Vertex_t(CVector3(-0.5f, 0.5f, -0.5f), Vertex_t::PackColor(0.0f, 0.0f, 1.0f)), // blue
+	Vertex_t vertices[] = {
+		Vertex_t(
+			CVector3(-0.5f, -0.5f, -0.5f),
+			Vertex_t::PackColor(1.0f, 0.0f, 0.0f)), // Red
+		Vertex_t(
+			CVector3(0.5f, -0.5f, -0.5f),
+			Vertex_t::PackColor(1.0f, 1.0f, 0.0f)), // Yellow
+		Vertex_t(
+			CVector3(0.5f, 0.5f, -0.5f),
+			Vertex_t::PackColor(0.0f, 1.0f, 0.0f)), // Green
+		Vertex_t(
+			CVector3(-0.5f, 0.5f, -0.5f),
+			Vertex_t::PackColor(0.0f, 0.0f, 1.0f)), // Blue
 
-		Vertex_t(CVector3(-0.5f, -0.5f, 0.5f), Vertex_t::PackColor(1.0f, 0.0f, 1.0f)), // magenta
-		Vertex_t(CVector3(0.5f, -0.5f, 0.5f), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)), // white
-		Vertex_t(CVector3(0.5f, 0.5f, 0.5f), Vertex_t::PackColor(0.0f, 1.0f, 1.0f)), // cyan
-		Vertex_t(CVector3(-0.5f, 0.5f, 0.5f), Vertex_t::PackColor(0.0f, 0.0f, 0.0f)) // black
+		Vertex_t(
+			CVector3(-0.5f, -0.5f, 0.5f),
+			Vertex_t::PackColor(1.0f, 0.0f, 1.0f)), // Magenta
+		Vertex_t(
+			CVector3(0.5f, -0.5f, 0.5f),
+			Vertex_t::PackColor(1.0f, 1.0f, 1.0f)), // White
+		Vertex_t(
+			CVector3(0.5f, 0.5f, 0.5f),
+			Vertex_t::PackColor(0.0f, 1.0f, 1.0f)), // Cyan
+		Vertex_t(
+			CVector3(-0.5f, 0.5f, 0.5f),
+			Vertex_t::PackColor(0.0f, 0.0f, 0.0f)) // Black
 	};
 
 	uint32 indexData[] = {
@@ -115,8 +130,8 @@ int32 RunBatchInstancedExample(
 
 	// Create buffers
 	BufferHandle hVertexBuffer = pRenderer->CreateVertexBuffer(
-		vertexData,
-		sizeof(vertexData),
+		vertices,
+		sizeof(vertices),
 		BufferUsage_t::Static);
 	BufferHandle hIndexBuffer = pRenderer->CreateIndexBuffer(
 		indexData,
@@ -127,24 +142,39 @@ int32 RunBatchInstancedExample(
 		sizeof(CMatrix4),
 		BufferUsage_t::Dynamic);
 
-#ifdef PLATFORM_PS3
-	BufferHandle hInstancedVertexBuffer = pRenderer->BuildInstancedVertexBuffer(
-		hVertexBuffer,
-		hIndexBuffer,
-		36,
-		uint32(instanceCount),
-		sizeof(Vertex_t));
-#else
-	BufferHandle hInstancedVertexBuffer = hVertexBuffer;
-#endif
+	// Create time buffer
+	BufferHandle hTimeBuffer = pRenderer->CreateConstantBuffer(
+		sizeof(float32) * 4,
+		BufferUsage_t::Dynamic);
 
-	// Create uniform layout for view projection matrix
-	UniformBlockLayout_t uniformLayout;
-	uniformLayout.m_UniformNames.AddToTail("viewProjection");
-	uniformLayout.m_Binding = 0;
-	uniformLayout.m_Size = sizeof(CMatrix4);
-	UniformBlockLayoutHandle hVPLayout = pRenderer->CreateUniformBlockLayout(
-		uniformLayout);
+	// Create camera buffer
+	BufferHandle hCameraBuffer = pRenderer->CreateConstantBuffer(
+		sizeof(float32) * 4,
+		BufferUsage_t::Dynamic);
+
+	// Create uniform layout for view-projection matrix
+	UniformBlockLayout_t viewProjectionLayout;
+	viewProjectionLayout.m_UniformNames.AddToTail("viewProjection");
+	viewProjectionLayout.m_Binding = 0;
+	viewProjectionLayout.m_Size = sizeof(CMatrix4);
+	UniformBlockLayoutHandle hViewProjectionLayout = pRenderer->CreateUniformBlockLayout(
+		viewProjectionLayout);
+
+	// Create uniform layout for time parameters
+	UniformBlockLayout_t timeLayout;
+	timeLayout.m_UniformNames.AddToTail("timeParams");
+	timeLayout.m_Binding = 1;
+	timeLayout.m_Size = sizeof(float32) * 4;
+	UniformBlockLayoutHandle hTimeLayout = pRenderer->CreateUniformBlockLayout(
+		timeLayout);
+
+	// Create uniform layout for camera parameters
+	UniformBlockLayout_t cameraLayout;
+	cameraLayout.m_UniformNames.AddToTail("cameraParams");
+	cameraLayout.m_Binding = 2;
+	cameraLayout.m_Size = sizeof(float32) * 4;
+	UniformBlockLayoutHandle hCameraLayout = pRenderer->CreateUniformBlockLayout(
+		cameraLayout);
 
 	// Vertex layout
 	CVertexLayout vertexLayout;
@@ -160,6 +190,7 @@ int32 RunBatchInstancedExample(
 		VertexSemantic_t::Color0);
 	vertexLayout.SetStride(sizeof(Vertex_t));
 
+	// Instance layout
 	CVertexLayout instanceLayout;
 	instanceLayout.AddAttribute(
 		"modelCol0",
@@ -183,29 +214,82 @@ int32 RunBatchInstancedExample(
 		VertexSemantic_t::TexCoord4);
 	instanceLayout.SetStride(64);
 
-	CUtlVector<CQuaternion> rotations;
-	CUtlVector<CVector3> positions;
-	rotations.SetCount(instanceCount);
-	positions.SetCount(instanceCount);
+	// Create instances
+	const int32 totalInstances = MAX_INSTANCES;
+	const int32 gridSize = int32(sqrtf(float32(totalInstances)));
+	const float32 spacing = 3.0f;
 
-	for (int32 row = 0; row < rows; row++)
+	CUtlVector<CMatrix4> allMatrices;
+	allMatrices.SetCount(totalInstances);
+
+	for (int32 i = 0; i < totalInstances; i++)
 	{
-		for (int32 col = 0; col < columns; col++)
-		{
-			const int32 idx = row * columns + col;
-			rotations[idx] = CQuaternion::FromEuler(
-				(row * 7.0f + col * 3.0f) * 5.0f * CMaths::Deg2Rad,
-				(row * 11.0f + col * 13.0f) * 8.0f * CMaths::Deg2Rad,
-				(row * 17.0f + col * 19.0f) * 3.0f * CMaths::Deg2Rad);
-			positions[idx] = CVector3(
-				(col * spacing) - (columns - 1) * spacing * 0.5f,
-				0.0f,
-				(row * spacing) - (rows - 1) * spacing * 0.5f);
-		}
+		const int32 row = i / gridSize;
+		const int32 col = i % gridSize;
+		const float32 posX = (col * spacing) - (gridSize - 1) * spacing * 0.5f;
+		const float32 posZ = (row * spacing) - (gridSize - 1) * spacing * 0.5f;
+		const float32 phase = (posX * 0.37f + posZ * 0.73f) * CMaths::TwoPI;
+		const CQuaternion q = CQuaternion::FromEuler(
+			(row * 7.0f + col * 3.0f) * 5.0f * CMaths::Deg2Rad,
+			(row * 11.0f + col * 13.0f) * 8.0f * CMaths::Deg2Rad,
+			(row * 17.0f + col * 19.0f) * 3.0f * CMaths::Deg2Rad);
+		float32* d = allMatrices[i].m_Data;
+		for (int32 k = 0; k < 16; k++) d[k] = 0.0f;
+		d[0] = posX;
+		d[4] = posZ;
+		d[8] = sinf(phase);
+		d[12] = cosf(phase);
+		d[1] = q.m_X;
+		d[5] = q.m_Y;
+		d[9] = q.m_Z;
+		d[13] = q.m_W;
+		const float32 ddx = posX;
+		const float32 ddz = posZ - 9.33f;
+		const float32 dist = sqrtf(ddx * ddx + ddz * ddz);
+		d[2] = CMaths::Clamp((dist - 10.0f) / 490.0f, 0.0f, 1.0f);
 	}
 
-	CUtlVector<CMatrix4> matrices;
-	matrices.SetCount(instanceCount);
+	static InstanceChunk_t chunks[MAX_CHUNKS];
+	int32 activeChunks = 0;
+	int32 chunkIndex = 0;
+
+	while (chunkIndex < totalInstances && activeChunks < MAX_CHUNKS)
+	{
+		const int32 chunkStart = chunkIndex;
+		const int32 chunkCount = CMaths::Min(
+			CHUNK_SIZE,
+			totalInstances - chunkStart);
+
+		InstanceChunk_t& instanceChunk = chunks[activeChunks];
+		instanceChunk.m_InstanceCount = chunkCount;
+		instanceChunk.m_Matrices.SetCount(chunkCount);
+
+		float32 minX = 1e9f;
+		float32 maxX = -1e9f;
+		float32 minZ = 1e9f;
+		float32 maxZ = -1e9f;
+		for (int32 i = 0; i < chunkCount; i++)
+		{
+			instanceChunk.m_Matrices[i] = allMatrices[chunkStart + i];
+			const float32 px = allMatrices[chunkStart + i].m_Data[0];
+			const float32 pz = allMatrices[chunkStart + i].m_Data[4];
+			if (px < minX) minX = px;
+			if (px > maxX) maxX = px;
+			if (pz < minZ) minZ = pz;
+			if (pz > maxZ) maxZ = pz;
+		}
+		instanceChunk.m_AABBCenter = CVector3(
+			(minX + maxX) * 0.5f,
+			10.0f,
+			(minZ + maxZ) * 0.5f);
+		instanceChunk.m_AABBExtent = CVector3(
+			(maxX - minX) * 0.5f + 0.5f,
+			10.5f,
+			(maxZ - minZ) * 0.5f + 0.5f);
+
+		activeChunks++;
+		chunkIndex += chunkCount;
+	}
 
 	while (isRunning)
 	{
@@ -217,9 +301,11 @@ int32 RunBatchInstancedExample(
 
 		CTime::Update();
 
+#ifdef PLATFORM_PS3
 #ifdef GCMGL_DIAGNOSTICS
 		const uint64 frameStartUs = PerfTimer_Now();
 #endif // GCMGL_DIAGNOSTICS
+#endif // PLATFORM_PS3
 
 		rotationY += CTime::GetDeltaTime() * 30.0f;
 
@@ -229,7 +315,8 @@ int32 RunBatchInstancedExample(
 
 		// Set viewport
 		Viewport_t viewport(
-			0.0f, 0.0f,
+			0.0f,
+			0.0f,
 			float32(windowConfig.m_Width),
 			float32(windowConfig.m_Height));
 		pRenderer->SetViewport(viewport);
@@ -238,94 +325,127 @@ int32 RunBatchInstancedExample(
 		camera.m_Position.m_X = sinf(rotationY * CMaths::Deg2Rad * 0.5f) * 15.0f;
 		camera.m_Position.m_Z =
 			cosf(rotationY * CMaths::Deg2Rad * 0.5f) * 15.0f + 9.33f;
-		float32 aspectRatio = windowConfig.m_AspectRatio;
-		CMatrix4 viewMatrix = camera.GetViewMatrix();
-		CMatrix4 projectionMatrix = camera.GetProjectionMatrix(aspectRatio);
-		CMatrix4 viewProjection = projectionMatrix * viewMatrix;
+		CMatrix4 viewProjection = camera.GetProjectionMatrix(
+			windowConfig.m_AspectRatio) * camera.GetViewMatrix();
 
-		// Animate cube positions and rotations based on time
-		const CQuaternion rotation = CQuaternion::FromEuler(
+		// Update uniforms
+		float32 time = float32(CTime::GetTime() - startTime);
+		const float32 rotYRad = rotationY * CMaths::Deg2Rad;
+		const float32 timeParams[4] = {
+			sinf(time * CMaths::TwoPI),
+			cosf(time * CMaths::TwoPI),
+			sinf(rotYRad * 0.5f),
+			cosf(rotYRad * 0.5f)
+		};
+		const float32 cameraParams[4] = {
+			camera.m_Position.m_X,
+			camera.m_Position.m_Z,
 			0.0f,
-			rotationY * CMaths::Deg2Rad,
-			0.0f);
-		float32 time = static_cast<float32>(CTime::GetTime() - startTime);
+			0.0f
+		};
 
-		for (int32 i = 0; i < instanceCount; i++)
-		{
-			const float32 phase = positions[i].m_X * 0.37f + positions[i].m_Z * 0.73f;
-			const float32 chunkTransformDistance = positions[i].Distance(
-				camera.m_Position);
-			const float32 distanceNorm = CMaths::Clamp(
-				(chunkTransformDistance - 10.0f) / 490.0f,
-				0.0f,
-				1.0f);
-			const float32 posY = (sinf((time + phase) * CMaths::TwoPI) * 0.5f + 0.5f) * distanceNorm * 20.0f;
-			const CVector3 pos(positions[i].m_X, posY, positions[i].m_Z);
-			const CQuaternion rot = rotation * rotations[i];
-			matrices[i] = BatchChunkTransform_t(
-				pos,
-				rot,
-				CVector3(1.0f, 1.0f, 1.0f)).ToMatrix();
-		}
-
-		// Update constant buffer
 		pRenderer->UpdateBuffer(
 			hConstantBuffer,
 			&viewProjection,
 			sizeof(CMatrix4),
 			0);
+		pRenderer->UpdateBuffer(
+			hTimeBuffer,
+			timeParams,
+			sizeof(float32) * 4,
+			0);
+		pRenderer->UpdateBuffer(
+			hCameraBuffer,
+			cameraParams,
+			sizeof(float32) * 4,
+			0);
 
 		// Bind shader and buffers
 		pRenderer->SetShaderProgram(hShaderProgram);
 
-		pRenderer->SetConstantBuffer(
-			hConstantBuffer,
-			hVPLayout,
-			0,
-			ShaderStageVertex);
 		pRenderer->SetVertexBuffer(
-			hInstancedVertexBuffer,
+			hVertexBuffer,
 			0,
 			vertexLayout.GetStride(),
 			0,
 			&vertexLayout);
 		pRenderer->SetIndexBuffer(hIndexBuffer);
 
+		pRenderer->SetConstantBuffer(
+			hConstantBuffer,
+			hViewProjectionLayout,
+			0,
+			ShaderStageVertex);
+		pRenderer->SetConstantBuffer(
+			hTimeBuffer,
+			hTimeLayout,
+			1,
+			ShaderStageVertex);
+		pRenderer->SetConstantBuffer(
+			hCameraBuffer,
+			hCameraLayout,
+			2,
+			ShaderStageVertex);
+
+		// Extract frustum planes for culling
+		Plane_t frustumPlanes[6];
+		IRenderer* pIRenderer = pRenderer;
+		pIRenderer->ExtractFrustumPlanes(viewProjection, frustumPlanes);
+
+		int32 visibleChunks = 0;
+#ifdef PLATFORM_PS3
 #ifdef GCMGL_DIAGNOSTICS
 		const uint64 drawStart = PerfTimer_Now();
 #endif // GCMGL_DIAGNOSTICS
+#endif // PLATFORM_PS3
 
-		pRenderer->DrawIndexedInstanced(
-			36,
-			uint32(instanceCount),
-			matrices.Base(),
-			0,
-			&instanceLayout);
+		// Draw instances
+		const int32 drawChunks = activeChunks;
+		for (int32 chunkIndex = 0; chunkIndex < drawChunks; chunkIndex++)
+		{
+			InstanceChunk_t& instanceChunk = chunks[chunkIndex];
+			if (!pIRenderer->TestAABBFrustum(
+				instanceChunk.m_AABBCenter,
+				instanceChunk.m_AABBExtent,
+				frustumPlanes))
+			{
+				continue;
+			}
 
-#ifdef GCMGL_DIAGNOSTICS
-		CNetPerfReporter::Add("draw_us", PerfTimer_Now() - drawStart);
-#endif // GCMGL_DIAGNOSTICS
+			visibleChunks++;
+			pRenderer->DrawIndexedInstanced(
+				36,
+				uint32(instanceChunk.m_InstanceCount),
+				instanceChunk.m_Matrices.Base(),
+				0,
+				&instanceLayout);
+		}
 
 		pRenderer->EndFrame();
 
+#ifdef PLATFORM_PS3
 #ifdef GCMGL_DIAGNOSTICS
+		CNetPerfReporter::Add("draw_us", PerfTimer_Now() - drawStart);
+		CNetPerfReporter::Add("chunks", float32(visibleChunks));
+		CNetPerfReporter::Add("instances", float32(activeChunks * CHUNK_SIZE));
 		CNetPerfReporter::Add("frame_us", PerfTimer_Now() - frameStartUs);
-		CNetPerfReporter::Flush(static_cast<float32>(CTime::GetDeltaTime()));
+		CNetPerfReporter::Flush(CTime::GetDeltaTime());
 #endif // GCMGL_DIAGNOSTICS
+#endif // PLATFORM_PS3
 	}
 
-	// Cleanup
+#ifdef PLATFORM_PS3
 #ifdef GCMGL_DIAGNOSTICS
 	CNetPerfReporter::Shutdown();
-#ifdef PLATFORM_PS3
 	sysModuleUnload(SYSMODULE_NET);
-#endif // PLATFORM_PS3
 #endif // GCMGL_DIAGNOSTICS
+#endif // PLATFORM_PS3
+
 	pRenderer->DestroyBuffer(hVertexBuffer);
 	pRenderer->DestroyBuffer(hIndexBuffer);
-	if (hInstancedVertexBuffer != hVertexBuffer)
-		pRenderer->DestroyBuffer(hInstancedVertexBuffer);
 	pRenderer->DestroyBuffer(hConstantBuffer);
+	pRenderer->DestroyBuffer(hTimeBuffer);
+	pRenderer->DestroyBuffer(hCameraBuffer);
 	pRenderer->DestroyShaderProgram(hShaderProgram);
 
 	return 0;

@@ -13,7 +13,7 @@
 
 #include "tier0/platform.h"
 
-//#define GCMGL_DIAGNOSTICS
+#define GCMGL_DIAGNOSTICS
 
 // Feature toggles
 #define GCMGL_SIMD_FRUSTUM_CULL_ENABLED

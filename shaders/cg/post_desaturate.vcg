@@ -6,20 +6,11 @@
 //
 //===----------------------------------------------------------------------===//
 
-struct PS_INPUT
+void main(
+    float2 position : POSITION,
+    out float4 oPosition : POSITION,
+    out float2 oTexCoord : TEXCOORD0)
 {
-	float3 color : COLOR;
-};
-
-struct PS_OUTPUT
-{
-	float4 color : COLOR;
-};
-
-PS_OUTPUT main(PS_INPUT input)
-{
-	PS_OUTPUT output;
-	output.color = float4(input.color, 1.0);
-
-	return output;
+    oPosition = float4(position, 0.0, 1.0);
+    oTexCoord = position * float2(0.5, -0.5) + float2(0.5, 0.5);
 }

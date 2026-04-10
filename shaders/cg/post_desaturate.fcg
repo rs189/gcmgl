@@ -6,20 +6,12 @@
 //
 //===----------------------------------------------------------------------===//
 
-struct PS_INPUT
+void main(
+    float2 texCoord : TEXCOORD0,
+    out float4 oColor : COLOR,
+    uniform sampler2D sceneTex)
 {
-	float3 color : COLOR;
-};
-
-struct PS_OUTPUT
-{
-	float4 color : COLOR;
-};
-
-PS_OUTPUT main(PS_INPUT input)
-{
-	PS_OUTPUT output;
-	output.color = float4(input.color, 1.0);
-
-	return output;
+    float3 c = tex2D(sceneTex, texCoord).rgb;
+    float luma = dot(c, float3(0.299, 0.587, 0.114));
+    oColor = float4(lerp(float3(luma, luma, luma), c, 0.85), 1.0);
 }

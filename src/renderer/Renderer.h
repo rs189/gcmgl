@@ -678,7 +678,7 @@ protected:
 		const CVector3& center,
 		const CVector3& extent,
 		const Plane_t* pPlanes);
-	
+
 	virtual void BindVertexAttributes(
 		const CVertexLayout* pLayout,
 		uint32 vertexStride,

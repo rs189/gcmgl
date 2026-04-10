@@ -17,10 +17,31 @@ void main(
 	out float4 oPosition : POSITION,
 	out float3 oColor : COLOR,
 
-	uniform float4x4 viewProjection)
+	uniform float4x4 viewProjection,
+	uniform float4 timeParams,
+	uniform float4 cameraParams)
 {
-	float4x4 model = float4x4(modelCol0, modelCol1, modelCol2, modelCol3);
-	float4 worldPos = mul(model, float4(position, 1.0));
-	oPosition = mul(viewProjection, worldPos);
+	// modelCol0 = (posX, posZ, phaseSin, phaseCos)
+	// modelCol1 = (qx, qy, qz, qw)
+	float posX = modelCol0.x;
+	float posZ = modelCol0.y;
+
+	// timeParams = (sinT, cosT, sinHalfY, cosHalfY)
+	float sinVal = timeParams.x * modelCol0.w + timeParams.y * modelCol0.z;
+	float posY = (sinVal * 0.5 + 0.5) * modelCol2.x * 20.0;
+
+	float4 r = float4(
+		timeParams.w * modelCol1.x + timeParams.z * modelCol1.z,
+		timeParams.w * modelCol1.y + timeParams.z * modelCol1.w,
+		timeParams.w * modelCol1.z - timeParams.z * modelCol1.x,
+		timeParams.w * modelCol1.w - timeParams.z * modelCol1.y);
+
+	float3 c1 = cross(r.xyz, position);
+	float3 c2 = cross(r.xyz, c1);
+	float3 wp = position + 2.0 * r.w * c1 + 2.0 * c2 + float3(posX, posY, posZ);
+
+	wp += (modelCol2.xyz + modelCol3.xyz) * cameraParams.w;
+
+	oPosition = mul(viewProjection, float4(wp, 1.0));
 	oColor = color.rgb;
 }

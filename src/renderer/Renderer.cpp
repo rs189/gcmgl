@@ -109,7 +109,9 @@ ShaderProgramHandle CRenderer::GetOrCreateShaderProgram(
 
 void CRenderer::ClearShaderCache()
 {
-	for (CUtlMap<CFixedString, ShaderProgramHandle>::Index_t i = m_ShaderCache.FirstInorder(); i != m_ShaderCache.InvalidIndex(); i = m_ShaderCache.NextInorder(i))
+	for (CUtlMap<CFixedString, ShaderProgramHandle>::Index_t i = m_ShaderCache.FirstInorder();
+		i != m_ShaderCache.InvalidIndex();
+		i = m_ShaderCache.NextInorder(i))
 	{
 		DestroyShaderProgram(m_ShaderCache.Element(i));
 	}

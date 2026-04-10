@@ -90,6 +90,8 @@ if(BUILD_PS3)
 
 	list(APPEND ENGINE_SRCS
 		thirdparty/rsxutil/rsxutil.cpp
+		src/renderer/PostProcessingRenderer.cpp
+		src/renderer/gcm/GcmPostProcessingRenderer.cpp
 		src/renderer/gcm/GcmRenderer.cpp
 		src/renderer/gcm/GcmBatchRenderer.cpp
 		src/renderer/gcm/spu/SpuBatchTransformManager.cpp
@@ -149,9 +151,8 @@ else()
 	)
 
 	file(READ "${CMAKE_SOURCE_DIR}/src/Main.h" MAIN_H_CONTENT)
-	if(MAIN_H_CONTENT MATCHES "(^|\n)[ \t]*#[ \t]*define[ \t]+GCMGL_DIAGNOSTICS")
-		list(APPEND ENGINE_SRCS src/utils/DiagnosticsReporter.cpp)
-	endif()
+	list(APPEND ENGINE_SRCS src/utils/DiagnosticsReporter.cpp)
+	add_definitions(-DGCMGL_DIAGNOSTICS)
 
 	list(APPEND ENGINE_SRCS
 		src/renderer/gl/GlRenderer.cpp
