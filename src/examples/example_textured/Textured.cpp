@@ -65,45 +65,117 @@ int32 RunTexturedExample(
 	CCamera camera;
 
 	// Create cube with per-face normals
-	TexturedVertex_t vertexData[] = {
-		// front (z = -0.5)
-		TexturedVertex_t(CVector3(-0.5f, -0.5f, -0.5f), CVector2(0.0f, 0.0f), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
-		TexturedVertex_t(CVector3(0.5f, -0.5f, -0.5f), CVector2(1.0f, 0.0f), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
-		TexturedVertex_t(CVector3(0.5f, 0.5f, -0.5f), CVector2(1.0f, 1.0f), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
-		TexturedVertex_t(CVector3(-0.5f, 0.5f, -0.5f), CVector2(0.0f, 1.0f), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+	TexturedVertex_t vertices[] = {
+		// Front (z = -0.5)
+		TexturedVertex_t(
+			CVector3(-0.5f, -0.5f, -0.5f),
+			CVector2(0.0f, 0.0f),
+			Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedVertex_t(
+			CVector3(0.5f, -0.5f, -0.5f),
+			CVector2(1.0f, 0.0f),
+			Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedVertex_t(
+			CVector3(0.5f, 0.5f, -0.5f),
+			CVector2(1.0f, 1.0f),
+			Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedVertex_t(
+			CVector3(-0.5f, 0.5f, -0.5f),
+			CVector2(0.0f, 1.0f),
+			Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
 
-		// back (z = 0.5)
-		TexturedVertex_t(CVector3(0.5f, -0.5f, 0.5f), CVector2(0.0f, 0.0f), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
-		TexturedVertex_t(CVector3(-0.5f, -0.5f, 0.5f), CVector2(1.0f, 0.0f), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
-		TexturedVertex_t(CVector3(-0.5f, 0.5f, 0.5f), CVector2(1.0f, 1.0f), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
-		TexturedVertex_t(CVector3(0.5f, 0.5f, 0.5f), CVector2(0.0f, 1.0f), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		// Back (z = 0.5)
+		TexturedVertex_t(
+			CVector3(0.5f, -0.5f, 0.5f),
+			CVector2(0.0f, 0.0f),
+			Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedVertex_t(
+			CVector3(-0.5f, -0.5f, 0.5f),
+			CVector2(1.0f, 0.0f),
+			Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedVertex_t(
+			CVector3(-0.5f, 0.5f, 0.5f),
+			CVector2(1.0f, 1.0f),
+			Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedVertex_t(
+			CVector3(0.5f, 0.5f, 0.5f),
+			CVector2(0.0f, 1.0f),
+			Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
 
-		// right (x = 0.5)
-		TexturedVertex_t(CVector3(0.5f, -0.5f, -0.5f), CVector2(0.0f, 0.0f), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
-		TexturedVertex_t(CVector3(0.5f, -0.5f, 0.5f), CVector2(1.0f, 0.0f), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
-		TexturedVertex_t(CVector3(0.5f, 0.5f, 0.5f), CVector2(1.0f, 1.0f), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
-		TexturedVertex_t(CVector3(0.5f, 0.5f, -0.5f), CVector2(0.0f, 1.0f), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		// Right (x = 0.5)
+		TexturedVertex_t(
+			CVector3(0.5f, -0.5f, -0.5f),
+			CVector2(0.0f, 0.0f),
+			Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedVertex_t(
+			CVector3(0.5f, -0.5f, 0.5f),
+			CVector2(1.0f, 0.0f),
+			Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedVertex_t(
+			CVector3(0.5f, 0.5f, 0.5f),
+			CVector2(1.0f, 1.0f),
+			Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedVertex_t(
+			CVector3(0.5f, 0.5f, -0.5f),
+			CVector2(0.0f, 1.0f),
+			Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
 
-		// left (x = -0.5)
-		TexturedVertex_t(CVector3(-0.5f, -0.5f, 0.5f), CVector2(0.0f, 0.0f), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
-		TexturedVertex_t(CVector3(-0.5f, -0.5f, -0.5f), CVector2(1.0f, 0.0f), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
-		TexturedVertex_t(CVector3(-0.5f, 0.5f, -0.5f), CVector2(1.0f, 1.0f), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
-		TexturedVertex_t(CVector3(-0.5f, 0.5f, 0.5f), CVector2(0.0f, 1.0f), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		// Left (x = -0.5)
+		TexturedVertex_t(
+			CVector3(-0.5f, -0.5f, 0.5f),
+			CVector2(0.0f, 0.0f),
+			Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedVertex_t(
+			CVector3(-0.5f, -0.5f, -0.5f),
+			CVector2(1.0f, 0.0f),
+			Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedVertex_t(
+			CVector3(-0.5f, 0.5f, -0.5f),
+			CVector2(1.0f, 1.0f),
+			Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedVertex_t(
+			CVector3(-0.5f, 0.5f, 0.5f),
+			CVector2(0.0f, 1.0f),
+			Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
 
-		// top (y = 0.5)
-		TexturedVertex_t(CVector3(-0.5f, 0.5f, -0.5f), CVector2(0.0f, 0.0f), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
-		TexturedVertex_t(CVector3(0.5f, 0.5f, -0.5f), CVector2(1.0f, 0.0f), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
-		TexturedVertex_t(CVector3(0.5f, 0.5f, 0.5f), CVector2(1.0f, 1.0f), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
-		TexturedVertex_t(CVector3(-0.5f, 0.5f, 0.5f), CVector2(0.0f, 1.0f), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		// Top (y = 0.5)
+		TexturedVertex_t(
+			CVector3(-0.5f, 0.5f, -0.5f),
+			CVector2(0.0f, 0.0f),
+			Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedVertex_t(
+			CVector3(0.5f, 0.5f, -0.5f),
+			CVector2(1.0f, 0.0f),
+			Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedVertex_t(
+			CVector3(0.5f, 0.5f, 0.5f),
+			CVector2(1.0f, 1.0f),
+			Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedVertex_t(
+			CVector3(-0.5f, 0.5f, 0.5f),
+			CVector2(0.0f, 1.0f),
+			Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
 
-		// bottom (y = -0.5)
-		TexturedVertex_t(CVector3(-0.5f, -0.5f, 0.5f), CVector2(0.0f, 0.0f), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
-		TexturedVertex_t(CVector3(0.5f, -0.5f, 0.5f), CVector2(1.0f, 0.0f), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
-		TexturedVertex_t(CVector3(0.5f, -0.5f, -0.5f), CVector2(1.0f, 1.0f), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
-		TexturedVertex_t(CVector3(-0.5f, -0.5f, -0.5f), CVector2(0.0f, 1.0f), Vertex_t::PackColor(1.0f, 1.0f, 1.0f))
+		// Bottom (y = -0.5)
+		TexturedVertex_t(
+			CVector3(-0.5f, -0.5f, 0.5f),
+			CVector2(0.0f, 0.0f),
+			Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedVertex_t(
+			CVector3(0.5f, -0.5f, 0.5f),
+			CVector2(1.0f, 0.0f),
+			Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedVertex_t(
+			CVector3(0.5f, -0.5f, -0.5f),
+			CVector2(1.0f, 1.0f),
+			Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedVertex_t(
+			CVector3(-0.5f, -0.5f, -0.5f),
+			CVector2(0.0f, 1.0f),
+			Vertex_t::PackColor(1.0f, 1.0f, 1.0f))
 	};
 
-	uint32 indexData[] = {
+	uint32 indices[] = {
 		0, 2, 1,
 		0, 3, 2,
 		
@@ -160,7 +232,8 @@ int32 RunTexturedExample(
 		pRenderer->CreateShaderProgram("example_textured");
 	if (hShaderProgram == 0)
 	{
-		Error("[Textured] Failed to create shader program 'example_textured'\n");
+		Error(
+			"[Textured] Failed to create shader program 'example_textured'\n");
 
 		return 1;
 	}
@@ -175,12 +248,12 @@ int32 RunTexturedExample(
 
 	// Create buffers
 	BufferHandle hVertexBuffer = pRenderer->CreateVertexBuffer(
-		vertexData,
-		sizeof(vertexData),
+		vertices,
+		sizeof(vertices),
 		BufferUsage_t::Static);
 	BufferHandle hIndexBuffer = pRenderer->CreateIndexBuffer(
-		indexData,
-		sizeof(indexData),
+		indices,
+		sizeof(indices),
 		IndexFormat_t::UInt32,
 		BufferUsage_t::Static);
 	BufferHandle hConstantBuffer = pRenderer->CreateConstantBuffer(

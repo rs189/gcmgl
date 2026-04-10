@@ -50,16 +50,22 @@ int32 RunTriangleExample(
 	}
 
 	// Create triangle
-	Vertex_t vertexData[] = {
-		Vertex_t(CVector3(-1.0f, -1.0f, 0.0f), Vertex_t::PackColor(1.0f, 0.0f, 0.0f)), // red
-		Vertex_t(CVector3(1.0f, -1.0f, 0.0f), Vertex_t::PackColor(0.0f, 1.0f, 0.0f)), // green
-		Vertex_t(CVector3(0.0f, 1.0f, 0.0f), Vertex_t::PackColor(0.0f, 0.0f, 1.0f)) // blue
+	Vertex_t vertices[] = {
+		Vertex_t(
+			CVector3(-1.0f, -1.0f, 0.0f),
+			Vertex_t::PackColor(1.0f, 0.0f, 0.0f)), // Red
+		Vertex_t(
+			CVector3(1.0f, -1.0f, 0.0f),
+			Vertex_t::PackColor(0.0f, 1.0f, 0.0f)), // Green
+		Vertex_t(
+			CVector3(0.0f, 1.0f, 0.0f),
+			Vertex_t::PackColor(0.0f, 0.0f, 1.0f)) // Blue
 	};
 
 	// Create buffers
 	BufferHandle hVertexBuffer = pRenderer->CreateVertexBuffer(
-		vertexData,
-		sizeof(vertexData),
+		vertices,
+		sizeof(vertices),
 		BufferUsage_t::Static);
 	BufferHandle hConstantBuffer = pRenderer->CreateConstantBuffer(
 		sizeof(CMatrix4),

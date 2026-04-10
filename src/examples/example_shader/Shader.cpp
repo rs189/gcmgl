@@ -51,21 +51,37 @@ int32 RunShaderExample(
 	}
 
 	// Create cube
-	Vertex_t vertexData[] = {
-		// front
-		Vertex_t(CVector3(-0.5f, -0.5f, -0.5f), Vertex_t::PackColor(1.0f, 0.0f, 0.0f)), // red
-		Vertex_t(CVector3(0.5f, -0.5f, -0.5f), Vertex_t::PackColor(1.0f, 1.0f, 0.0f)), // yellow
-		Vertex_t(CVector3(0.5f, 0.5f, -0.5f), Vertex_t::PackColor(0.0f, 1.0f, 0.0f)), // green
-		Vertex_t(CVector3(-0.5f, 0.5f, -0.5f), Vertex_t::PackColor(0.0f, 0.0f, 1.0f)), // blue
+	Vertex_t vertices[] = {
+		// Front
+		Vertex_t(
+			CVector3(-0.5f, -0.5f, -0.5f),
+			Vertex_t::PackColor(1.0f, 0.0f, 0.0f)), // Red
+		Vertex_t(
+			CVector3(0.5f, -0.5f, -0.5f),
+			Vertex_t::PackColor(1.0f, 1.0f, 0.0f)), // Yellow
+		Vertex_t(
+			CVector3(0.5f, 0.5f, -0.5f),
+			Vertex_t::PackColor(0.0f, 1.0f, 0.0f)), // Green
+		Vertex_t(
+			CVector3(-0.5f, 0.5f, -0.5f),
+			Vertex_t::PackColor(0.0f, 0.0f, 1.0f)), // Blue
 
-		// back
-		Vertex_t(CVector3(-0.5f, -0.5f, 0.5f), Vertex_t::PackColor(1.0f, 0.0f, 1.0f)), // magenta
-		Vertex_t(CVector3(0.5f, -0.5f, 0.5f), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)), // white
-		Vertex_t(CVector3(0.5f, 0.5f, 0.5f), Vertex_t::PackColor(0.0f, 1.0f, 1.0f)), // cyan
-		Vertex_t(CVector3(-0.5f, 0.5f, 0.5f), Vertex_t::PackColor(0.0f, 0.0f, 0.0f)) // black
+		// Back
+		Vertex_t(
+			CVector3(-0.5f, -0.5f, 0.5f),
+			Vertex_t::PackColor(1.0f, 0.0f, 1.0f)), // Magenta
+		Vertex_t(
+			CVector3(0.5f, -0.5f, 0.5f),
+			Vertex_t::PackColor(1.0f, 1.0f, 1.0f)), // White
+		Vertex_t(
+			CVector3(0.5f, 0.5f, 0.5f),
+			Vertex_t::PackColor(0.0f, 1.0f, 1.0f)), // Cyan
+		Vertex_t(
+			CVector3(-0.5f, 0.5f, 0.5f),
+			Vertex_t::PackColor(0.0f, 0.0f, 0.0f)) // Black
 	};
 
-	uint32 indexData[] = {
+	uint32 indices[] = {
 		0, 2, 1,
 		0, 3, 2,
 
@@ -87,12 +103,12 @@ int32 RunShaderExample(
 
 	// Create buffers
 	BufferHandle hVertexBuffer = pRenderer->CreateVertexBuffer(
-		vertexData,
-		sizeof(vertexData),
+		vertices,
+		sizeof(vertices),
 		BufferUsage_t::Static);
 	BufferHandle hIndexBuffer = pRenderer->CreateIndexBuffer(
-		indexData,
-		sizeof(indexData),
+		indices,
+		sizeof(indices),
 		IndexFormat_t::UInt32,
 		BufferUsage_t::Static);
 	BufferHandle hConstantBuffer = pRenderer->CreateConstantBuffer(

@@ -89,42 +89,138 @@ int32 RunTexturedLitExample(
 	CCamera camera;
 
 	// Create cube with per-face normals
-	TexturedLitVertex_t vertexData[] = {
-		// front (z = -0.5)
-		TexturedLitVertex_t(CVector3(-0.5f, -0.5f, -0.5f), CVector2(0.0f, 0.0f), CMaths::Normalise(CVector3(-1.0f, -1.0f, -1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
-		TexturedLitVertex_t(CVector3(0.5f, -0.5f, -0.5f), CVector2(1.0f, 0.0f), CMaths::Normalise(CVector3(1.0f, -1.0f, -1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
-		TexturedLitVertex_t(CVector3(0.5f, 0.5f, -0.5f), CVector2(1.0f, 1.0f), CMaths::Normalise(CVector3(1.0f, 1.0f, -1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
-		TexturedLitVertex_t(CVector3(-0.5f, 0.5f, -0.5f), CVector2(0.0f, 1.0f), CMaths::Normalise(CVector3(-1.0f, 1.0f, -1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+	TexturedLitVertex_t vertices[] = {
+		// Front (z = -0.5)
+		TexturedLitVertex_t(
+			CVector3(-0.5f, -0.5f, -0.5f),
+			CVector2(0.0f, 0.0f),
+			CMaths::Normalise(CVector3(-1.0f, -1.0f, -1.0f)),
+			Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedLitVertex_t(
+			CVector3(0.5f, -0.5f, -0.5f),
+			CVector2(1.0f, 0.0f),
+			CMaths::Normalise(CVector3(1.0f, -1.0f, -1.0f)),
+			Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedLitVertex_t(
+			CVector3(0.5f, 0.5f, -0.5f),
+			CVector2(1.0f, 1.0f),
+			CMaths::Normalise(CVector3(1.0f, 1.0f, -1.0f)),
+			Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedLitVertex_t(
+			CVector3(-0.5f, 0.5f, -0.5f),
+			CVector2(0.0f, 1.0f),
+			CMaths::Normalise(CVector3(-1.0f, 1.0f, -1.0f)),
+			Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
 
-		// back (z = 0.5)
-		TexturedLitVertex_t(CVector3(0.5f, -0.5f, 0.5f), CVector2(0.0f, 0.0f), CMaths::Normalise(CVector3(1.0f, -1.0f, 1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
-		TexturedLitVertex_t(CVector3(-0.5f, -0.5f, 0.5f), CVector2(1.0f, 0.0f), CMaths::Normalise(CVector3(-1.0f, -1.0f, 1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
-		TexturedLitVertex_t(CVector3(-0.5f, 0.5f, 0.5f), CVector2(1.0f, 1.0f), CMaths::Normalise(CVector3(-1.0f, 1.0f, 1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
-		TexturedLitVertex_t(CVector3(0.5f, 0.5f, 0.5f), CVector2(0.0f, 1.0f), CMaths::Normalise(CVector3(1.0f, 1.0f, 1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		// Back (z = 0.5)
+		TexturedLitVertex_t(
+			CVector3(0.5f, -0.5f, 0.5f),
+			CVector2(0.0f, 0.0f),
+			CMaths::Normalise(CVector3(1.0f, -1.0f, 1.0f)),
+			Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedLitVertex_t(
+			CVector3(-0.5f, -0.5f, 0.5f),
+			CVector2(1.0f, 0.0f),
+			CMaths::Normalise(CVector3(-1.0f, -1.0f, 1.0f)),
+			Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedLitVertex_t(
+			CVector3(-0.5f, 0.5f, 0.5f),
+			CVector2(1.0f, 1.0f),
+			CMaths::Normalise(CVector3(-1.0f, 1.0f, 1.0f)),
+			Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedLitVertex_t(
+			CVector3(0.5f, 0.5f, 0.5f),
+			CVector2(0.0f, 1.0f),
+			CMaths::Normalise(CVector3(1.0f, 1.0f, 1.0f)),
+			Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
 
-		// right (x = 0.5)
-		TexturedLitVertex_t(CVector3(0.5f, -0.5f, -0.5f), CVector2(0.0f, 0.0f), CMaths::Normalise(CVector3(1.0f, -1.0f, -1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
-		TexturedLitVertex_t(CVector3(0.5f, -0.5f, 0.5f), CVector2(1.0f, 0.0f), CMaths::Normalise(CVector3(1.0f, -1.0f, 1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
-		TexturedLitVertex_t(CVector3(0.5f, 0.5f, 0.5f), CVector2(1.0f, 1.0f), CMaths::Normalise(CVector3(1.0f, 1.0f, 1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
-		TexturedLitVertex_t(CVector3(0.5f, 0.5f, -0.5f), CVector2(0.0f, 1.0f), CMaths::Normalise(CVector3(1.0f, 1.0f, -1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		// Right (x = 0.5)
+		TexturedLitVertex_t(
+			CVector3(0.5f, -0.5f, -0.5f),
+			CVector2(0.0f, 0.0f),
+			CMaths::Normalise(CVector3(1.0f, -1.0f, -1.0f)),
+			Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedLitVertex_t(
+			CVector3(0.5f, -0.5f, 0.5f),
+			CVector2(1.0f, 0.0f),
+			CMaths::Normalise(CVector3(1.0f, -1.0f, 1.0f)),
+			Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedLitVertex_t(
+			CVector3(0.5f, 0.5f, 0.5f),
+			CVector2(1.0f, 1.0f),
+			CMaths::Normalise(CVector3(1.0f, 1.0f, 1.0f)),
+			Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedLitVertex_t(
+			CVector3(0.5f, 0.5f, -0.5f),
+			CVector2(0.0f, 1.0f),
+			CMaths::Normalise(CVector3(1.0f, 1.0f, -1.0f)),
+			Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
 
-		// left (x = -0.5)
-		TexturedLitVertex_t(CVector3(-0.5f, -0.5f, 0.5f), CVector2(0.0f, 0.0f), CMaths::Normalise(CVector3(-1.0f, -1.0f, 1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
-		TexturedLitVertex_t(CVector3(-0.5f, -0.5f, -0.5f), CVector2(1.0f, 0.0f), CMaths::Normalise(CVector3(-1.0f, -1.0f, -1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
-		TexturedLitVertex_t(CVector3(-0.5f, 0.5f, -0.5f), CVector2(1.0f, 1.0f), CMaths::Normalise(CVector3(-1.0f, 1.0f, -1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
-		TexturedLitVertex_t(CVector3(-0.5f, 0.5f, 0.5f), CVector2(0.0f, 1.0f), CMaths::Normalise(CVector3(-1.0f, 1.0f, 1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		// Left (x = -0.5)
+		TexturedLitVertex_t(
+			CVector3(-0.5f, -0.5f, 0.5f),
+			CVector2(0.0f, 0.0f),
+			CMaths::Normalise(CVector3(-1.0f, -1.0f, 1.0f)),
+			Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedLitVertex_t(
+			CVector3(-0.5f, -0.5f, -0.5f),
+			CVector2(1.0f, 0.0f),
+			CMaths::Normalise(CVector3(-1.0f, -1.0f, -1.0f)),
+			Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedLitVertex_t(
+			CVector3(-0.5f, 0.5f, -0.5f),
+			CVector2(1.0f, 1.0f),
+			CMaths::Normalise(CVector3(-1.0f, 1.0f, -1.0f)),
+			Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedLitVertex_t(
+			CVector3(-0.5f, 0.5f, 0.5f),
+			CVector2(0.0f, 1.0f),
+			CMaths::Normalise(CVector3(-1.0f, 1.0f, 1.0f)),
+			Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
 
-		// top (y = 0.5)
-		TexturedLitVertex_t(CVector3(-0.5f, 0.5f, -0.5f), CVector2(0.0f, 0.0f), CMaths::Normalise(CVector3(-1.0f, 1.0f, -1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
-		TexturedLitVertex_t(CVector3(0.5f, 0.5f, -0.5f), CVector2(1.0f, 0.0f), CMaths::Normalise(CVector3(1.0f, 1.0f, -1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
-		TexturedLitVertex_t(CVector3(0.5f, 0.5f, 0.5f), CVector2(1.0f, 1.0f), CMaths::Normalise(CVector3(1.0f, 1.0f, 1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
-		TexturedLitVertex_t(CVector3(-0.5f, 0.5f, 0.5f), CVector2(0.0f, 1.0f), CMaths::Normalise(CVector3(-1.0f, 1.0f, 1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		// Top (y = 0.5)
+		TexturedLitVertex_t(
+			CVector3(-0.5f, 0.5f, -0.5f),
+			CVector2(0.0f, 0.0f),
+			CMaths::Normalise(CVector3(-1.0f, 1.0f, -1.0f)),
+			Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedLitVertex_t(
+			CVector3(0.5f, 0.5f, -0.5f),
+			CVector2(1.0f, 0.0f),
+			CMaths::Normalise(CVector3(1.0f, 1.0f, -1.0f)),
+			Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedLitVertex_t(
+			CVector3(0.5f, 0.5f, 0.5f),
+			CVector2(1.0f, 1.0f),
+			CMaths::Normalise(CVector3(1.0f, 1.0f, 1.0f)),
+			Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedLitVertex_t(
+			CVector3(-0.5f, 0.5f, 0.5f),
+			CVector2(0.0f, 1.0f),
+			CMaths::Normalise(CVector3(-1.0f, 1.0f, 1.0f)),
+			Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
 
-		// bottom (y = -0.5)
-		TexturedLitVertex_t(CVector3(-0.5f, -0.5f, 0.5f), CVector2(0.0f, 0.0f), CMaths::Normalise(CVector3(-1.0f, -1.0f, 1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
-		TexturedLitVertex_t(CVector3(0.5f, -0.5f, 0.5f), CVector2(1.0f, 0.0f), CMaths::Normalise(CVector3(1.0f, -1.0f, 1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
-		TexturedLitVertex_t(CVector3(0.5f, -0.5f, -0.5f), CVector2(1.0f, 1.0f), CMaths::Normalise(CVector3(1.0f, -1.0f, -1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
-		TexturedLitVertex_t(CVector3(-0.5f, -0.5f, -0.5f), CVector2(0.0f, 1.0f), CMaths::Normalise(CVector3(-1.0f, -1.0f, -1.0f)), Vertex_t::PackColor(1.0f, 1.0f, 1.0f))
+		// Bottom (y = -0.5)
+		TexturedLitVertex_t(
+			CVector3(-0.5f, -0.5f, 0.5f),
+			CVector2(0.0f, 0.0f),
+			CMaths::Normalise(CVector3(-1.0f, -1.0f, 1.0f)),
+			Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedLitVertex_t(
+			CVector3(0.5f, -0.5f, 0.5f),
+			CVector2(1.0f, 0.0f),
+			CMaths::Normalise(CVector3(1.0f, -1.0f, 1.0f)),
+			Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedLitVertex_t(
+			CVector3(0.5f, -0.5f, -0.5f),
+			CVector2(1.0f, 1.0f),
+			CMaths::Normalise(CVector3(1.0f, -1.0f, -1.0f)),
+			Vertex_t::PackColor(1.0f, 1.0f, 1.0f)),
+		TexturedLitVertex_t(
+			CVector3(-0.5f, -0.5f, -0.5f),
+			CVector2(0.0f, 1.0f),
+			CMaths::Normalise(CVector3(-1.0f, -1.0f, -1.0f)),
+			Vertex_t::PackColor(1.0f, 1.0f, 1.0f))
 	};
 
 	uint32 indexData[] = {
@@ -200,8 +296,8 @@ int32 RunTexturedLitExample(
 
 	// Create buffers
 	BufferHandle hVertexBuffer = pRenderer->CreateVertexBuffer(
-		vertexData,
-		sizeof(vertexData),
+		vertices,
+		sizeof(vertices),
 		BufferUsage_t::Static);
 	BufferHandle hIndexBuffer = pRenderer->CreateIndexBuffer(
 		indexData,
