@@ -19,7 +19,6 @@ SPU_BATCH_TRANSFORM_JOB_ELF := $(SPU_BUILD_DIR)/SpuBatchTransformJob.elf
 SPU_BATCH_TRANSFORM_JOB_OBJ := $(OBJDIR)/SpuBatchTransformJob_spu.o
 SPU_BATCH_TRANSFORM_JOB_SRC := $(SPU_SRCDIR)/SpuBatchTransformJob.c
 
-
 SPU_CC := spu-gcc
 SPU_CFLAGS := -O2 -Wall -I$(SPU_SRCDIR) -I/usr/local/ps3dev/spu/include -Ipublic -DPLATFORM_PS3
 
@@ -80,7 +79,6 @@ export OUTPUT := $(BUILD)/$(TARGET)
 export VPATH := $(SOURCES) $(EXAMPLE_DIR)
 export BUILDDIR := $(OBJDIR)
 export LD := $(CXX)
-
 
 export INCLUDE := $(foreach dir,$(INCLUDES), -I$(dir)) $(LIBPSL1GHT_INC) -I$(OBJDIR)
 export LIBPATHS := $(LIBPSL1GHT_LIB)
