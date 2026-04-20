@@ -203,7 +203,8 @@ int32 RunBatchExample(
 
 		// Set viewport
 		Viewport_t viewport(
-			0.0f, 0.0f,
+			0.0f,
+			0.0f,
 			float32(windowConfig.m_Width),
 			float32(windowConfig.m_Height));
 		pRenderer->SetViewport(viewport);
@@ -236,12 +237,12 @@ int32 RunBatchExample(
 			&vertexLayout);
 		pRenderer->SetIndexBuffer(hIndexBuffer);
 		
-		// Animate cube positions and rotations based on time 
+		// Animate cube positions and rotations based on time
 		const CQuaternion rotation = CQuaternion::FromEuler(
 			0.0f,
 			rotationY * CMaths::Deg2Rad,
 			0.0f);
-		float32 time = static_cast<float32>(CTime::GetTime() - startTime);
+		float32 time = float32(CTime::GetTime() - startTime);
 
 		for (int32 chunkIndex = 0; chunkIndex < batch.m_BatchChunks.Count(); chunkIndex++)
 		{
@@ -258,17 +259,25 @@ int32 RunBatchExample(
 
 			for (int32 j = 0; j < batchChunk.m_BatchChunkTransforms.Count(); j++)
 			{
-				BatchChunkTransform_t& batchChunkTransform = batchChunk.m_BatchChunkTransforms[j];
-				batchChunkTransform.m_Rotation = rotation * rotations[chunkIndex * batchChunk.m_BatchChunkTransforms.Count() + j];
+				BatchChunkTransform_t& batchChunkTransform =
+					batchChunk.m_BatchChunkTransforms[j];
+				const int32 transformIndex =
+					chunkIndex * batchChunk.m_BatchChunkTransforms.Count() + j;
+				batchChunkTransform.m_Rotation =
+					rotation * rotations[transformIndex];
 
-				const float32 chunkTransformDistance = batchChunkTransform.m_Position.Distance(
-					camera.m_Position);
+				const float32 chunkTransformDistance =
+					batchChunkTransform.m_Position.Distance(camera.m_Position);
 				const float32 distanceNorm = CMaths::Clamp(
 					(chunkTransformDistance - 10.0f) / 490.0f,
 					0.0f,
 					1.0f);
-				const float32 phase = batchChunkTransform.m_Position.m_X * 0.37f + batchChunkTransform.m_Position.m_Z * 0.73f;
-				batchChunkTransform.m_Position.m_Y = (sinf((time + phase) * CMaths::TwoPI) * 0.5f + 0.5f) * distanceNorm * 20.0f;
+				const float32 phase =
+					batchChunkTransform.m_Position.m_X * 0.37f +
+					batchChunkTransform.m_Position.m_Z * 0.73f;
+				batchChunkTransform.m_Position.m_Y =
+					(sinf((time + phase) * CMaths::TwoPI) * 0.5f + 0.5f) *
+					distanceNorm * 20.0f;
 			}
 		}
 
@@ -286,7 +295,7 @@ int32 RunBatchExample(
 #ifdef PLATFORM_PS3
 #ifdef GCMGL_DIAGNOSTICS
 		CNetPerfReporter::Add("frame_us", PerfTimer_Now() - frameStartUs);
-		CNetPerfReporter::Flush(static_cast<float32>(CTime::GetDeltaTime()));
+		CNetPerfReporter::Flush(float32(CTime::GetDeltaTime()));
 #endif // GCMGL_DIAGNOSTICS
 #endif // PLATFORM_PS3
 	}

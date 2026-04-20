@@ -31,7 +31,8 @@ public:
 		const CBatch& batch,
 		const CMatrix4& viewProjection,
 		uint32 startIndex = 0,
-		int32 baseVertex = 0) = 0;
+		int32 baseVertex = 0,
+		bool isPerInstanceCull = true) = 0;
 };
 
 class CBatchRenderer : public virtual CRenderer, public IBatchRenderer
@@ -48,7 +49,8 @@ public:
 		const CBatch& batch,
 		const CMatrix4& viewProjection,
 		uint32 startIndex = 0,
-		int32 baseVertex = 0) GCMGL_OVERRIDE;
+		int32 baseVertex = 0,
+		bool isPerInstanceCull = true) GCMGL_OVERRIDE;
 protected:
 	virtual void DrawBatchedChunk(
 		uint32 vertexCount,
@@ -68,7 +70,8 @@ protected:
 	virtual void FrustumCullBatch(
 		const CBatch& batch,
 		const Plane_t* pFrustumPlanes,
-		CUtlVector<BatchChunkTransform_t>& batchChunkTransforms);
+		CUtlVector<BatchChunkTransform_t>& batchChunkTransforms,
+		bool isPerInstanceCull = true);
 public:
 	static bool ShouldUpdateChunk(float32 distanceToCamera, uint64 frameCount);
 

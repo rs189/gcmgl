@@ -20,7 +20,8 @@ protected:
 	virtual void FrustumCullBatch(
 		const CBatch& batch,
 		const Plane_t* pFrustumPlanes,
-		CUtlVector<BatchChunkTransform_t>& batchChunkTransforms) GCMGL_OVERRIDE;
+		CUtlVector<BatchChunkTransform_t>& batchChunkTransforms,
+		bool isPerInstanceCull = true) GCMGL_OVERRIDE;
 	virtual void DrawBatchedChunk(
 		uint32 vertexCount,
 		const CUtlVector<BatchChunkTransform_t>& batchChunkTransforms,

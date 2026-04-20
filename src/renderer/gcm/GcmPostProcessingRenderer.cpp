@@ -88,6 +88,7 @@ GcmPostProcessState_t CGcmPostProcessingRenderer::InitState()
 
 	memset(state.m_pOffscreenColor, 0, display_height * color_pitch);
 	memset(state.m_pOffscreenDepth, 0, display_height * depth_pitch);
+
 	__sync_synchronize();
 
 	rsxAddressToOffset(state.m_pOffscreenColor, &state.m_OffscreenColorOffset);
@@ -246,7 +247,9 @@ void CGcmPostProcessingRenderer::End(const GcmPostProcessState_t& state)
 		GCM_VERTEX_DATA_TYPE_F32, GCM_LOCATION_RSX);
 	rsxInvalidateVertexCache(context);
 	rsxInvalidateTextureCache(context, GCM_INVALIDATE_TEXTURE);
+
 	rsxSetFrequencyDividerOperation(context, GCM_FREQUENCY_MODULO);
+
 	rsxDrawVertexArray(context, GCM_TYPE_QUADS, 0, 4);
 
 	rsxSetDepthTestEnable(context, GCM_TRUE);

@@ -22,48 +22,23 @@
 #include "renderer/gcm/GcmRenderer.h"
 #endif
 
-int RunTriangleExample(
-	class CWindowManager& windowManager,
-	class IRenderer* pRenderer,
-	class IWindow* pWnd,
-	const struct WindowConfig_t& windowConfig);
-int RunCubeExample(
-	class CWindowManager& windowManager,
-	class IRenderer* pRenderer,
-	class IWindow* pWnd,
-	const struct WindowConfig_t& windowConfig);
-int RunShaderExample(
-	class CWindowManager& windowManager,
-	class IRenderer* pRenderer,
-	class IWindow* pWnd,
-	const struct WindowConfig_t& windowConfig);
-int RunTexturedExample(
-	class CWindowManager& windowManager,
-	class IRenderer* pRenderer,
-	class IWindow* pWnd,
-	const struct WindowConfig_t& windowConfig);
-int RunLitExample(
-	class CWindowManager& windowManager,
-	class IRenderer* pRenderer,
-	class IWindow* pWnd,
-	const struct WindowConfig_t& windowConfig);
-int RunTexturedLitExample(
-	class CWindowManager& windowManager,
-	class IRenderer* pRenderer,
-	class IWindow* pWnd,
-	const struct WindowConfig_t& windowConfig);
-int RunBatchExample(
-	class CWindowManager& windowManager,
-	class IRenderer* pRenderer,
-	class IWindow* pWnd,
-	const struct WindowConfig_t& windowConfig);
-#ifdef EXAMPLE_BATCH_INSTANCED
-int RunBatchInstancedExample(
-	class CWindowManager& windowManager,
-	class IRenderer* pRenderer,
-	class IWindow* pWnd,
-	const struct WindowConfig_t& windowConfig);
-#endif // EXAMPLE_BATCH_INSTANCED
+#ifdef EXAMPLE_TRIANGLE
+#include "examples/example_triangle/Triangle.h"
+#elif defined(EXAMPLE_CUBE)
+#include "examples/example_cube/Cube.h"
+#elif defined(EXAMPLE_SHADER)
+#include "examples/example_shader/Shader.h"
+#elif defined(EXAMPLE_TEXTURED)
+#include "examples/example_textured/Textured.h"
+#elif defined(EXAMPLE_LIT)
+#include "examples/example_lit/Lit.h"
+#elif defined(EXAMPLE_TEXTURED_LIT)
+#include "examples/example_texturedLit/TexturedLit.h"
+#elif defined(EXAMPLE_BATCH)
+#include "examples/example_batch/Batch.h"
+#elif defined(EXAMPLE_BATCH_INSTANCED)
+#include "examples/example_batchInstanced/BatchInstanced.h"
+#endif
 
 int main(int argc, char* argv[])
 {
@@ -115,13 +90,13 @@ int main(int argc, char* argv[])
 	windowConfig.m_Width = int32(display_width);
 	windowConfig.m_Height = int32(display_height);
 	windowConfig.m_AspectRatio = aspect_ratio;
-#endif
+#endif // PLATFORM_PS3
 
 	CTime::Initialize();
 
 #ifdef GCMGL_DIAGNOSTICS
 	CDiagnosticsReporter::Initialize();
-#endif
+#endif // GCMGL_DIAGNOSTICS
 
 #if defined(EXAMPLE_TRIANGLE)
 	result = RunTriangleExample(
@@ -179,7 +154,7 @@ int main(int argc, char* argv[])
 
 #ifdef GCMGL_DIAGNOSTICS
 	CDiagnosticsReporter::Shutdown();
-#endif
+#endif // GCMGL_DIAGNOSTICS
 
 	return result;
 }

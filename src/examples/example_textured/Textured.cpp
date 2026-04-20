@@ -41,7 +41,10 @@ struct TexturedVertex_t
 	{
 	}
 
-	TexturedVertex_t(const CVector3& position, const CVector2& texCoord, uint32 color) :
+	TexturedVertex_t(
+		const CVector3& position,
+		const CVector2& texCoord,
+		uint32 color) :
 		m_Position(position),
 		m_TexCoord(texCoord),
 		m_Color(color)
@@ -196,7 +199,9 @@ int32 RunTexturedExample(
 	};
  
 	// Load texture from file
-	int32 texWidth, texHeight, texChannels;
+	int32 texWidth;
+	int32 texHeight;
+	int32 texChannels;
 	CFixedString fullPath = "assets/texture.png";
 #ifdef PLATFORM_PS3
 	if (fullPath.find("/dev_hdd0/") != 0)
@@ -211,7 +216,8 @@ int32 RunTexturedExample(
 		&texChannels,
 		4);
 	uint32* pTextureData = GCMGL_NULL;
-	int32 finalWidth = 512, finalHeight = 512;
+	int32 finalWidth = 512;
+	int32 finalHeight = 512;
  
 	if (pRawImageData)
 	{
@@ -270,17 +276,17 @@ int32 RunTexturedExample(
 	// Vertex layout
 	CVertexLayout vertexLayout;
 	vertexLayout.AddAttribute(
-		"position", 
-		uint32(VertexFormat_t::Float3), 
+		"position",
+		uint32(VertexFormat_t::Float3),
 		0,
 		VertexSemantic_t::Position);
 	vertexLayout.AddAttribute(
-		"texCoord", 
-		uint32(VertexFormat_t::Float2), 
+		"texCoord",
+		uint32(VertexFormat_t::Float2),
 		sizeof(CVector3),
 		VertexSemantic_t::TexCoord0);
 	vertexLayout.AddAttribute(
-		"color", 
+		"color",
 		uint32(VertexFormat_t::UByte4_Norm),
 		sizeof(CVector3) + sizeof(CVector2),
 		VertexSemantic_t::Color0);
@@ -305,7 +311,8 @@ int32 RunTexturedExample(
 
 		// Set viewport
 		Viewport_t viewport(
-			0.0f, 0.0f,
+			0.0f,
+			0.0f,
 			float32(windowConfig.m_Width),
 			float32(windowConfig.m_Height));
 		pRenderer->SetViewport(viewport);
@@ -317,9 +324,13 @@ int32 RunTexturedExample(
 		CMatrix4 viewMatrix = camera.GetViewMatrix();
 		CMatrix4 model =
 			CMaths::Rotate(
-				CMatrix4(1.0f), rotationY, CVector3(0.0f, 1.0f, 0.0f)) *
+				CMatrix4(1.0f),
+				rotationY,
+				CVector3(0.0f, 1.0f, 0.0f)) *
 			CMaths::Rotate(
-				CMatrix4(1.0f), rotationX, CVector3(1.0f, 0.0f, 0.0f));
+				CMatrix4(1.0f),
+				rotationX,
+				CVector3(1.0f, 0.0f, 0.0f));
 		CMatrix4 mvp = projectionMatrix * viewMatrix * model;
 
 		// Update constant buffer

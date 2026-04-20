@@ -31,14 +31,14 @@
 struct TexturedLitVertex_t
 {
 	CVector3 m_Position;
-	CVector2 m_TexCoord;
 	CVector3 m_Normal;
+	CVector2 m_TexCoord;
 	uint32 m_Color;
 
 	TexturedLitVertex_t() :
 		m_Position(0.0f, 0.0f, 0.0f),
-		m_TexCoord(0.0f, 0.0f),
 		m_Normal(0.0f, 0.0f, 0.0f),
+		m_TexCoord(0.0f, 0.0f),
 		m_Color(0)
 	{
 	}
@@ -49,8 +49,8 @@ struct TexturedLitVertex_t
 		const CVector3& normal,
 		uint32 color) :
 		m_Position(position),
-		m_TexCoord(texCoord),
 		m_Normal(normal),
+		m_TexCoord(texCoord),
 		m_Color(color)
 	{
 	}
@@ -244,7 +244,9 @@ int32 RunTexturedLitExample(
 	};
 
 	// Load texture from file
-	int32 texWidth, texHeight, texChannels;
+	int32 texWidth;
+	int32 texHeight;
+	int32 texChannels;
 	CFixedString fullPath = "assets/texture.png";
 #ifdef PLATFORM_PS3
 	if (fullPath.find("/dev_hdd0/") != 0)
@@ -259,7 +261,8 @@ int32 RunTexturedLitExample(
 		&texChannels,
 		4);
 	uint32* pTextureData = GCMGL_NULL;
-	int32 finalWidth = 512, finalHeight = 512;
+	int32 finalWidth = 512;
+	int32 finalHeight = 512;
 
 	if (pRawImageData)
 	{
@@ -370,17 +373,17 @@ int32 RunTexturedLitExample(
 	vertexLayout.AddAttribute(
 		"texCoord",
 		uint32(VertexFormat_t::Float2),
-		sizeof(CVector3),
+		sizeof(CVector3) + sizeof(CVector3),
 		VertexSemantic_t::TexCoord0);
 	vertexLayout.AddAttribute(
 		"normal",
 		uint32(VertexFormat_t::Float3),
-		sizeof(CVector3) + sizeof(CVector2),
+		sizeof(CVector3),
 		VertexSemantic_t::Normal);
 	vertexLayout.AddAttribute(
 		"color",
 		uint32(VertexFormat_t::UByte4_Norm),
-		sizeof(CVector3) + sizeof(CVector2) + sizeof(CVector3),
+		sizeof(CVector3) + sizeof(CVector3) + sizeof(CVector2),
 		VertexSemantic_t::Color0);
 	vertexLayout.SetStride(sizeof(TexturedLitVertex_t));
 

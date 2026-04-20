@@ -194,7 +194,7 @@ int32 RunShaderExample(
 
 		// Bind buffers
 		pRenderer->SetShaderProgram(hShaderProgram);
-		
+
 		pRenderer->SetConstantBuffer(
 			hConstantBuffer,
 			hMVPLayout,

@@ -125,13 +125,13 @@ int32 RunCubeExample(
 	// Vertex layout
 	CVertexLayout vertexLayout;
 	vertexLayout.AddAttribute(
-		"position", 
-		uint32(VertexFormat_t::Float3), 
+		"position",
+		uint32(VertexFormat_t::Float3),
 		0,
 		VertexSemantic_t::Position);
 	vertexLayout.AddAttribute(
-		"color", 
-		uint32(VertexFormat_t::UByte4_Norm), 
+		"color",
+		uint32(VertexFormat_t::UByte4_Norm),
 		sizeof(CVector3),
 		VertexSemantic_t::Color0);
 	vertexLayout.SetStride(sizeof(Vertex_t));
@@ -155,7 +155,8 @@ int32 RunCubeExample(
 
 		// Set viewport
 		Viewport_t viewport(
-			0.0f, 0.0f,
+			0.0f,
+			0.0f,
 			float32(windowConfig.m_Width),
 			float32(windowConfig.m_Height));
 		pRenderer->SetViewport(viewport);

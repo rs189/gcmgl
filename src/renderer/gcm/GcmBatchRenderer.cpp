@@ -288,7 +288,8 @@ static void BatchTransformsThread(void* pArg)
 void CGcmBatchRenderer::FrustumCullBatch(
 	const CBatch& batch,
 	const Plane_t* pFrustumPlanes,
-	CUtlVector<BatchChunkTransform_t>& batchChunkTransforms)
+	CUtlVector<BatchChunkTransform_t>& batchChunkTransforms,
+	bool isPerInstanceCull)
 {
 #ifdef GCMGL_DIAGNOSTICS
 	const uint64 cullStart = PerfTimer_Now();
@@ -320,7 +321,7 @@ void CGcmBatchRenderer::FrustumCullBatch(
 			continue;
 		}
 
-		if (frustumVisibility == FrustumVisibility_t::Inside)
+		if (frustumVisibility == FrustumVisibility_t::Inside || !isPerInstanceCull)
 		{
 			for (int32 j = 0; j < batchChunkTransformCount; j++)
 			{
@@ -489,7 +490,8 @@ void CGcmBatchRenderer::DrawIndexedBatched(
 	const CBatch& batch,
 	const CMatrix4& viewProjection,
 	uint32 startIndex,
-	int32 baseVertex)
+	int32 baseVertex,
+	bool isPerInstanceCull)
 {
 	CBatchRenderer::DrawIndexedBatched(
 		indexCount,
@@ -497,7 +499,8 @@ void CGcmBatchRenderer::DrawIndexedBatched(
 		batch,
 		viewProjection,
 		startIndex,
-		baseVertex);
+		baseVertex,
+		isPerInstanceCull);
 
 #ifndef PS3_SPU_ENABLED
 	rsxFlushBuffer(context);

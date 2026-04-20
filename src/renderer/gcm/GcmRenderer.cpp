@@ -1591,7 +1591,7 @@ void CGcmRenderer::DrawIndexedInstanced(
 
 	const BufferResource_t& instanceResource =
 		m_BufferResources.Element(instanceBufferIndex);
-	const CUtlVector<VertexAttribute_t>& instanceAttributes =
+	const CUtlVector<VertexAttribute_t>& attributes =
 		pInstanceLayout->GetAttributes();
 	const uint32 instanceStride = pInstanceLayout->GetStride();
 
@@ -1604,9 +1604,9 @@ void CGcmRenderer::DrawIndexedInstanced(
 
 	rsxSetFrequencyDividerOperation(context, GCM_FREQUENCY_DIVIDE);
 
-	for (int32 i = 0; i < instanceAttributes.Count(); i++)
+	for (int32 i = 0; i < attributes.Count(); i++)
 	{
-		const VertexAttribute_t& attribute = instanceAttributes[i];
+		const VertexAttribute_t& attribute = attributes[i];
 		if (attribute.m_VertexSemantic == VertexSemantic_t::Unspecified)
 		{
 			continue;
@@ -1637,9 +1637,9 @@ void CGcmRenderer::DrawIndexedInstanced(
 
 	rsxSetFrequencyDividerOperation(context, GCM_FREQUENCY_MODULO);
 
-	for (int32 i = 0; i < instanceAttributes.Count(); i++)
+	for (int32 i = 0; i < attributes.Count(); i++)
 	{
-		const VertexAttribute_t& attribute = instanceAttributes[i];
+		const VertexAttribute_t& attribute = attributes[i];
 		if (attribute.m_VertexSemantic == VertexSemantic_t::Unspecified)
 		{
 			continue;

@@ -18,6 +18,7 @@
 #include "../Camera.h"
 #include <stdio.h>
 #include <math.h>
+#include <string.h>
 
 #ifdef GCMGL_DIAGNOSTICS
 #include "utils/NetPerfReporter.h"
@@ -33,16 +34,16 @@
 #include <GLFW/glfw3.h>
 #endif // !PLATFORM_PS3
 
-static const int32 CHUNK_SIZE = 1000;
-static const int32 MAX_INSTANCES = 50000;
-static const int32 MAX_CHUNKS = (MAX_INSTANCES + CHUNK_SIZE - 1) / CHUNK_SIZE;
+static const int32 s_ChunkSize = 1000;
+static const int32 s_MaxInstances = 50000;
+static const int32 s_MaxChunks = (s_MaxInstances + s_ChunkSize - 1) / s_ChunkSize;
 
 struct InstanceChunk_t
 {
 	CUtlVector<CMatrix4> m_Matrices;
-	int32 m_InstanceCount;
 	CVector3 m_AABBCenter;
 	CVector3 m_AABBExtent;
+	int32 m_InstanceCount;
 };
 
 int32 RunBatchInstancedExample(
@@ -215,14 +216,13 @@ int32 RunBatchInstancedExample(
 	instanceLayout.SetStride(64);
 
 	// Create instances
-	const int32 totalInstances = MAX_INSTANCES;
-	const int32 gridSize = int32(sqrtf(float32(totalInstances)));
+	const int32 gridSize = int32(CMaths::Sqrt(float32(s_MaxInstances)));
 	const float32 spacing = 3.0f;
 
 	CUtlVector<CMatrix4> allMatrices;
-	allMatrices.SetCount(totalInstances);
+	allMatrices.SetCount(s_MaxInstances);
 
-	for (int32 i = 0; i < totalInstances; i++)
+	for (int32 i = 0; i < s_MaxInstances; i++)
 	{
 		const int32 row = i / gridSize;
 		const int32 col = i % gridSize;
@@ -234,7 +234,7 @@ int32 RunBatchInstancedExample(
 			(row * 11.0f + col * 13.0f) * 8.0f * CMaths::Deg2Rad,
 			(row * 17.0f + col * 19.0f) * 3.0f * CMaths::Deg2Rad);
 		float32* d = allMatrices[i].m_Data;
-		for (int32 k = 0; k < 16; k++) d[k] = 0.0f;
+		memset(d, 0, 16 * sizeof(float32));
 		d[0] = posX;
 		d[4] = posZ;
 		d[8] = sinf(phase);
@@ -243,22 +243,21 @@ int32 RunBatchInstancedExample(
 		d[5] = q.m_Y;
 		d[9] = q.m_Z;
 		d[13] = q.m_W;
-		const float32 ddx = posX;
-		const float32 ddz = posZ - 9.33f;
-		const float32 dist = sqrtf(ddx * ddx + ddz * ddz);
+		const float32 dist = CMaths::Sqrt(
+			posX * posX + (posZ - 9.33f) * (posZ - 9.33f));
 		d[2] = CMaths::Clamp((dist - 10.0f) / 490.0f, 0.0f, 1.0f);
 	}
 
-	static InstanceChunk_t chunks[MAX_CHUNKS];
+	static InstanceChunk_t chunks[s_MaxChunks];
 	int32 activeChunks = 0;
 	int32 chunkIndex = 0;
 
-	while (chunkIndex < totalInstances && activeChunks < MAX_CHUNKS)
+	while (chunkIndex < s_MaxInstances && activeChunks < s_MaxChunks)
 	{
 		const int32 chunkStart = chunkIndex;
 		const int32 chunkCount = CMaths::Min(
-			CHUNK_SIZE,
-			totalInstances - chunkStart);
+			s_ChunkSize,
+			s_MaxInstances - chunkStart);
 
 		InstanceChunk_t& instanceChunk = chunks[activeChunks];
 		instanceChunk.m_InstanceCount = chunkCount;
@@ -273,10 +272,22 @@ int32 RunBatchInstancedExample(
 			instanceChunk.m_Matrices[i] = allMatrices[chunkStart + i];
 			const float32 px = allMatrices[chunkStart + i].m_Data[0];
 			const float32 pz = allMatrices[chunkStart + i].m_Data[4];
-			if (px < minX) minX = px;
-			if (px > maxX) maxX = px;
-			if (pz < minZ) minZ = pz;
-			if (pz > maxZ) maxZ = pz;
+			if (px < minX)
+			{
+				minX = px;
+			}
+			if (px > maxX)
+			{
+				maxX = px;
+			}
+			if (pz < minZ)
+			{
+				minZ = pz;
+			}
+			if (pz > maxZ)
+			{
+				maxZ = pz;
+			}
 		}
 		instanceChunk.m_AABBCenter = CVector3(
 			(minX + maxX) * 0.5f,
@@ -389,8 +400,7 @@ int32 RunBatchInstancedExample(
 
 		// Extract frustum planes for culling
 		Plane_t frustumPlanes[6];
-		IRenderer* pIRenderer = pRenderer;
-		pIRenderer->ExtractFrustumPlanes(viewProjection, frustumPlanes);
+		pRenderer->ExtractFrustumPlanes(viewProjection, frustumPlanes);
 
 		int32 visibleChunks = 0;
 #ifdef PLATFORM_PS3
@@ -400,11 +410,10 @@ int32 RunBatchInstancedExample(
 #endif // PLATFORM_PS3
 
 		// Draw instances
-		const int32 drawChunks = activeChunks;
-		for (int32 chunkIndex = 0; chunkIndex < drawChunks; chunkIndex++)
+		for (int32 chunkIndex = 0; chunkIndex < activeChunks; chunkIndex++)
 		{
 			InstanceChunk_t& instanceChunk = chunks[chunkIndex];
-			if (!pIRenderer->TestAABBFrustum(
+			if (!pRenderer->TestAABBFrustum(
 				instanceChunk.m_AABBCenter,
 				instanceChunk.m_AABBExtent,
 				frustumPlanes))
@@ -427,7 +436,7 @@ int32 RunBatchInstancedExample(
 #ifdef GCMGL_DIAGNOSTICS
 		CNetPerfReporter::Add("draw_us", PerfTimer_Now() - drawStart);
 		CNetPerfReporter::Add("chunks", float32(visibleChunks));
-		CNetPerfReporter::Add("instances", float32(activeChunks * CHUNK_SIZE));
+		CNetPerfReporter::Add("instances", float32(activeChunks * s_ChunkSize));
 		CNetPerfReporter::Add("frame_us", PerfTimer_Now() - frameStartUs);
 		CNetPerfReporter::Flush(CTime::GetDeltaTime());
 #endif // GCMGL_DIAGNOSTICS

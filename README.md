@@ -226,7 +226,7 @@ gcmgl is a C++ graphics library targeting PlayStation 3 (GCM) and Linux (x86_64,
 - `void Draw(uint32 vertexCount, uint32 startVertex = 0, const CMatrix4* pViewProjection = GCMGL_NULL, const CVector3* pAABBCenter = GCMGL_NULL, const CVector3* pAABBExtent = GCMGL_NULL)`
 - `void DrawIndexed(uint32 indexCount, uint32 startIndex = 0, int32 baseVertex = 0, const CMatrix4* pViewProjection = GCMGL_NULL, const CVector3* pAABBCenter = GCMGL_NULL, const CVector3* pAABBExtent = GCMGL_NULL)`
 - `void DrawBatched(uint32 vertexCount, const CBatch& batch, const CMatrix4& viewProjection, uint32 startVertex = 0)`
-- `void DrawIndexedBatched(uint32 indexCount, uint32 vertexCount, const CBatch& batch, const CMatrix4& viewProjection, uint32 startIndex = 0, int32 baseVertex = 0)`
+- `void DrawIndexedBatched(uint32 indexCount, uint32 vertexCount, const CBatch& batch, const CMatrix4& viewProjection, uint32 startIndex = 0, int32 baseVertex = 0, bool isPerInstanceCull = true)`
 - `void DrawInstanced(uint32 vertexCount, uint32 instanceCount, const CMatrix4* pMatrices, const CVertexLayout* pInstanceLayout = GCMGL_NULL)`
 - `void DrawIndexedInstanced(uint32 indexCount, uint32 instanceCount, const CMatrix4* pMatrices, uint32 startIndex = 0, const CVertexLayout* pInstanceLayout = GCMGL_NULL)`
 - `void SetPipelineState(const PipelineState_t& state)`

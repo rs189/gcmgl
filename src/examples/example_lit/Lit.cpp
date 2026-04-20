@@ -11,6 +11,7 @@
 #include "window/WindowManager.h"
 #include "renderer/Renderer.h"
 #include "utils/Time.h"
+#include "utils/UtlMemory.h"
 #include "mathsfury/Maths.h"
 #include "../Vertex.h"
 #include "../Camera.h"
@@ -28,8 +29,8 @@
 struct LitVertex_t
 {
 	CVector3 m_Position;
-	CVector2 m_TexCoord;
 	CVector3 m_Normal;
+	CVector2 m_TexCoord;
 	uint32 m_Color;
 };
 
@@ -83,20 +84,22 @@ int32 RunLitExample(
 	const int32 vertexCount = (rings + 1) * (segments + 1);
 	const int32 indexCount = rings * segments * 6;
 
-	LitVertex_t* pSphereVertices = new LitVertex_t[vertexCount];
-	uint32* pSphereIndices = new uint32[indexCount];
+	LitVertex_t* pSphereVertices = static_cast<LitVertex_t*>(
+		CUtlMemory::Alloc(uint64(vertexCount) * sizeof(LitVertex_t)));
+	uint32* pSphereIndices = static_cast<uint32*>(
+		CUtlMemory::Alloc(uint64(indexCount) * sizeof(uint32)));
 
 	int32 vertexPos = 0;
 
 	for (int32 ring = 0; ring <= rings; ring++)
 	{
-		float32 theta = float32(ring) * 3.14159f / float32(rings);
+		float32 theta = float32(ring) * CMaths::PI / float32(rings);
 		float32 sinTheta = sinf(theta);
 		float32 cosTheta = cosf(theta);
 
 		for (int32 seg = 0; seg <= segments; seg++)
 		{
-			float32 phi = float32(seg) * 2.0f * 3.14159f / float32(segments);
+			float32 phi = float32(seg) * 2.0f * CMaths::PI / float32(segments);
 			float32 sinPhi = sinf(phi);
 			float32 cosPhi = cosf(phi);
 
@@ -115,8 +118,8 @@ int32 RunLitExample(
 			}
 
 			pSphereVertices[vertexPos].m_Position = position;
-			pSphereVertices[vertexPos].m_TexCoord = CVector2(0.0f, 0.0f);
 			pSphereVertices[vertexPos].m_Normal = normal;
+			pSphereVertices[vertexPos].m_TexCoord = CVector2(0.0f, 0.0f);
 			pSphereVertices[vertexPos].m_Color = Vertex_t::PackColor(
 				0.1f,
 				0.1f,
@@ -221,17 +224,17 @@ int32 RunLitExample(
 	vertexLayout.AddAttribute(
 		"texCoord",
 		uint32(VertexFormat_t::Float2),
-		sizeof(CVector3),
+		sizeof(CVector3) + sizeof(CVector3),
 		VertexSemantic_t::TexCoord0);
 	vertexLayout.AddAttribute(
 		"normal",
 		uint32(VertexFormat_t::Float3),
-		sizeof(CVector3) + sizeof(CVector2),
+		sizeof(CVector3),
 		VertexSemantic_t::Normal);
 	vertexLayout.AddAttribute(
 		"color",
 		uint32(VertexFormat_t::UByte4_Norm),
-		sizeof(CVector3) + sizeof(CVector2) + sizeof(CVector3),
+		sizeof(CVector3) + sizeof(CVector3) + sizeof(CVector2),
 		VertexSemantic_t::Color0);
 	vertexLayout.SetStride(sizeof(LitVertex_t));
 
@@ -263,7 +266,8 @@ int32 RunLitExample(
 
 		// Set viewport
 		Viewport_t viewport(
-			0.0f, 0.0f,
+			0.0f,
+			0.0f,
 			float32(windowConfig.m_Width),
 			float32(windowConfig.m_Height));
 		pRenderer->SetViewport(viewport);
@@ -278,9 +282,13 @@ int32 RunLitExample(
 			CVector3(0.0f, 1.0f, 0.0f));
 		CMatrix4 model =
 			CMaths::Rotate(
-				CMatrix4(1.0f), rotationY, CVector3(0.0f, 1.0f, 0.0f)) *
+				CMatrix4(1.0f),
+				rotationY,
+				CVector3(0.0f, 1.0f, 0.0f)) *
 			CMaths::Rotate(
-				CMatrix4(1.0f), rotationX, CVector3(1.0f, 0.0f, 0.0f));
+				CMatrix4(1.0f),
+				rotationX,
+				CVector3(1.0f, 0.0f, 0.0f));
 		CMatrix4 mvp = projectionMatrix * viewMatrix * model;
 
 		// Update constant buffers
@@ -295,16 +303,18 @@ int32 RunLitExample(
 		lightData.m_NumLights = 3.0f;
 
 		// Red light
-		lightData.SetLight(0,
+		lightData.SetLight(
+			0,
 			CVector4(
-				lightRadius * cosf(lightAngle), 
+				lightRadius * cosf(lightAngle),
 				0.0f,
-				lightRadius * sinf(lightAngle), 
+				lightRadius * sinf(lightAngle),
 				lightIntensity),
 			CVector4(1.0f, 0.0f, 0.0f, 1.0f));
 
 		// Green light
-		lightData.SetLight(1,
+		lightData.SetLight(
+			1,
 			CVector4(
 				lightRadius * cosf(lightAngle + twoPiThirds),
 				0.0f,
@@ -313,7 +323,8 @@ int32 RunLitExample(
 			CVector4(0.0f, 1.0f, 0.0f, 1.0f));
 
 		// Blue light
-		lightData.SetLight(2,
+		lightData.SetLight(
+			2,
 			CVector4(
 				lightRadius * cosf(-lightAngle + fourPiThirds),
 				0.0f,
@@ -376,8 +387,8 @@ int32 RunLitExample(
 	pRenderer->DestroyBuffer(hNumLightsConstantBuffer);
 	pRenderer->DestroyShaderProgram(hShaderProgram);
 
-	delete[] pSphereVertices;
-	delete[] pSphereIndices;
+	CUtlMemory::Free(pSphereVertices);
+	CUtlMemory::Free(pSphereIndices);
 
 	return 0;
 }

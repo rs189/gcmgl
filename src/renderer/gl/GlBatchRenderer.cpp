@@ -176,7 +176,8 @@ static void* FrustumCullThread(void* pArg)
 void CGlBatchRenderer::FrustumCullBatch(
 	const CBatch& batch,
 	const Plane_t* pFrustumPlanes,
-	CUtlVector<BatchChunkTransform_t>& batchChunkTransforms)
+	CUtlVector<BatchChunkTransform_t>& batchChunkTransforms,
+	bool isPerInstanceCull)
 {
 	for (int32 chunkIndex = 0; chunkIndex < batch.m_BatchChunks.Count(); chunkIndex++)
 	{
@@ -205,7 +206,7 @@ void CGlBatchRenderer::FrustumCullBatch(
 			continue;
 		}
 
-		if (frustumVisibility == FrustumVisibility_t::Inside)
+		if (frustumVisibility == FrustumVisibility_t::Inside || !isPerInstanceCull)
 		{
 			for (int32 j = 0; j < batchChunkTransformCount; j++)
 			{

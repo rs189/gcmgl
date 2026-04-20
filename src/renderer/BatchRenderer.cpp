@@ -26,7 +26,8 @@ bool CBatchRenderer::ShouldUpdateChunk(
 void CBatchRenderer::FrustumCullBatch(
 	const CBatch& batch,
 	const Plane_t* pFrustumPlanes,
-	CUtlVector<BatchChunkTransform_t>& batchChunkTransforms)
+	CUtlVector<BatchChunkTransform_t>& batchChunkTransforms,
+	bool isPerInstanceCull)
 {
 	for (int32 chunkIndex = 0; chunkIndex < batch.m_BatchChunks.Count(); chunkIndex++)
 	{
@@ -55,7 +56,7 @@ void CBatchRenderer::FrustumCullBatch(
 
 		const int32 batchChunkTransformCount = batchChunk.m_BatchChunkTransforms.Count();
 
-		if (frustumVisibility == FrustumVisibility_t::Inside)
+		if (frustumVisibility == FrustumVisibility_t::Inside || !isPerInstanceCull)
 		{
 			for (int32 j = 0; j < batchChunkTransformCount; j++)
 			{
@@ -176,7 +177,8 @@ void CBatchRenderer::DrawIndexedBatched(
 	const CBatch& batch,
 	const CMatrix4& viewProjection,
 	uint32 startIndex,
-	int32 baseVertex)
+	int32 baseVertex,
+	bool isPerInstanceCull)
 {
 	if (batch.GetCount() == 0) return;
 
@@ -207,7 +209,11 @@ void CBatchRenderer::DrawIndexedBatched(
 		m_PipelineState.m_pVertexLayout,
 		m_VertexPosOffset);
 	ExtractFrustumPlanes(viewProjection, frustumPlanes);
-	FrustumCullBatch(batch, frustumPlanes, m_BatchChunkTransformsScratch);
+	FrustumCullBatch(
+		batch,
+		frustumPlanes,
+		m_BatchChunkTransformsScratch,
+		isPerInstanceCull);
 
 	if (m_BatchChunkTransformsScratch.Count() == 0) return;
 

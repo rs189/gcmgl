@@ -32,7 +32,7 @@ int32 RunTriangleExample(
 	const WindowConfig_t& windowConfig)
 {
 	bool isRunning = true;
-	
+
 	CTime::Initialize();
 
 	float32 rotation = 0.0f;
@@ -81,10 +81,14 @@ int32 RunTriangleExample(
 	// Vertex layout
 	CVertexLayout vertexLayout;
 	vertexLayout.AddAttribute(
-		"position", uint32(VertexFormat_t::Float3), 0,
+		"position",
+		uint32(VertexFormat_t::Float3),
+		0,
 		VertexSemantic_t::Position);
 	vertexLayout.AddAttribute(
-		"color", uint32(VertexFormat_t::UByte4_Norm), sizeof(CVector3),
+		"color",
+		uint32(VertexFormat_t::UByte4_Norm),
+		sizeof(CVector3),
 		VertexSemantic_t::Color0);
 	vertexLayout.SetStride(sizeof(Vertex_t));
 
@@ -106,7 +110,7 @@ int32 RunTriangleExample(
 
 		// Set viewport
 		Viewport_t viewport(
-			0.0f, 
+			0.0f,
 			0.0f,
 			float32(windowConfig.m_Width),
 			float32(windowConfig.m_Height));
