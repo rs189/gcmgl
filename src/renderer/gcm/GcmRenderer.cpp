@@ -580,7 +580,7 @@ ShaderProgramHandle CGcmRenderer::CreateShaderProgram(const CFixedString& shader
 		return 0;
 	}
 
-	void* pVertexProgramAligned = rsxMemalign(
+	void* pVertexProgramAligned = memalign(
 		64,
 		uint32(vertexProgramBin.Count()));
 	memcpy(
@@ -664,7 +664,7 @@ void CGcmRenderer::DestroyShaderProgram(ShaderProgramHandle hProgram)
 
 	ProgramResource_t& programResource = m_ProgramResources.Element(
 		programIndex);
-	if (programResource.m_pVertexProgramAligned) rsxFree(
+	if (programResource.m_pVertexProgramAligned) free(
 		programResource.m_pVertexProgramAligned);
 	if (programResource.m_pFragmentProgramAligned) rsxFree(
 		programResource.m_pFragmentProgramAligned);
