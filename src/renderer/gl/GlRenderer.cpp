@@ -1198,6 +1198,8 @@ void CGlRenderer::DrawInstanced(
 		programIndex);
 	CUtlMap<CFixedString, int32>& attributeMap = programResource.m_AttributeLocations;
 
+	FlushProgramState();
+
 	ApplyVertexConstants(hProgram);
 	ApplyFragmentConstants(hProgram);
 
@@ -1302,6 +1304,8 @@ void CGlRenderer::DrawIndexedInstanced(
 		programIndex);
 	CUtlMap<CFixedString, int32>& attributeMap = programResource.m_AttributeLocations;
 
+	FlushProgramState();
+
 	ApplyVertexConstants(hProgram);
 	ApplyFragmentConstants(hProgram);
 
@@ -1376,6 +1380,13 @@ void CGlRenderer::DrawIndexedInstanced(
 			reinterpret_cast<void*>(uint64(attribute.m_Offset)));
 		glVertexAttribDivisor(loc, 1);
 	}
+
+	int32 indexBufferIndex = m_BufferResources.Find(
+		m_PipelineState.m_hIndexBuffer);
+	if (indexBufferIndex == m_BufferResources.InvalidIndex()) return;
+	glBindBuffer(
+		GL_ELEMENT_ARRAY_BUFFER,
+		m_BufferResources.Element(indexBufferIndex).m_hId);
 
 	FlushPipelineState();
 
