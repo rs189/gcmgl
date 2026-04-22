@@ -67,6 +67,10 @@ bool CGlRenderer::Init(const RendererDesc_t& rendererDesc)
 
 	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 
+	GLuint defaultVAO = 0;
+	glGenVertexArrays(1, &defaultVAO);
+	glBindVertexArray(defaultVAO);
+
 	m_Viewport.m_X = 0.0f;
 	m_Viewport.m_Y = 0.0f;
 	m_Viewport.m_Width = float32(rendererDesc.m_Width);
