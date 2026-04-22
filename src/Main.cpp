@@ -92,10 +92,10 @@ int main(int argc, char* argv[])
 	windowConfig.m_AspectRatio = aspect_ratio;
 #endif // PLATFORM_PS3
 
-	CTime::Initialize();
+	CTime::Init();
 
 #ifdef GCMGL_DIAGNOSTICS
-	CDiagnosticsReporter::Initialize();
+	CDiagnosticsReporter::Init();
 #endif // GCMGL_DIAGNOSTICS
 
 #if defined(EXAMPLE_TRIANGLE)

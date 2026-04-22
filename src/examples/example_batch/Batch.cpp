@@ -41,7 +41,7 @@ int32 RunBatchExample(
 {
 	bool isRunning = true;
 
-	CTime::Initialize();
+	CTime::Init();
 
 #ifdef PLATFORM_PS3
 #ifdef GCMGL_DIAGNOSTICS

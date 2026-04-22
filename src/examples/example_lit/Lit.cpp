@@ -59,7 +59,7 @@ int32 RunLitExample(
 {
 	bool isRunning = true;
 
-	CTime::Initialize();
+	CTime::Init();
 
 	float32 rotationY = 0.0f;
 	float32 rotationX = 0.0f;

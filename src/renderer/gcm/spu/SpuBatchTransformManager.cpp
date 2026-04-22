@@ -40,7 +40,7 @@ CSpuBatchTransformManager::~CSpuBatchTransformManager()
 	Shutdown();
 }
 
-bool CSpuBatchTransformManager::Initialize()
+bool CSpuBatchTransformManager::Init()
 {
 	const int32 spuInitializeResult = sysSpuInitialize(6, 0);
 	if (spuInitializeResult < 0)

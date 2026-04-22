@@ -24,7 +24,7 @@ public:
 	CSpuBatchTransformManager();
 	~CSpuBatchTransformManager();
 
-	bool Initialize();
+	bool Init();
 	void Shutdown();
 
 	SPUResult_t::Enum BeginBatch(

@@ -33,7 +33,7 @@ int32 RunCubeExample(
 {
 	bool isRunning = true;
 
-	CTime::Initialize();
+	CTime::Init();
 
 	float32 rotationX = 0.0f;
 	float32 rotationY = 0.0f;

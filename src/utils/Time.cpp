@@ -19,7 +19,7 @@ float32 CTime::s_DeltaTime = 0.0f;
 uint64 CTime::s_FrameCount = 0;
 bool CTime::s_IsInitialized = false;
 
-void CTime::Initialize()
+void CTime::Init()
 {
 	if (!s_IsInitialized)
 	{
@@ -36,7 +36,7 @@ void CTime::Update()
 {
 	if (!s_IsInitialized)
 	{
-		Initialize();
+		Init();
 	}
 
 	s_LastTime = s_CurrentTime;

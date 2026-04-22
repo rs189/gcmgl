@@ -143,7 +143,7 @@ bool CGcmRenderer::Init(const RendererDesc_t& rendererDesc)
 	if (pSpuBatchTransformManagerMemory)
 	{
 		m_pSpuBatchTransformManager = new(pSpuBatchTransformManagerMemory) CSpuBatchTransformManager();
-		if (!m_pSpuBatchTransformManager->Initialize())
+		if (!m_pSpuBatchTransformManager->Init())
 		{
 			m_pSpuBatchTransformManager->~CSpuBatchTransformManager();
 			CUtlMemory::Free(pSpuBatchTransformManagerMemory);

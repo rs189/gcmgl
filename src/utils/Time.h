@@ -19,7 +19,7 @@ public:
 	CTime();
 	~CTime();
 
-	static void Initialize();
+	static void Init();
 	static void Update();
 	static float64 GetTime();
 	static float32 GetDeltaTime();

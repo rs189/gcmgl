@@ -33,7 +33,7 @@ int32 RunTriangleExample(
 {
 	bool isRunning = true;
 
-	CTime::Initialize();
+	CTime::Init();
 
 	float32 rotation = 0.0f;
 
