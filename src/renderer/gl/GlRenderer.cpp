@@ -846,6 +846,18 @@ void CGlRenderer::SetConstantBuffer(
 	boundUniform.m_Slot = slot;
 	boundUniform.m_Stage = stage;
 
+	UniformShadow_t& uniformShadow = m_ProgramUniformShadows[m_PipelineState.m_hShaderProgram][hLayout];
+	const UniformBlockLayout_t& uniformLayout = m_UniformBlockLayouts.Element(layoutIndex);
+	if (uniformShadow.m_Data.Count() < int32(uniformLayout.m_Size))
+	{
+		uniformShadow.m_Data.SetCount(int32(uniformLayout.m_Size));
+	}
+	memcpy(
+		uniformShadow.m_Data.Base(),
+		m_BufferResources.Element(bufferIndex).m_pPtr,
+		uniformLayout.m_Size);
+	uniformShadow.m_IsDirty = true;
+
 	m_StateDirtyFlags = m_StateDirtyFlags | StateDirtyFlags_t::Uniforms;
 }
 
