@@ -119,6 +119,7 @@ public:
 		}
 
 		m_pElements[insertPos].m_Key = key;
+		m_pElements[insertPos].m_Value = V();
 		m_Count++;
 
 		return m_pElements[insertPos].m_Value;
