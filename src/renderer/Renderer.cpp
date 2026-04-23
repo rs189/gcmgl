@@ -220,7 +220,8 @@ void CRenderer::FlushPipelineState()
 		FlushProgramState();
 	}
 
-	if (m_PipelineState.m_pVertexLayout != GCMGL_NULL)
+	if ((m_StateDirtyFlags & StateDirtyFlags_t::VertexBuffer) != StateDirtyFlags_t::None &&
+		m_PipelineState.m_pVertexLayout != GCMGL_NULL)
 	{
 		BindVertexAttributes(
 			m_PipelineState.m_pVertexLayout,
