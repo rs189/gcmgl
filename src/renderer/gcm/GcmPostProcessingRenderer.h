@@ -13,6 +13,7 @@
 
 #include <rsx/rsx.h>
 #include "tier0/platform.h"
+#include "utils/RsxHeap.h"
 
 struct GcmPostProcessState_t
 {
@@ -29,13 +30,20 @@ struct GcmPostProcessState_t
 	void* m_pQuadVertices;
 	const rsxVertexProgram* m_pVertexProgram;
 	const rsxFragmentProgram* m_pFragmentProgram;
+	RsxAllocation_t m_FragmentProgramAlloc;
+	RsxAllocation_t m_FragmentProgramBufferAlloc;
+	RsxAllocation_t m_OffscreenColorAlloc;
+	RsxAllocation_t m_OffscreenDepthAlloc;
+	RsxAllocation_t m_QuadVerticesAlloc;
 };
 
 class CGcmPostProcessingRenderer
 {
 public:
-	static GcmPostProcessState_t InitState();
-	static void ShutdownState(GcmPostProcessState_t& state);
+	static GcmPostProcessState_t InitState(CRsxHeap& staticHeap);
+	static void ShutdownState(
+		GcmPostProcessState_t& state,
+		CRsxHeap& staticHeap);
 	static void Begin(const GcmPostProcessState_t& state);
 	static void End(const GcmPostProcessState_t& state);
 };

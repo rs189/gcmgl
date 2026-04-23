@@ -530,22 +530,22 @@ void CGcmBatchRenderer::DrawBatchedChunk(
 	{
 		if (stagingVertexBuffer.m_pPtr)
 		{
-			rsxFree(stagingVertexBuffer.m_pPtr);
+			m_DynamicHeap.Free(stagingVertexBuffer.m_Alloc);
 		}
 
-		stagingVertexBuffer.m_pPtr = rsxMemalign(128, alignedVertexSize);
+		stagingVertexBuffer.m_Alloc = m_DynamicHeap.Alloc(
+			alignedVertexSize,
+			128);
+		stagingVertexBuffer.m_pPtr = stagingVertexBuffer.m_Alloc.m_pPtr;
 		if (!stagingVertexBuffer.m_pPtr)
 		{
 			Warning(
-				"[GcmBatchRenderer] Failed to allocate staging vertex buffer\n");
+				"[GcmBatchRenderer] Staging heap out of memory for vertex buffer\n");
 
 			return;
 		}
 
 		stagingVertexBuffer.m_Size = alignedVertexSize;
-		rsxAddressToOffset(
-			stagingVertexBuffer.m_pPtr,
-			&stagingVertexBuffer.m_Offset);
 		if (!stagingVertexBuffer.m_hBuffer)
 		{
 			stagingVertexBuffer.m_hBuffer = m_NextHandle++;
@@ -697,7 +697,7 @@ void CGcmBatchRenderer::DrawBatchedChunk(
 
 	const BufferResource_t stagingVertexBufferResource = {
 		stagingVertexBuffer.m_pPtr,
-		stagingVertexBuffer.m_Offset,
+		stagingVertexBuffer.m_Alloc.m_Offset,
 		alignedVertexSize
 	};
 	m_BufferResources.Insert(
@@ -809,22 +809,22 @@ void CGcmBatchRenderer::DrawIndexedBatchedChunk(
 	{
 		if (stagingVertexBuffer.m_pPtr)
 		{
-			rsxFree(stagingVertexBuffer.m_pPtr);
+			m_DynamicHeap.Free(stagingVertexBuffer.m_Alloc);
 		}
 
-		stagingVertexBuffer.m_pPtr = rsxMemalign(128, alignedVertexSize);
+		stagingVertexBuffer.m_Alloc = m_DynamicHeap.Alloc(
+			alignedVertexSize,
+			128);
+		stagingVertexBuffer.m_pPtr = stagingVertexBuffer.m_Alloc.m_pPtr;
 		if (!stagingVertexBuffer.m_pPtr)
 		{
 			Warning(
-				"[GcmBatchRenderer] Failed to allocate staging vertex buffer\n");
+				"[GcmBatchRenderer] Staging heap out of memory for vertex buffer\n");
 
 			return;
 		}
 
 		stagingVertexBuffer.m_Size = alignedVertexSize;
-		rsxAddressToOffset(
-			stagingVertexBuffer.m_pPtr,
-			&stagingVertexBuffer.m_Offset);
 		if (!stagingVertexBuffer.m_hBuffer)
 		{
 			stagingVertexBuffer.m_hBuffer = m_NextHandle++;
@@ -838,22 +838,20 @@ void CGcmBatchRenderer::DrawIndexedBatchedChunk(
 	{
 		if (stagingIndexBuffer.m_pPtr)
 		{
-			rsxFree(stagingIndexBuffer.m_pPtr);
+			m_DynamicHeap.Free(stagingIndexBuffer.m_Alloc);
 		}
 
-		stagingIndexBuffer.m_pPtr = rsxMemalign(128, alignedIndexSize);
+		stagingIndexBuffer.m_Alloc = m_DynamicHeap.Alloc(alignedIndexSize, 128);
+		stagingIndexBuffer.m_pPtr = stagingIndexBuffer.m_Alloc.m_pPtr;
 		if (!stagingIndexBuffer.m_pPtr)
 		{
 			Warning(
-				"[GcmBatchRenderer] Failed to allocate staging index buffer\n");
+				"[GcmBatchRenderer] Staging heap out of memory for index buffer\n");
 
 			return;
 		}
 
 		stagingIndexBuffer.m_Size = alignedIndexSize;
-		rsxAddressToOffset(
-			stagingIndexBuffer.m_pPtr,
-			&stagingIndexBuffer.m_Offset);
 		if (!stagingIndexBuffer.m_hBuffer)
 		{
 			stagingIndexBuffer.m_hBuffer = m_NextHandle++;
@@ -1014,7 +1012,7 @@ void CGcmBatchRenderer::DrawIndexedBatchedChunk(
 
 	const BufferResource_t stagingVertexBufferResource = {
 		stagingVertexBuffer.m_pPtr,
-		stagingVertexBuffer.m_Offset,
+		stagingVertexBuffer.m_Alloc.m_Offset,
 		alignedVertexSize
 	};
 	m_BufferResources.Insert(
@@ -1023,7 +1021,7 @@ void CGcmBatchRenderer::DrawIndexedBatchedChunk(
 
 	const BufferResource_t stagingIndexBufferResource = {
 		stagingIndexBuffer.m_pPtr,
-		stagingIndexBuffer.m_Offset,
+		stagingIndexBuffer.m_Alloc.m_Offset,
 		alignedIndexSize
 	};
 	m_BufferResources.Insert(

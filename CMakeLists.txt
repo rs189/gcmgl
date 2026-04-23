@@ -90,6 +90,8 @@ if(BUILD_PS3)
 
 	list(APPEND ENGINE_SRCS
 		thirdparty/rsxutil/rsxutil.cpp
+		thirdparty/OffsetAllocator/offsetAllocator.cpp
+		src/utils/RsxHeap.cpp
 		src/renderer/PostProcessingRenderer.cpp
 		src/renderer/gcm/GcmPostProcessingRenderer.cpp
 		src/renderer/gcm/GcmRenderer.cpp
@@ -99,6 +101,12 @@ if(BUILD_PS3)
 	)
 
 	add_library(engine STATIC ${ENGINE_SRCS})
+
+	set_source_files_properties(
+		thirdparty/OffsetAllocator/offsetAllocator.cpp
+		src/utils/RsxHeap.cpp
+		PROPERTIES COMPILE_FLAGS "-std=c++11"
+	)
 
 	target_include_directories(engine PUBLIC
 		${CMAKE_SOURCE_DIR}/include

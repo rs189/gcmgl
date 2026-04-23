@@ -9,7 +9,7 @@ include $(PSL1GHT)/ppu_rules
 TARGET := gcmgl
 BUILD := build/bin/ps3
 OBJDIR := build/obj/ps3
-SOURCES := src thirdparty/mathsfury src/utils src/renderer src/renderer/gcm src/renderer/gcm/spu thirdparty/rsxutil src/window src/window/ps3
+SOURCES := src thirdparty/mathsfury src/utils src/renderer src/renderer/gcm src/renderer/gcm/spu thirdparty/rsxutil src/window src/window/ps3 thirdparty/OffsetAllocator
 INCLUDES := src include public thirdparty src/renderer/gcm/spu
 
 SPU_SRCDIR := src/renderer/gcm/spu
@@ -73,8 +73,11 @@ LIBS := -lgcm_sys -lrsx -llv2 -lsysutil -lsysmodule -lio -lm -lrt -lnet $(wildca
 CFILES := $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.c)))
 CFILES := $(filter-out SpuBatchTransformJob.c, $(CFILES))
 CPPFILES := $(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.cpp)))
-CPPFILES := $(filter-out GlRenderer.cpp GlBatchRenderer.cpp WindowGlfw.cpp, $(CPPFILES))
+CPPFILES := $(filter-out GlRenderer.cpp GlBatchRenderer.cpp WindowGlfw.cpp offsetAllocatorTests.cpp offsetAllocator.cpp RsxHeap.cpp, $(CPPFILES))
 CPPFILES += $(EXAMPLE_SRC)
+
+# OffsetAllocator uses constexpr/member-init/rvalue-refs
+CXX11OFILES := $(OBJDIR)/offsetAllocator.o $(OBJDIR)/RsxHeap.o
 
 export OUTPUT := $(BUILD)/$(TARGET)
 export VPATH := $(SOURCES) $(EXAMPLE_DIR)
@@ -83,7 +86,7 @@ export LD := $(CXX)
 
 export INCLUDE := $(foreach dir,$(INCLUDES), -I$(dir)) $(LIBPSL1GHT_INC) -I$(OBJDIR)
 export LIBPATHS := $(LIBPSL1GHT_LIB)
-export OFILES := $(addprefix $(BUILDDIR)/, $(CPPFILES:.cpp=.o) $(CFILES:.c=.o)) $(SPU_BATCH_TRANSFORM_JOB_OBJ)
+export OFILES := $(addprefix $(BUILDDIR)/, $(CPPFILES:.cpp=.o) $(CFILES:.c=.o)) $(CXX11OFILES) $(SPU_BATCH_TRANSFORM_JOB_OBJ)
 
 .PHONY: all clean run pkg
 
@@ -101,6 +104,14 @@ $(BUILD) $(OBJDIR):
 $(BUILDDIR)/%.o: %.cpp | $(OBJDIR)
 	@echo $(notdir $<)
 	@$(CXX) -MD -MP -MF $(BUILDDIR)/$*.d $(CXXFLAGS) -c $< -o $@
+
+$(BUILDDIR)/offsetAllocator.o: offsetAllocator.cpp | $(OBJDIR)
+	@echo $(notdir $<)
+	@$(CXX) -MD -MP -MF $(BUILDDIR)/offsetAllocator.d $(filter-out -std=c++98,$(CXXFLAGS)) -std=c++11 -c $< -o $@
+
+$(BUILDDIR)/RsxHeap.o: RsxHeap.cpp | $(OBJDIR)
+	@echo $(notdir $<)
+	@$(CXX) -MD -MP -MF $(BUILDDIR)/RsxHeap.d $(filter-out -std=c++98,$(CXXFLAGS)) -std=c++11 -c $< -o $@
 
 $(BUILDDIR)/%.o: %.c | $(OBJDIR)
 	@echo $(notdir $<)

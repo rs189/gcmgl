@@ -13,6 +13,7 @@
 
 #include "renderer/Renderer.h"
 #include "renderer/gcm/GcmPostProcessingRenderer.h"
+#include "utils/RsxHeap.h"
 #include "rsxutil/rsxutil.h"
 #include <rsx/rsx.h>
 #include <rsx/gcm_sys.h>
@@ -161,22 +162,22 @@ protected:
 		void* m_pPtr;
 		uint32 m_Offset;
 		uint32 m_Size;
+		RsxAllocation_t m_Alloc;
 	};
 
 	struct StagingBuffer_t
 	{
 		StagingBuffer_t() :
 			m_pPtr(GCMGL_NULL),
-			m_Offset(0),
 			m_Size(0),
 			m_hBuffer(0)
 		{
 		}
 
 		void* m_pPtr;
-		uint32 m_Offset;
 		uint32 m_Size;
 		BufferHandle m_hBuffer;
+		RsxAllocation_t m_Alloc;
 	};
 
 	static const int32 s_MaxInstanceStagingBuffers = 16;
@@ -184,6 +185,11 @@ protected:
 	StagingBuffer_t m_StagingVertexBuffer[2];
 	StagingBuffer_t m_StagingIndexBuffer[2];
 	CUtlMap<BufferHandle, BufferResource_t> m_BufferResources;
+
+	static const uint32 s_StaticHeapSize = 96 * 1024 * 1024;
+	static const uint32 s_DynamicHeapSize = 16 * 1024 * 1024;
+	CRsxHeap m_StaticHeap;
+	CRsxHeap m_DynamicHeap;
 
 	struct InstanceCache_t
 	{
@@ -216,6 +222,8 @@ private:
 		uint32 m_VertexProgramSize;
 		uint32 m_FragmentProgramOffset;
 		uint32 m_FragmentProgramSize;
+		RsxAllocation_t m_FragmentProgramAlloc;
+		RsxAllocation_t m_FragmentProgramBufferAlloc;
 	};
 
 	CUtlMap<ShaderProgramHandle, ProgramResource_t> m_ProgramResources;
@@ -227,6 +235,7 @@ private:
 		uint32 m_Width;
 		uint32 m_Height;
 		TextureFormat_t::Enum m_Format;
+		RsxAllocation_t m_Alloc;
 		bool m_IsCubemap;
 	};
 

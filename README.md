@@ -17,6 +17,7 @@ gcmgl is a C++ graphics library targeting PlayStation 3 (GCM) and Linux (x86_64,
 - [PSL1GHT](http://github.com/ps3dev/PSL1GHT)
 - [NVIDIA Cg Toolkit](https://developer.nvidia.com/cg-toolkit-download)
 - [ImageMagick](https://imagemagick.org)
+- [OffsetAllocator](https://github.com/sebbbi/OffsetAllocator)
 
 ##### Linux build dependencies:
 

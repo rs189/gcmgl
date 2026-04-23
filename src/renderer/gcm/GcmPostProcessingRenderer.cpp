@@ -15,7 +15,8 @@
 #include "utils/Utils.h"
 #include "utils/UtlMemory.h"
 
-GcmPostProcessState_t CGcmPostProcessingRenderer::InitState()
+GcmPostProcessState_t CGcmPostProcessingRenderer::InitState(
+	CRsxHeap& staticHeap)
 {
 	GcmPostProcessState_t state;
 	memset(&state, 0, sizeof(state));
@@ -47,13 +48,14 @@ GcmPostProcessState_t CGcmPostProcessingRenderer::InitState()
 		&state.m_pVertexProgramUCode,
 		&vertexCodeSize);
 
-	state.m_pFragmentProgramAligned = rsxMemalign(
-		64,
-		uint32(fragmentProgramBinary.Count()));
-	if (!state.m_pFragmentProgramAligned)
+	state.m_FragmentProgramAlloc = staticHeap.Alloc(
+		uint32(fragmentProgramBinary.Count()),
+		64);
+	if (!state.m_FragmentProgramAlloc.m_pPtr)
 	{
 		return state;
 	}
+	state.m_pFragmentProgramAligned = state.m_FragmentProgramAlloc.m_pPtr;
 	memcpy(
 		state.m_pFragmentProgramAligned,
 		fragmentProgramBinary.Base(),
@@ -66,39 +68,43 @@ GcmPostProcessState_t CGcmPostProcessingRenderer::InitState()
 		const_cast<rsxFragmentProgram*>(state.m_pFragmentProgram),
 		&pFragmentCode,
 		&fragmentCodeSize);
-	state.m_pFragmentProgramBuffer = rsxMemalign(64, fragmentCodeSize);
-	if (!state.m_pFragmentProgramBuffer)
-	{
-		return state;
-	}
-	memcpy(
-		state.m_pFragmentProgramBuffer,
-		pFragmentCode,
-		fragmentCodeSize);
-	rsxAddressToOffset(
-		state.m_pFragmentProgramBuffer,
-		&state.m_FragmentProgramOffset);
 
-	state.m_pOffscreenColor = rsxMemalign(64, display_height * color_pitch);
-	state.m_pOffscreenDepth = rsxMemalign(64, display_height * depth_pitch);
-	if (!state.m_pOffscreenColor || !state.m_pOffscreenDepth)
+	state.m_FragmentProgramBufferAlloc = staticHeap.Alloc(fragmentCodeSize, 64);
+	if (!state.m_FragmentProgramBufferAlloc.m_pPtr)
 	{
 		return state;
 	}
+	state.m_pFragmentProgramBuffer = state.m_FragmentProgramBufferAlloc.m_pPtr;
+	memcpy(state.m_pFragmentProgramBuffer, pFragmentCode, fragmentCodeSize);
+	state.m_FragmentProgramOffset = state.m_FragmentProgramBufferAlloc.m_Offset;
+
+	state.m_OffscreenColorAlloc = staticHeap.Alloc(
+		display_height * color_pitch,
+		64);
+	state.m_OffscreenDepthAlloc = staticHeap.Alloc(
+		display_height * depth_pitch,
+		64);
+	if (!state.m_OffscreenColorAlloc.m_pPtr || !state.m_OffscreenDepthAlloc.m_pPtr)
+	{
+		return state;
+	}
+	state.m_pOffscreenColor = state.m_OffscreenColorAlloc.m_pPtr;
+	state.m_pOffscreenDepth = state.m_OffscreenDepthAlloc.m_pPtr;
 
 	memset(state.m_pOffscreenColor, 0, display_height * color_pitch);
 	memset(state.m_pOffscreenDepth, 0, display_height * depth_pitch);
 
 	__sync_synchronize();
 
-	rsxAddressToOffset(state.m_pOffscreenColor, &state.m_OffscreenColorOffset);
-	rsxAddressToOffset(state.m_pOffscreenDepth, &state.m_OffscreenDepthOffset);
+	state.m_OffscreenColorOffset = state.m_OffscreenColorAlloc.m_Offset;
+	state.m_OffscreenDepthOffset = state.m_OffscreenDepthAlloc.m_Offset;
 
-	state.m_pQuadVertices = rsxMemalign(64, 4 * 2 * sizeof(float32));
-	if (!state.m_pQuadVertices)
+	state.m_QuadVerticesAlloc = staticHeap.Alloc(4 * 2 * sizeof(float32), 64);
+	if (!state.m_QuadVerticesAlloc.m_pPtr)
 	{
 		return state;
 	}
+	state.m_pQuadVertices = state.m_QuadVerticesAlloc.m_pPtr;
 
 	float32* pQuadVertices = reinterpret_cast<float32*>(state.m_pQuadVertices);
 	pQuadVertices[0] = -1.0f;
@@ -112,12 +118,14 @@ GcmPostProcessState_t CGcmPostProcessingRenderer::InitState()
 
 	__sync_synchronize();
 
-	rsxAddressToOffset(state.m_pQuadVertices, &state.m_QuadVerticesOffset);
+	state.m_QuadVerticesOffset = state.m_QuadVerticesAlloc.m_Offset;
 
 	return state;
 }
 
-void CGcmPostProcessingRenderer::ShutdownState(GcmPostProcessState_t& state)
+void CGcmPostProcessingRenderer::ShutdownState(
+	GcmPostProcessState_t& state,
+	CRsxHeap& staticHeap)
 {
 	if (state.m_pVertexProgramAligned)
 	{
@@ -127,27 +135,27 @@ void CGcmPostProcessingRenderer::ShutdownState(GcmPostProcessState_t& state)
 	state.m_pVertexProgramUCode = GCMGL_NULL;
 	if (state.m_pFragmentProgramAligned)
 	{
-		rsxFree(state.m_pFragmentProgramAligned);
+		staticHeap.Free(state.m_FragmentProgramAlloc);
 		state.m_pFragmentProgramAligned = GCMGL_NULL;
 	}
 	if (state.m_pFragmentProgramBuffer)
 	{
-		rsxFree(state.m_pFragmentProgramBuffer);
+		staticHeap.Free(state.m_FragmentProgramBufferAlloc);
 		state.m_pFragmentProgramBuffer = GCMGL_NULL;
 	}
 	if (state.m_pOffscreenColor)
 	{
-		rsxFree(state.m_pOffscreenColor);
+		staticHeap.Free(state.m_OffscreenColorAlloc);
 		state.m_pOffscreenColor = GCMGL_NULL;
 	}
 	if (state.m_pOffscreenDepth)
 	{
-		rsxFree(state.m_pOffscreenDepth);
+		staticHeap.Free(state.m_OffscreenDepthAlloc);
 		state.m_pOffscreenDepth = GCMGL_NULL;
 	}
 	if (state.m_pQuadVertices)
 	{
-		rsxFree(state.m_pQuadVertices);
+		staticHeap.Free(state.m_QuadVerticesAlloc);
 		state.m_pQuadVertices = GCMGL_NULL;
 	}
 	state.m_pVertexProgram = GCMGL_NULL;
