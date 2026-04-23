@@ -286,6 +286,11 @@ void CGlRenderer::SetViewport(const Viewport_t& viewport)
 		static_cast<GLsizei>(viewport.m_Height));
 }
 
+Viewport_t CGlRenderer::GetViewport() const
+{
+	return m_Viewport;
+}
+
 void CGlRenderer::SetScissor(const Rect_t& rect)
 {
 	glScissor(

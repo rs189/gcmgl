@@ -506,6 +506,7 @@ public:
 		uint32 stencil = 0) = 0;
 
 	virtual void SetViewport(const Viewport_t& viewport) = 0;
+	virtual Viewport_t GetViewport() const = 0;
 	virtual void SetScissor(const Rect_t& rect) = 0;
 	virtual void SetStencilRef(uint32 stencilRef) = 0;
 

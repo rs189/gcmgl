@@ -380,6 +380,11 @@ void CGcmRenderer::SetViewport(const Viewport_t& viewport)
 		m_ViewportOffset);
 }
 
+Viewport_t CGcmRenderer::GetViewport() const
+{
+	return m_Viewport;
+}
+
 void CGcmRenderer::SetScissor(const Rect_t& rect)
 {
 	rsxSetScissor(
@@ -1143,7 +1148,15 @@ void CGcmRenderer::ApplyVertexConstants(ShaderProgramHandle hProgram)
 				constCache.Insert(uniformName, pConst);
 			}
 
-			if (!pConst) continue;
+			if (!pConst)
+			{
+				Warning(
+					"[GCMRenderer] Const: %s not found in prog: %u\n",
+					uniformName.Get(),
+					hProgram);
+
+				continue;
+			}
 
 			const float32* pElementData = reinterpret_cast<const float32*>(
 				pShadowData + uint32(uniformNameIndex) * uniformBytes);
