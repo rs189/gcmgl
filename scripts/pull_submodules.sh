@@ -7,10 +7,12 @@ cd "$ROOT_DIR"
 
 PULL_GLAD=0
 PULL_SIMDE=0
+PULL_OFFSET_ALLOCATOR=0
 for arg in "$@"; do
 	case $arg in
 		--pull-glad)  PULL_GLAD=1 ;;
 		--pull-simde) PULL_SIMDE=1 ;;
+		--pull-offset-allocator) PULL_OFFSET_ALLOCATOR=1 ;;
 	esac
 done
 
@@ -42,6 +44,14 @@ if [ "$PULL_SIMDE" -eq 1 ]; then
 	git -C thirdparty/simde fetch
 	git -C thirdparty/simde checkout origin/master
 	git add thirdparty/simde
+fi
+
+if [ "$PULL_OFFSET_ALLOCATOR" -eq 1 ]; then
+	echo "Updating OffsetAllocator submodule..."
+
+	git -C thirdparty/OffsetAllocator fetch
+	git -C thirdparty/OffsetAllocator checkout origin/main
+	git add thirdparty/OffsetAllocator
 fi
 
 echo "Committing updated submodules..."
