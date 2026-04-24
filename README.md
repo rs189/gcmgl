@@ -23,6 +23,7 @@ gcmgl is a C++ graphics library targeting PlayStation 3 (GCM) and Linux (x86_64,
 
 - [glad](https://github.com/Dav1dde/glad)
 - [SIMDe](https://github.com/simd-everywhere/simde) (optional, for SSE path)
+- [Slang](https://github.com/shader-slang/slang)
 
 ## Interface
 

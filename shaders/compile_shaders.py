@@ -13,10 +13,72 @@ class ShaderCompiler:
         self.shaders_cg_dir = self.project_root / "build" / "shaders" / "cg"
         self.shaders_glsl_dir = self.project_root / "build" / "shaders" / "glsl"
 
+    def compile_slang(self):
+        tools_slangc = self.project_root / "tools" / "slang" / "slangc"
+        slangc_path = str(tools_slangc) if tools_slangc.is_file() else shutil.which('slangc')
+        if not slangc_path:
+            print("[ERROR] slangc not found, cannot compile Slang shaders.")
+            return False
+
+        slang_env = os.environ.copy()
+        if tools_slangc.is_file():
+            tools_dir = str(tools_slangc.parent)
+            existing = slang_env.get('LD_LIBRARY_PATH', '')
+            slang_env['LD_LIBRARY_PATH'] = f"{tools_dir}:{existing}" if existing else tools_dir
+
+        slang_dir = self.shaders_dir / "slang"
+        if not slang_dir.exists():
+            return
+
+        self.shaders_glsl_dir.mkdir(parents=True, exist_ok=True)
+
+        for slang_file in sorted(slang_dir.glob("*.slang")):
+            base = slang_file.stem
+            print(f"[INFO] Compiling {slang_file.name}")
+
+            vert_out = self.shaders_glsl_dir / f"{base}.vert"
+            frag_out = self.shaders_glsl_dir / f"{base}.frag"
+
+            for entry, stage, out_path in [
+                ('vertMain', 'vertex',   vert_out),
+                ('fragMain', 'fragment', frag_out),
+            ]:
+                cmd = [
+                    slangc_path,
+                    str(slang_file),
+                    '-entry', entry,
+                    '-stage', stage,
+                    '-target', 'glsl',
+                    '-matrix-layout-column-major',
+                    '-o', str(out_path),
+                ]
+                try:
+                    result = subprocess.run(cmd, cwd=self.project_root, capture_output=True, text=True, env=slang_env)
+                    if result.returncode == 0:
+                        # Strip row_major layout qualifiers
+                        glsl = out_path.read_text()
+                        glsl = glsl.replace('layout(row_major) uniform;\n', '')
+                        glsl = glsl.replace('layout(row_major) buffer;\n', '')
+                        out_path.write_text(glsl)
+                        print(f"[INFO] Slang {stage} OK -> {out_path}")
+                    else:
+                        out_path.unlink(missing_ok=True)
+                        print(f"[WARNING] Failed to compile {stage} shader {slang_file.name}")
+                        if result.stderr:
+                            print(result.stderr, file=sys.stderr)
+                except Exception as e:
+                    print(f"[ERROR] Failed to compile {stage}: {e}")
+
+        return True
+
     def run(self):
         # Create directories
         self.shaders_cg_dir.mkdir(parents=True, exist_ok=True)
         self.shaders_glsl_dir.mkdir(parents=True, exist_ok=True)
+
+        # Compile Slang shaders to GLSL
+        if self.compile_slang() is False:
+            return False
 
         # Check cgcomp
         cgcomp_path = '/usr/local/ps3dev/bin/cgcomp'
@@ -86,12 +148,6 @@ class ShaderCompiler:
                     print(f"[ERROR] Failed to compile fragment: {e}")
 
         print("[INFO] Shader compilation complete.")
-
-        # Copy GLSL shaders to build directory
-        glsl_src = self.project_root / "shaders" / "glsl"
-        if glsl_src.exists():
-            shutil.copytree(glsl_src, self.shaders_glsl_dir, dirs_exist_ok=True)
-            print(f"[INFO] Copied GLSL shaders from {glsl_src} to {self.shaders_glsl_dir}")
 
         return True
 

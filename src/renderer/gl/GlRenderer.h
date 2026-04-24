@@ -151,6 +151,7 @@ protected:
 		uint32 m_hId;
 		uint32 m_Target;
 		bool m_IsAligned;
+		bool m_IsDirty;
 	};
 
 	struct StagingBuffer_t
@@ -169,7 +170,7 @@ protected:
 	struct ProgramResource_t
 	{
 		CUtlMap<CFixedString, int32> m_AttributeLocations;
-		CUtlMap<CFixedString, int32> m_UniformLocations;
+		CUtlMap<uint32, GLint> m_UniformBlockIndices;
 		uint32 m_hId;
 	};
 
@@ -199,17 +200,10 @@ private:
 		ShaderStage_t m_Stage;
 	};
 
-	struct UniformShadow_t
-	{
-		CUtlVector<uint8> m_Data;
-		bool m_IsDirty;
-	};
-
 	Viewport_t m_Viewport;
 	float32 m_ViewportScale[4];
 	float32 m_ViewportOffset[4];
 
-	CUtlMap<ShaderProgramHandle, CUtlMap<uint32, UniformShadow_t> > m_ProgramUniformShadows;
 	CUtlMap<ShaderProgramHandle, CUtlMap<uint32, BoundUniform_t> > m_ProgramUniformBuffers;
 	CUtlMap<ShaderProgramHandle, ProgramResource_t> m_ProgramResources;
 	CUtlMap<TextureHandle, TextureResource_t> m_TextureResources;

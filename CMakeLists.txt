@@ -196,7 +196,7 @@ else()
 	add_custom_command(TARGET gcmgl POST_BUILD
 		COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:gcmgl>/shaders/glsl
 		COMMAND ${CMAKE_COMMAND} -E copy_directory
-			${CMAKE_SOURCE_DIR}/shaders/glsl $<TARGET_FILE_DIR:gcmgl>/shaders/glsl
+			${CMAKE_BINARY_DIR}/../shaders/glsl $<TARGET_FILE_DIR:gcmgl>/shaders/glsl
 		COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:gcmgl>/assets
 		COMMAND ${CMAKE_COMMAND} -E copy_directory
 			${CMAKE_SOURCE_DIR}/assets $<TARGET_FILE_DIR:gcmgl>/assets

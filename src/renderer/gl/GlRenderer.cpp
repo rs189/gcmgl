@@ -182,7 +182,6 @@ void CGlRenderer::Shutdown()
 	}
 	m_ProgramResources.RemoveAll();
 
-	m_ProgramUniformShadows.RemoveAll();
 	m_ProgramUniformBuffers.RemoveAll();
 
 	for (int32 i = m_BufferResources.FirstInorder(); m_BufferResources.IsValidIndex(i); i = m_BufferResources.NextInorder(i))
@@ -342,7 +341,8 @@ BufferHandle CGlRenderer::CreateVertexBuffer(
 		pPtr,
 		id,
 		GL_ARRAY_BUFFER,
-		true
+		true,
+		false
 	};
 	m_BufferResources.Insert(hBuffer, bufferResource);
 
@@ -387,7 +387,8 @@ BufferHandle CGlRenderer::CreateIndexBuffer(
 		pPtr,
 		id,
 		GL_ELEMENT_ARRAY_BUFFER,
-		true
+		true,
+		false
 	};
 	m_BufferResources.Insert(hBuffer, bufferResource);
 
@@ -406,12 +407,22 @@ BufferHandle CGlRenderer::CreateConstantBuffer(uint64 size, BufferUsage_t::Enum 
 
 	memset(pPtr, 0, static_cast<size_t>(size));
 
+	uint32 id;
+	glGenBuffers(1, &id);
+	glBindBuffer(GL_UNIFORM_BUFFER, id);
+	glBufferData(
+		GL_UNIFORM_BUFFER,
+		static_cast<GLsizeiptr>(size),
+		GCMGL_NULL,
+		usage == BufferUsage_t::Static ? GL_STATIC_DRAW : GL_DYNAMIC_DRAW);
+
 	const BufferHandle hBuffer = AllocHandle();
 	const BufferResource_t bufferResource = {
 		size,
 		pPtr,
-		0,
-		0,
+		id,
+		GL_UNIFORM_BUFFER,
+		false,
 		false
 	};
 	m_BufferResources.Insert(hBuffer, bufferResource);
@@ -437,7 +448,7 @@ void CGlRenderer::UpdateBuffer(
 	void* pDst = reinterpret_cast<uint8*>(bufferResource.m_pPtr) + offset;
 	memcpy(pDst, pData, static_cast<size_t>(size));
 
-	if (bufferResource.m_hId)
+	if (bufferResource.m_hId && bufferResource.m_Target != GL_UNIFORM_BUFFER)
 	{
 		glBindBuffer(bufferResource.m_Target, bufferResource.m_hId);
 		glBufferSubData(
@@ -445,6 +456,10 @@ void CGlRenderer::UpdateBuffer(
 			static_cast<GLintptr>(offset),
 			static_cast<GLsizeiptr>(size),
 			pData);
+	}
+	else if (bufferResource.m_Target == GL_UNIFORM_BUFFER)
+	{
+		bufferResource.m_IsDirty = true;
 	}
 }
 
@@ -851,18 +866,6 @@ void CGlRenderer::SetConstantBuffer(
 	boundUniform.m_Slot = slot;
 	boundUniform.m_Stage = stage;
 
-	UniformShadow_t& uniformShadow = m_ProgramUniformShadows[m_PipelineState.m_hShaderProgram][hLayout];
-	const UniformBlockLayout_t& uniformLayout = m_UniformBlockLayouts.Element(layoutIndex);
-	if (uniformShadow.m_Data.Count() < int32(uniformLayout.m_Size))
-	{
-		uniformShadow.m_Data.SetCount(int32(uniformLayout.m_Size));
-	}
-	memcpy(
-		uniformShadow.m_Data.Base(),
-		m_BufferResources.Element(bufferIndex).m_pPtr,
-		uniformLayout.m_Size);
-	uniformShadow.m_IsDirty = true;
-
 	m_StateDirtyFlags = m_StateDirtyFlags | StateDirtyFlags_t::Uniforms;
 }
 
@@ -922,6 +925,28 @@ void CGlRenderer::ApplyVertexConstants(ShaderProgramHandle hProgram)
 	ProgramResource_t& programResource = m_ProgramResources.Element(
 		programIndex);
 
+	if (programResource.m_UniformBlockIndices.Count() == 0)
+	{
+		GLint numBlocks = 0;
+		glGetProgramiv(
+			programResource.m_hId,
+			GL_ACTIVE_UNIFORM_BLOCKS,
+			&numBlocks);
+		for (GLint blockIndex = 0; blockIndex < numBlocks; blockIndex++)
+		{
+			GLint binding = 0;
+			glGetActiveUniformBlockiv(
+				programResource.m_hId,
+				blockIndex,
+				GL_UNIFORM_BLOCK_BINDING,
+				&binding);
+			glUniformBlockBinding(programResource.m_hId, blockIndex, binding);
+			programResource.m_UniformBlockIndices.Insert(
+				uint32(blockIndex),
+				binding);
+		}
+	}
+
 	for (int32 uniformIndex = uniforms.FirstInorder(); uniforms.IsValidIndex(uniformIndex); uniformIndex = uniforms.NextInorder(uniformIndex))
 	{
 		const BoundUniform_t& boundUniform = uniforms.Element(uniformIndex);
@@ -934,76 +959,26 @@ void CGlRenderer::ApplyVertexConstants(ShaderProgramHandle hProgram)
 		int32 bufferIndex = m_BufferResources.Find(boundUniform.m_hBuffer);
 		if (bufferIndex == m_BufferResources.InvalidIndex()) continue;
 
-		UniformShadow_t& uniformShadow = m_ProgramUniformShadows[hProgram][hLayout];
 		const UniformBlockLayout_t& uniformLayout = m_UniformBlockLayouts.Element(
 			layoutIndex);
-		if (uniformShadow.m_Data.Count() < int32(uniformLayout.m_Size))
+
+		BufferResource_t& bufferResource = m_BufferResources.Element(
+			bufferIndex);
+		if (bufferResource.m_IsDirty)
 		{
-			uniformShadow.m_Data.SetCount(int32(uniformLayout.m_Size));
-			uniformShadow.m_IsDirty = true;
+			glBindBuffer(GL_UNIFORM_BUFFER, bufferResource.m_hId);
+			glBufferSubData(
+				GL_UNIFORM_BUFFER,
+				0,
+				static_cast<GLsizeiptr>(uniformLayout.m_Size),
+				bufferResource.m_pPtr);
+			bufferResource.m_IsDirty = false;
 		}
 
-		const float32* pBufferData = reinterpret_cast<const float32*>(
-			m_BufferResources.Element(bufferIndex).m_pPtr);
-
-		bool hasChanged = uniformShadow.m_IsDirty || memcmp(uniformShadow.m_Data.Base(), pBufferData, uniformLayout.m_Size) != 0;
-		if (!hasChanged) continue;
-
-		memcpy(uniformShadow.m_Data.Base(), pBufferData, uniformLayout.m_Size);
-
-		if (uniformLayout.m_UniformNames.IsEmpty()) continue;
-
-		CUtlMap<CFixedString, int32>& uniformLocationMap = programResource.m_UniformLocations;
-		const uint8* pShadowData = uniformShadow.m_Data.Base();
-
-		uint32 uniformBytes = uniformLayout.m_Size / uniformLayout.m_UniformNames.Count();
-
-		for (int32 uniformNameIndex = 0; uniformNameIndex < uniformLayout.m_UniformNames.Count(); uniformNameIndex++)
-		{
-			const CFixedString& uniformName = uniformLayout.m_UniformNames[uniformNameIndex];
-
-			int32 uniformLocation = -1;
-			int32 uniformMapIndex = uniformLocationMap.Find(uniformName);
-			if (uniformMapIndex != uniformLocationMap.InvalidIndex())
-			{
-				uniformLocation = uniformLocationMap.Element(uniformMapIndex);
-			}
-			else
-			{
-				uniformLocation = glGetUniformLocation(
-					programResource.m_hId,
-					uniformName.AsCharPtr());
-				uniformLocationMap.Insert(uniformName, uniformLocation);
-			}
-
-			if (uniformLocation < 0) continue;
-
-			const GLfloat* pElementData = reinterpret_cast<const GLfloat*>(
-				pShadowData + (uint32(uniformNameIndex) * uniformBytes));
-
-			if (uniformBytes == 64)
-			{
-				glUniformMatrix4fv(uniformLocation, 1, GL_FALSE, pElementData);
-			}
-			else if (uniformBytes == 16)
-			{
-				glUniform4fv(uniformLocation, 1, pElementData);
-			}
-			else if (uniformBytes == 12)
-			{
-				glUniform3fv(uniformLocation, 1, pElementData);
-			}
-			else if (uniformBytes == 8)
-			{
-				glUniform2fv(uniformLocation, 1, pElementData);
-			}
-			else if (uniformBytes == 4)
-			{
-				glUniform1fv(uniformLocation, 1, pElementData);
-			}
-		}
-
-		uniformShadow.m_IsDirty = false;
+		glBindBufferBase(
+			GL_UNIFORM_BUFFER,
+			uniformLayout.m_Binding,
+			bufferResource.m_hId);
 	}
 }
 
@@ -1032,8 +1007,6 @@ void CGlRenderer::ApplyFragmentConstants(ShaderProgramHandle hProgram)
 
 	CUtlMap<uint32, BoundUniform_t>& uniforms = m_ProgramUniformBuffers.Element(
 		uniformsIndex);
-	ProgramResource_t& programResource = m_ProgramResources.Element(programIndex);
-
 	for (int32 uniformIndex = uniforms.FirstInorder(); uniforms.IsValidIndex(uniformIndex); uniformIndex = uniforms.NextInorder(uniformIndex))
 	{
 		const BoundUniform_t& boundUniform = uniforms.Element(uniformIndex);
@@ -1046,76 +1019,25 @@ void CGlRenderer::ApplyFragmentConstants(ShaderProgramHandle hProgram)
 		int32 bufferIndex = m_BufferResources.Find(boundUniform.m_hBuffer);
 		if (bufferIndex == m_BufferResources.InvalidIndex()) continue;
 
-		UniformShadow_t& uniformShadow = m_ProgramUniformShadows[hProgram][hLayout];
 		const UniformBlockLayout_t& uniformLayout = m_UniformBlockLayouts.Element(
 			layoutIndex);
-		if (uniformShadow.m_Data.Count() < int32(uniformLayout.m_Size))
+		BufferResource_t& bufferResource = m_BufferResources.Element(
+			bufferIndex);
+		if (bufferResource.m_IsDirty)
 		{
-			uniformShadow.m_Data.SetCount(int32(uniformLayout.m_Size));
-			uniformShadow.m_IsDirty = true;
+			glBindBuffer(GL_UNIFORM_BUFFER, bufferResource.m_hId);
+			glBufferSubData(
+				GL_UNIFORM_BUFFER,
+				0,
+				static_cast<GLsizeiptr>(uniformLayout.m_Size),
+				bufferResource.m_pPtr);
+			bufferResource.m_IsDirty = false;
 		}
 
-		const float32* pBufferData = reinterpret_cast<const float32*>(
-			m_BufferResources.Element(bufferIndex).m_pPtr);
-
-		bool hasChanged = uniformShadow.m_IsDirty || memcmp(uniformShadow.m_Data.Base(), pBufferData, uniformLayout.m_Size) != 0;
-		if (!hasChanged) continue;
-
-		memcpy(uniformShadow.m_Data.Base(), pBufferData, uniformLayout.m_Size);
-
-		if (uniformLayout.m_UniformNames.IsEmpty()) continue;
-
-		CUtlMap<CFixedString, int32>& uniformLocationMap = programResource.m_UniformLocations;
-		const uint8* pShadowData = uniformShadow.m_Data.Base();
-
-		uint32 uniformBytes = uniformLayout.m_Size / uniformLayout.m_UniformNames.Count();
-
-		for (int32 uniformNameIndex = 0; uniformNameIndex < uniformLayout.m_UniformNames.Count(); uniformNameIndex++)
-		{
-			const CFixedString& uniformName = uniformLayout.m_UniformNames[uniformNameIndex];
-
-			int32 uniformLocation = -1;
-			int32 uniformMapIndex = uniformLocationMap.Find(uniformName);
-			if (uniformMapIndex != uniformLocationMap.InvalidIndex())
-			{
-				uniformLocation = uniformLocationMap.Element(uniformMapIndex);
-			}
-			else
-			{
-				uniformLocation = glGetUniformLocation(
-					programResource.m_hId,
-					uniformName.AsCharPtr());
-				uniformLocationMap.Insert(uniformName, uniformLocation);
-			}
-
-			if (uniformLocation < 0) continue;
-
-			const GLfloat* pElementData = reinterpret_cast<const GLfloat*>(
-				pShadowData + (uint32(uniformNameIndex) * uniformBytes));
-
-			if (uniformBytes == 64)
-			{
-				glUniformMatrix4fv(uniformLocation, 1, GL_FALSE, pElementData);
-			}
-			else if (uniformBytes == 16)
-			{
-				glUniform4fv(uniformLocation, 1, pElementData);
-			}
-			else if (uniformBytes == 12)
-			{
-				glUniform3fv(uniformLocation, 1, pElementData);
-			}
-			else if (uniformBytes == 8)
-			{
-				glUniform2fv(uniformLocation, 1, pElementData);
-			}
-			else if (uniformBytes == 4)
-			{
-				glUniform1fv(uniformLocation, 1, pElementData);
-			}
-		}
-
-		uniformShadow.m_IsDirty = false;
+		glBindBufferBase(
+			GL_UNIFORM_BUFFER,
+			uniformLayout.m_Binding,
+			bufferResource.m_hId);
 	}
 }
 
@@ -1260,17 +1182,9 @@ void CGlRenderer::DrawInstanced(
 		const VertexAttribute_t& attribute = attributes[i];
 		if (attribute.m_Name.IsEmpty()) continue;
 
-		int32 attributeMapIndex = attributeMap.Find(attribute.m_Name);
-		int32 loc = (attributeMapIndex != attributeMap.InvalidIndex())
-			? attributeMap.Element(attributeMapIndex)
-			: glGetAttribLocation(
-				programResource.m_hId,
-				attribute.m_Name.AsCharPtr());
-		if (attributeMapIndex == attributeMap.InvalidIndex())
-		{
-			attributeMap.Insert(attribute.m_Name, loc);
-		}
-
+		uint32 semanticLoc = GetVertexSemanticAttributeIndex(
+			attribute.m_VertexSemantic);
+		int32 loc = semanticLoc != 0xFFFFFFFFu ? static_cast<int32>(semanticLoc) : static_cast<int32>(attribute.m_Location);
 		if (loc < 0) continue;
 		glEnableVertexAttribArray(loc);
 		glVertexAttribPointer(
@@ -1294,14 +1208,11 @@ void CGlRenderer::DrawInstanced(
 	{
 		const VertexAttribute_t& attribute = attributes[i];
 		if (attribute.m_Name.IsEmpty()) continue;
-		int32 attributeMapIndex = attributeMap.Find(attribute.m_Name);
-		if (attributeMapIndex != attributeMap.InvalidIndex())
+		uint32 semanticLoc = GetVertexSemanticAttributeIndex(attribute.m_VertexSemantic);
+		int32 loc = semanticLoc != 0xFFFFFFFFu ? static_cast<int32>(semanticLoc) : static_cast<int32>(attribute.m_Location);
+		if (loc >= 0)
 		{
-			int32 loc = attributeMap.Element(attributeMapIndex);
-			if (loc >= 0)
-			{
-				glVertexAttribDivisor(loc, 0);
-			}
+			glVertexAttribDivisor(loc, 0);
 		}
 	}
 }
@@ -1320,10 +1231,6 @@ void CGlRenderer::DrawIndexedInstanced(
 
 	int32 programIndex = m_ProgramResources.Find(hProgram);
 	if (programIndex == m_ProgramResources.InvalidIndex()) return;
-
-	ProgramResource_t& programResource = m_ProgramResources.Element(
-		programIndex);
-	CUtlMap<CFixedString, int32>& attributeMap = programResource.m_AttributeLocations;
 
 	FlushProgramState();
 
@@ -1382,17 +1289,8 @@ void CGlRenderer::DrawIndexedInstanced(
 		const VertexAttribute_t& attribute = attributes[i];
 		if (attribute.m_Name.IsEmpty()) continue;
 
-		int32 attributeMapIndex = attributeMap.Find(attribute.m_Name);
-		int32 loc = (attributeMapIndex != attributeMap.InvalidIndex())
-			? attributeMap.Element(attributeMapIndex)
-			: glGetAttribLocation(
-				programResource.m_hId,
-				attribute.m_Name.AsCharPtr());
-		if (attributeMapIndex == attributeMap.InvalidIndex())
-		{
-			attributeMap.Insert(attribute.m_Name, loc);
-		}
-
+		uint32 semanticLoc = GetVertexSemanticAttributeIndex(attribute.m_VertexSemantic);
+		int32 loc = semanticLoc != 0xFFFFFFFFu ? static_cast<int32>(semanticLoc) : static_cast<int32>(attribute.m_Location);
 		if (loc < 0) continue;
 		glEnableVertexAttribArray(loc);
 		glVertexAttribPointer(
@@ -1424,14 +1322,12 @@ void CGlRenderer::DrawIndexedInstanced(
 	{
 		const VertexAttribute_t& attribute = attributes[i];
 		if (attribute.m_Name.IsEmpty()) continue;
-		int32 attributeMapIndex = attributeMap.Find(attribute.m_Name);
-		if (attributeMapIndex != attributeMap.InvalidIndex())
+
+		uint32 semanticLoc = GetVertexSemanticAttributeIndex(attribute.m_VertexSemantic);
+		int32 loc = semanticLoc != 0xFFFFFFFFu ? static_cast<int32>(semanticLoc) : static_cast<int32>(attribute.m_Location);
+		if (loc >= 0)
 		{
-			int32 loc = attributeMap.Element(attributeMapIndex);
-			if (loc >= 0)
-			{
-				glVertexAttribDivisor(loc, 0);
-			}
+			glVertexAttribDivisor(loc, 0);
 		}
 	}
 }
@@ -1439,7 +1335,18 @@ void CGlRenderer::DrawIndexedInstanced(
 uint32 CGlRenderer::GetVertexSemanticAttributeIndex(
 	VertexSemantic_t::Enum vertexSemantic)
 {
-	return 0xFFFFFFFFu;
+	switch (vertexSemantic)
+	{
+		case VertexSemantic_t::Position: return 0;
+		case VertexSemantic_t::Normal: return 1;
+		case VertexSemantic_t::TexCoord0: return 2;
+		case VertexSemantic_t::Color0: return 3;
+		case VertexSemantic_t::TexCoord1: return 4;
+		case VertexSemantic_t::TexCoord2: return 5;
+		case VertexSemantic_t::TexCoord3: return 6;
+		case VertexSemantic_t::TexCoord4: return 7;
+		default: return 0xFFFFFFFFu;
+	}
 }
 
 void CGlRenderer::BindVertexAttributes(
@@ -1495,25 +1402,17 @@ void CGlRenderer::BindVertexAttributes(
 		const VertexAttribute_t& attribute = attributes[attributeIndex];
 		if (attribute.m_Name.IsEmpty()) continue;
 
-		GLint loc = -1;
-		if (attribute.m_VertexSemantic != VertexSemantic_t::Unspecified)
+		GLint loc = static_cast<GLint>(attribute.m_Location);
+		if (attribute.m_VertexSemantic == VertexSemantic_t::Unspecified)
 		{
-			CUtlMap<CFixedString, int32>& attributeMap = programResource.m_AttributeLocations;
-			int32 attributeMapIndex = attributeMap.Find(attribute.m_Name);
-			if (attributeMapIndex != attributeMap.InvalidIndex())
-			{
-				loc = attributeMap.Element(attributeMapIndex);
-			}
-			else
-			{
-				loc = glGetAttribLocation(
-					programResource.m_hId,
-					attribute.m_Name.AsCharPtr());
-				attributeMap.Insert(attribute.m_Name, loc);
-			}
+			continue;
 		}
 
-		if (loc == -1) continue;
+		uint32 semanticLoc = GetVertexSemanticAttributeIndex(attribute.m_VertexSemantic);
+		if (semanticLoc != 0xFFFFFFFFu)
+		{
+			loc = static_cast<GLint>(semanticLoc);
+		}
 
 		glEnableVertexAttribArray(static_cast<GLuint>(loc));
 

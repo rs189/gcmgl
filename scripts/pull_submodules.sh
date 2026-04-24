@@ -8,11 +8,13 @@ cd "$ROOT_DIR"
 PULL_GLAD=0
 PULL_SIMDE=0
 PULL_OFFSET_ALLOCATOR=0
+PULL_SLANG=0
 for arg in "$@"; do
 	case $arg in
 		--pull-glad)  PULL_GLAD=1 ;;
 		--pull-simde) PULL_SIMDE=1 ;;
 		--pull-offset-allocator) PULL_OFFSET_ALLOCATOR=1 ;;
+		--pull-slang) PULL_SLANG=1 ;;
 	esac
 done
 
@@ -52,6 +54,14 @@ if [ "$PULL_OFFSET_ALLOCATOR" -eq 1 ]; then
 	git -C thirdparty/OffsetAllocator fetch
 	git -C thirdparty/OffsetAllocator checkout origin/main
 	git add thirdparty/OffsetAllocator
+fi
+
+if [ "$PULL_SLANG" -eq 1 ]; then
+	echo "Updating slang submodule..."
+
+	git -C thirdparty/slang fetch
+	git -C thirdparty/slang checkout origin/master
+	git add thirdparty/slang
 fi
 
 echo "Committing updated submodules..."

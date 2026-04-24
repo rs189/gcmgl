@@ -41,6 +41,9 @@ gitignore/
 build/
 bin/
 
+# Tools
+tools/
+
 # Shaders
 shaders/__pycache__
 
