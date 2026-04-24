@@ -924,7 +924,6 @@ void CGlRenderer::ApplyVertexConstants(ShaderProgramHandle hProgram)
 		uniformsIndex);
 	ProgramResource_t& programResource = m_ProgramResources.Element(
 		programIndex);
-
 	if (programResource.m_UniformBlockIndices.Count() == 0)
 	{
 		GLint numBlocks = 0;
@@ -1007,6 +1006,27 @@ void CGlRenderer::ApplyFragmentConstants(ShaderProgramHandle hProgram)
 
 	CUtlMap<uint32, BoundUniform_t>& uniforms = m_ProgramUniformBuffers.Element(
 		uniformsIndex);
+	ProgramResource_t& programResource = m_ProgramResources.Element(
+		programIndex);
+	if (programResource.m_UniformBlockIndices.Count() == 0)
+	{
+		GLint numBlocks = 0;
+		glGetProgramiv(programResource.m_hId, GL_ACTIVE_UNIFORM_BLOCKS, &numBlocks);
+		for (GLint blockIndex = 0; blockIndex < numBlocks; blockIndex++)
+		{
+			GLint binding = 0;
+			glGetActiveUniformBlockiv(
+				programResource.m_hId,
+				blockIndex,
+				GL_UNIFORM_BLOCK_BINDING,
+				&binding);
+			glUniformBlockBinding(programResource.m_hId, blockIndex, binding);
+			programResource.m_UniformBlockIndices.Insert(
+				uint32(blockIndex),
+				binding);
+		}
+	}
+
 	for (int32 uniformIndex = uniforms.FirstInorder(); uniforms.IsValidIndex(uniformIndex); uniformIndex = uniforms.NextInorder(uniformIndex))
 	{
 		const BoundUniform_t& boundUniform = uniforms.Element(uniformIndex);
