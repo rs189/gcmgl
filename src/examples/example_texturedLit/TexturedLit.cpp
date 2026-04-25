@@ -414,16 +414,11 @@ int32 RunTexturedLitExample(
 		pRenderer->Clear(ClearAll, CColor(0.1f, 0.1f, 0.1f, 1.0f), 1.0f, 0);
 
 		// Set viewport
-		Viewport_t viewport(
-			0.0f,
-			0.0f,
-			float32(windowConfig.m_Width),
-			float32(windowConfig.m_Height));
-		pRenderer->SetViewport(viewport);
+		pRenderer->SetFullViewport();
 
 		// Set matrix
 		camera.m_Position = CVector3(0.0f, 0.0f, 5.0f);
-		float32 aspectRatio = windowConfig.m_AspectRatio;
+		float32 aspectRatio = pRenderer->GetAspectRatio();
 		CMatrix4 projectionMatrix = camera.GetProjectionMatrix(aspectRatio);
 		CMatrix4 viewMatrix = camera.GetViewMatrix();
 		CMatrix4 model =

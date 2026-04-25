@@ -25,6 +25,16 @@ CRenderer::CRenderer() :
 	m_PipelineState.m_BlendState.m_IsEnabled = false;
 }
 
+float32 CRenderer::GetAspectRatio() const
+{
+	uint32 width;
+	uint32 height;
+	GetFramebufferSize(width, height);
+	if (height == 0) return 1.0f;
+
+	return float32(width) / float32(height);
+}
+
 CVertexLayout::CVertexLayout() :
 	m_VertexStride(0)
 {

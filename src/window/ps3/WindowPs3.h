@@ -27,8 +27,14 @@ public:
 	virtual void MakeContextCurrent() GCMGL_OVERRIDE;
 	virtual bool ShouldClose() GCMGL_OVERRIDE;
 	virtual void* GetNativeHandle() GCMGL_OVERRIDE;
+	virtual void GetSize(uint32& width, uint32& height) const GCMGL_OVERRIDE;
+	virtual void GetFramebufferSize(
+		uint32& width,
+		uint32& height) const GCMGL_OVERRIDE;
 private:
 	bool m_IsRunning;
+	uint32 m_Width;
+	uint32 m_Height;
 
 	static void SysutilExitCallback(
 		u64 status,

@@ -37,6 +37,10 @@ public:
 		uint32 stencil = 0) GCMGL_OVERRIDE;
 
 	// Viewport & targets
+	virtual void GetFramebufferSize(
+		uint32& width,
+		uint32& height) const GCMGL_OVERRIDE;
+	virtual void SetFullViewport() GCMGL_OVERRIDE;
 	virtual void SetViewport(const Viewport_t& viewport) GCMGL_OVERRIDE;
 	virtual Viewport_t GetViewport() const GCMGL_OVERRIDE;
 	virtual void SetScissor(const Rect_t& rect) GCMGL_OVERRIDE;
@@ -208,6 +212,8 @@ private:
 	CUtlMap<ShaderProgramHandle, ProgramResource_t> m_ProgramResources;
 	CUtlMap<TextureHandle, TextureResource_t> m_TextureResources;
 	GLFWwindow* m_pWindow;
+	uint32 m_FBWidth;
+	uint32 m_FBHeight;
 	int32 m_InstanceBufferIndex;
 };
 

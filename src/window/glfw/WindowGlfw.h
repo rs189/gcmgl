@@ -27,6 +27,10 @@ public:
 	virtual void MakeContextCurrent() GCMGL_OVERRIDE;
 	virtual bool ShouldClose() GCMGL_OVERRIDE;
 	virtual void* GetNativeHandle() GCMGL_OVERRIDE;
+	virtual void GetSize(uint32& width, uint32& height) const GCMGL_OVERRIDE;
+	virtual void GetFramebufferSize(
+		uint32& width,
+		uint32& height) const GCMGL_OVERRIDE;
 private:
 	GLFWwindow* m_pWindow;
 };

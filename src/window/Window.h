@@ -44,6 +44,8 @@ public:
 	virtual void MakeContextCurrent() = 0;
 	virtual bool ShouldClose() = 0;
 	virtual void* GetNativeHandle() = 0;
+	virtual void GetSize(uint32& width, uint32& height) const = 0;
+	virtual void GetFramebufferSize(uint32& width, uint32& height) const = 0;
 };
 
 IWindow* CreateWindowInstance();

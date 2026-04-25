@@ -91,6 +91,30 @@ void* CWindowGlfw::GetNativeHandle()
 	return reinterpret_cast<void*>(m_pWindow);
 }
 
+void CWindowGlfw::GetSize(uint32& width, uint32& height) const
+{
+	int w = 0;
+	int h = 0;
+	if (m_pWindow)
+	{
+		glfwGetWindowSize(m_pWindow, &w, &h);
+	}
+	width = static_cast<uint32>(w);
+	height = static_cast<uint32>(h);
+}
+
+void CWindowGlfw::GetFramebufferSize(uint32& width, uint32& height) const
+{
+	int w = 0;
+	int h = 0;
+	if (m_pWindow)
+	{
+		glfwGetFramebufferSize(m_pWindow, &w, &h);
+	}
+	width = static_cast<uint32>(w);
+	height = static_cast<uint32>(h);
+}
+
 IWindow* CreateWindowInstance()
 {
 	void* pMemory = CUtlMemory::Alloc(sizeof(CWindowGlfw));

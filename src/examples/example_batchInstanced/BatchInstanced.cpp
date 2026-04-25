@@ -325,12 +325,7 @@ int32 RunBatchInstancedExample(
 		pRenderer->Clear(ClearAll, CColor(0.1f, 0.1f, 0.1f, 1.0f), 1.0f, 0);
 
 		// Set viewport
-		Viewport_t viewport(
-			0.0f,
-			0.0f,
-			float32(windowConfig.m_Width),
-			float32(windowConfig.m_Height));
-		pRenderer->SetViewport(viewport);
+		pRenderer->SetFullViewport();
 
 		// Set matrix
 		camera.m_Position.m_X = sinf(rotationY * CMaths::Deg2Rad * 0.5f) * 15.0f;

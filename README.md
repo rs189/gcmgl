@@ -195,6 +195,9 @@ gcmgl is a C++ graphics library targeting PlayStation 3 (GCM) and Linux (x86_64,
 - `void BeginFrame()`
 - `void EndFrame()`
 - `void Clear(uint32 clearFlags, const CColor& color = CColor::Black, float32 depth = 1.0f, uint32 stencil = 0)`
+- `void GetFramebufferSize(uint32& width, uint32& height) const`
+- `float32 GetAspectRatio() const`
+- `void SetFullViewport()`
 - `void SetViewport(const Viewport_t& viewport)`
 - `Viewport_t GetViewport()`
 - `void SetScissor(const Rect_t& rect)`
@@ -236,6 +239,7 @@ gcmgl is a C++ graphics library targeting PlayStation 3 (GCM) and Linux (x86_64,
 - `void FlushPipelineState()`
 
 ### CRenderer
+- `float32 GetAspectRatio() const`
 - `FrustumVisibility_t::Enum GetAABBFrustumVisibility(const CVector3& center, const CVector3& extent, const Plane_t* pPlanes)`
 
 ## Build

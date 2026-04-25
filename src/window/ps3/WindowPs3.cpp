@@ -14,7 +14,9 @@
 #include <io/pad.h>
 
 CWindowPs3::CWindowPs3() :
-	m_IsRunning(false)
+	m_IsRunning(false),
+	m_Width(0),
+	m_Height(0)
 {
 }
 
@@ -33,6 +35,9 @@ bool CWindowPs3::Init(const WindowConfig_t& windowConfig)
 	}
 
 	sysUtilRegisterCallback(SYSUTIL_EVENT_SLOT0, SysutilExitCallback, this);
+
+	m_Width = windowConfig.m_Width;
+	m_Height = windowConfig.m_Height;
 
 	m_IsRunning = true;
 
@@ -67,6 +72,18 @@ void* CWindowPs3::GetNativeHandle()
 	Msg("[CWindowPs3] GetNativeHandle() stub\n");
 
 	return GCMGL_NULL;
+}
+
+void CWindowPs3::GetSize(uint32& width, uint32& height) const
+{
+	width = m_Width;
+	height = m_Height;
+}
+
+void CWindowPs3::GetFramebufferSize(uint32& width, uint32& height) const
+{
+	width = m_Width;
+	height = m_Height;
 }
 
 void CWindowPs3::SysutilExitCallback(

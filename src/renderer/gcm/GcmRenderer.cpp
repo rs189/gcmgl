@@ -384,6 +384,22 @@ void CGcmRenderer::Clear(
 	rsxClearSurface(context, clearMask);
 }
 
+void CGcmRenderer::GetFramebufferSize(uint32& width, uint32& height) const
+{
+	width = display_width;
+	height = display_height;
+}
+
+void CGcmRenderer::SetFullViewport()
+{
+	SetViewport(
+		Viewport_t(
+			0.0f,
+			0.0f,
+			float32(display_width),
+			float32(display_height)));
+}
+
 void CGcmRenderer::SetViewport(const Viewport_t& viewport)
 {
 	m_Viewport = viewport;

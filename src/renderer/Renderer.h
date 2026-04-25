@@ -505,6 +505,10 @@ public:
 		float32 depth = 1.0f,
 		uint32 stencil = 0) = 0;
 
+	virtual void GetFramebufferSize(uint32& width, uint32& height) const = 0;
+	virtual float32 GetAspectRatio() const = 0;
+	virtual void SetFullViewport() = 0;
+
 	virtual void SetViewport(const Viewport_t& viewport) = 0;
 	virtual Viewport_t GetViewport() const = 0;
 	virtual void SetScissor(const Rect_t& rect) = 0;
@@ -648,6 +652,7 @@ public:
 	virtual ShaderProgramHandle GetOrCreateShaderProgram(
 		const CFixedString& shaderName) GCMGL_OVERRIDE;
 	virtual void ClearShaderCache() GCMGL_OVERRIDE;
+	virtual float32 GetAspectRatio() const GCMGL_OVERRIDE;
 
 	virtual void SetShaderProgram(ShaderProgramHandle hProgram) GCMGL_OVERRIDE;
 	virtual void SetVertexBuffer(

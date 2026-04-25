@@ -23,7 +23,9 @@
 CGlRenderer::CGlRenderer() :
 	m_StagingIndex(0),
 	m_InstanceBufferIndex(0),
-	m_pWindow(GCMGL_NULL)
+	m_pWindow(GCMGL_NULL),
+	m_FBWidth(0),
+	m_FBHeight(0)
 {
 	for (int32 i = 0; i < s_MaxInstanceStagingBuffers; i++)
 	{
@@ -231,6 +233,17 @@ void CGlRenderer::SetEnvironment()
 
 void CGlRenderer::BeginFrame()
 {
+	if (m_pWindow)
+	{
+		int32 w;
+		int32 h;
+		glfwGetFramebufferSize(m_pWindow, &w, &h);
+		m_FBWidth = uint32(w);
+		m_FBHeight = uint32(h);
+
+		SetFullViewport();
+	}
+
 	m_StateDirtyFlags = StateDirtyFlags_t::All;
 	m_InstanceBufferIndex = 0;
 	m_StagingIndex = 0;
@@ -272,6 +285,18 @@ void CGlRenderer::Clear(
 	}
 
 	glClear(clearMask);
+}
+
+void CGlRenderer::GetFramebufferSize(uint32& width, uint32& height) const
+{
+	width = m_FBWidth;
+	height = m_FBHeight;
+}
+
+void CGlRenderer::SetFullViewport()
+{
+	SetViewport(
+		Viewport_t(0.0f, 0.0f, float32(m_FBWidth), float32(m_FBHeight)));
 }
 
 void CGlRenderer::SetViewport(const Viewport_t& viewport)
