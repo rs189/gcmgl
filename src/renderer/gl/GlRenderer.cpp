@@ -974,7 +974,7 @@ void CGlRenderer::ApplyVertexConstants(ShaderProgramHandle hProgram)
 	for (int32 uniformIndex = uniforms.FirstInorder(); uniforms.IsValidIndex(uniformIndex); uniformIndex = uniforms.NextInorder(uniformIndex))
 	{
 		const BoundUniform_t& boundUniform = uniforms.Element(uniformIndex);
-		if (boundUniform.m_Stage != ShaderStageVertex) continue;
+		if (!(boundUniform.m_Stage & ShaderStageVertex)) continue;
 
 		uint32 hLayout = uniforms.Key(uniformIndex);
 		int32 layoutIndex = m_UniformBlockLayouts.Find(hLayout);
@@ -1055,7 +1055,7 @@ void CGlRenderer::ApplyFragmentConstants(ShaderProgramHandle hProgram)
 	for (int32 uniformIndex = uniforms.FirstInorder(); uniforms.IsValidIndex(uniformIndex); uniformIndex = uniforms.NextInorder(uniformIndex))
 	{
 		const BoundUniform_t& boundUniform = uniforms.Element(uniformIndex);
-		if (boundUniform.m_Stage != ShaderStageFragment) continue;
+		if (!(boundUniform.m_Stage & ShaderStageFragment)) continue;
 
 		uint32 hLayout = uniforms.Key(uniformIndex);
 		int32 layoutIndex = m_UniformBlockLayouts.Find(hLayout);
