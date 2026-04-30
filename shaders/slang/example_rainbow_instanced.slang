@@ -6,9 +6,18 @@
 //
 //===----------------------------------------------------------------------===//
 
-[vk::binding(0, 0)] cbuffer Uniforms { float4x4 viewProjection; };
-[vk::binding(1, 0)] cbuffer TimeParams { float4 timeParams; };
-[vk::binding(2, 0)] cbuffer CameraData { float4 cameraParams; };
+[vk::binding(0, 0)] cbuffer Uniforms
+{
+    float4x4 viewProjection;
+};
+[vk::binding(1, 0)] cbuffer TimeParams
+{
+    float4 timeParams;
+};
+[vk::binding(2, 0)] cbuffer CameraData
+{
+    float4 cameraParams;
+};
 
 struct VertexInput
 {

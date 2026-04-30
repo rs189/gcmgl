@@ -6,8 +6,14 @@
 //
 //===----------------------------------------------------------------------===//
 
-[vk::binding(0, 0)] cbuffer Uniforms { float4x4 mvp; };
-[vk::binding(2, 0)] cbuffer ModelData { float4x4 model; };
+[vk::binding(0, 0)] cbuffer Uniforms
+{
+    float4x4 mvp;
+};
+[vk::binding(2, 0)] cbuffer ModelData
+{
+    float4x4 model;
+};
 
 struct VertexInput
 {
@@ -58,7 +64,10 @@ VertexOutput vertMain(VertexInput input)
     float4 lightData15;
 };
 
-[vk::binding(3, 0)] cbuffer NumLights { float numLights; };
+[vk::binding(3, 0)] cbuffer NumLights
+{
+    float numLights;
+};
 
 float3 calculateLight(
     float3 worldPos,

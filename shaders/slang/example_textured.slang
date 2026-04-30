@@ -6,7 +6,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-[vk::binding(0, 0)] cbuffer Uniforms { float4x4 mvp; };
+[vk::binding(0, 0)] cbuffer Uniforms
+{
+    float4x4 mvp;
+};
 
 struct VertexInput
 {
