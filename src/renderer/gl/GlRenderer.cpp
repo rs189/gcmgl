@@ -650,6 +650,75 @@ ShaderProgramHandle CGlRenderer::CreateShaderProgram(
 	const ShaderProgramHandle hProgram = AllocHandle();
 	ProgramResource_t programResource;
 	programResource.m_hId = glProgram;
+
+	GLint numBlocks = 0;
+	glGetProgramiv(glProgram, GL_ACTIVE_UNIFORM_BLOCKS, &numBlocks);
+	for (int32 i = 0; i < numBlocks; i++)
+	{
+		GLint binding = 0;
+		glGetActiveUniformBlockiv(
+			glProgram,
+			i,
+			GL_UNIFORM_BLOCK_BINDING,
+			&binding);
+
+		GLchar blockName[256];
+		glGetActiveUniformBlockName(
+			glProgram,
+			i,
+			sizeof(blockName),
+			GCMGL_NULL,
+			blockName);
+		programResource.m_UniformBindingMap.Insert(
+			CFixedString(blockName),
+			(int32)binding);
+
+		GLint numUniformsInBlock = 0;
+		glGetActiveUniformBlockiv(
+			glProgram,
+			i,
+			GL_UNIFORM_BLOCK_ACTIVE_UNIFORMS,
+			&numUniformsInBlock);
+
+		CUtlVector<GLint> uniformIndices;
+		uniformIndices.SetCount(numUniformsInBlock);
+		glGetActiveUniformBlockiv(
+			glProgram,
+			i,
+			GL_UNIFORM_BLOCK_ACTIVE_UNIFORM_INDICES,
+			uniformIndices.Base());
+
+		for (int32 j = 0; j < numUniformsInBlock; j++)
+		{
+			GLchar name[256];
+			glGetActiveUniform(
+				glProgram,
+				(GLuint)uniformIndices[j],
+				sizeof(name),
+				GCMGL_NULL,
+				GCMGL_NULL,
+				GCMGL_NULL,
+				name);
+
+			char* pDot = strrchr(name, '.');
+			char* pBaseName = pDot ? pDot + 1 : name;
+
+			programResource.m_UniformBindingMap.Insert(
+				CFixedString(pBaseName),
+				(int32)binding);
+
+			// Slang _0 suffix
+			size_t len = strlen(pBaseName);
+			if (len > 2 && pBaseName[len - 2] == '_' && pBaseName[len - 1] == '0')
+			{
+				pBaseName[len - 2] = '\0';
+				programResource.m_UniformBindingMap.Insert(
+					CFixedString(pBaseName),
+					(int32)binding);
+			}
+		}
+	}
+
 	m_ProgramResources.Insert(hProgram, programResource);
 
 	return hProgram;
@@ -892,6 +961,28 @@ void CGlRenderer::SetConstantBuffer(
 	boundUniform.m_Stage = stage;
 
 	m_StateDirtyFlags = m_StateDirtyFlags | StateDirtyFlags_t::Uniforms;
+}
+
+int32 CGlRenderer::GetUniformBlockBinding(
+	ShaderProgramHandle hProgram,
+	const char* pBlockName)
+{
+	int32 programIndex = m_ProgramResources.Find(hProgram);
+	if (programIndex == m_ProgramResources.InvalidIndex())
+	{
+		return -1;
+	}
+
+	const ProgramResource_t& programResource = m_ProgramResources.Element(
+		programIndex);
+	int32 bindIndex = programResource.m_UniformBindingMap.Find(
+		CFixedString(pBlockName));
+	if (bindIndex != programResource.m_UniformBindingMap.InvalidIndex())
+	{
+		return programResource.m_UniformBindingMap.Element(bindIndex);
+	}
+
+	return -1;
 }
 
 void CGlRenderer::SetBlendState(const BlendState_t& state)

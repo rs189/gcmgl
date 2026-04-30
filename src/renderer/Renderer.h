@@ -582,6 +582,9 @@ public:
 		UniformBlockLayoutHandle hLayout,
 		uint32 slot,
 		ShaderStage_t stage) = 0;
+	virtual int32 GetUniformBlockBinding(
+		ShaderProgramHandle hProgram,
+		const char* pBlockName) = 0;
 
 	virtual void SetBlendState(const BlendState_t& state) = 0;
 	virtual void SetDepthStencilState(const DepthStencilState_t& state) = 0;

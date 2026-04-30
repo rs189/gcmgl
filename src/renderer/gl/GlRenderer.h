@@ -104,6 +104,9 @@ public:
 		UniformBlockLayoutHandle hLayout,
 		uint32 slot,
 		ShaderStage_t stage) GCMGL_OVERRIDE;
+	virtual int32 GetUniformBlockBinding(
+		ShaderProgramHandle hProgram,
+		const char* pBlockName) GCMGL_OVERRIDE;
 
 	virtual void SetBlendState(const BlendState_t& state) GCMGL_OVERRIDE;
 	virtual void SetDepthStencilState(
@@ -173,9 +176,10 @@ protected:
 
 	struct ProgramResource_t
 	{
-		CUtlMap<CFixedString, int32> m_AttributeLocations;
-		CUtlMap<uint32, GLint> m_UniformBlockIndices;
 		uint32 m_hId;
+		CUtlMap<CFixedString, int32> m_AttributeLocations;
+		CUtlMap<CFixedString, int32> m_UniformBindingMap;
+		CUtlMap<uint32, int32> m_UniformBlockIndices;
 	};
 
 	static const int32 s_MaxInstanceStagingBuffers = 16;

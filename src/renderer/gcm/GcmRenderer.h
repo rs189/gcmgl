@@ -112,6 +112,9 @@ public:
 		UniformBlockLayoutHandle hLayout,
 		uint32 slot,
 		ShaderStage_t stage) GCMGL_OVERRIDE;
+	virtual int32 GetUniformBlockBinding(
+		ShaderProgramHandle hProgram,
+		const char* pBlockName) GCMGL_OVERRIDE;
 
 	virtual void SetBlendState(const BlendState_t& state) GCMGL_OVERRIDE;
 	virtual void SetDepthStencilState(

@@ -1096,6 +1096,13 @@ void CGcmRenderer::SetConstantBuffer(
 	m_StateDirtyFlags = m_StateDirtyFlags | StateDirtyFlags_t::Uniforms;
 }
 
+int32 CGcmRenderer::GetUniformBlockBinding(
+	ShaderProgramHandle hProgram,
+	const char* pBlockName)
+{
+	return -1;
+}
+
 void CGcmRenderer::SetBlendState(const BlendState_t& state)
 {
 	if (state.m_IsEnabled)
