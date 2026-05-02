@@ -149,6 +149,16 @@ struct TextureFormat_t
 	};
 };
 
+struct TextureWrapMode_t
+{
+	enum Enum
+	{
+		Repeat,
+		MirroredRepeat,
+		ClampToEdge
+	};
+};
+
 enum ShaderStage_t
 {
 	ShaderStageVertex = 1 << 0,
@@ -555,7 +565,8 @@ public:
 	virtual void SetTexture(
 		TextureHandle hTexture,
 		uint32 slot,
-		ShaderStage_t stage) = 0;
+		ShaderStage_t stage,
+		TextureWrapMode_t::Enum wrapMode = TextureWrapMode_t::Repeat) = 0;
 	virtual void SetSampler(
 		SamplerHandle hSampler,
 		uint32 slot,

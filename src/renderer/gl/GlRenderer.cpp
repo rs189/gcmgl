@@ -750,8 +750,6 @@ TextureHandle CGlRenderer::CreateTexture2D(
 	glBindTexture(GL_TEXTURE_2D, id);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
 	GLenum internalFormat;
 	GLenum glFormat;
@@ -820,9 +818,6 @@ TextureHandle CGlRenderer::CreateTextureCube(
 	glBindTexture(GL_TEXTURE_CUBE_MAP, id);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
 
 	for (int32 i = 0; i < 6; i++)
 	{
@@ -855,7 +850,8 @@ TextureHandle CGlRenderer::CreateTextureCube(
 void CGlRenderer::SetTexture(
 	TextureHandle hTexture,
 	uint32 slot,
-	ShaderStage_t stage)
+	ShaderStage_t stage,
+	TextureWrapMode_t::Enum wrapMode)
 {
 	if (stage != ShaderStageFragment)
 	{
@@ -877,6 +873,23 @@ void CGlRenderer::SetTexture(
 
 	uint32 target = textureResource.m_Target ? textureResource.m_Target : GL_TEXTURE_2D;
 	glBindTexture(target, textureResource.m_hId);
+
+	GLint glWrapMode = GL_REPEAT;
+	if (wrapMode == TextureWrapMode_t::ClampToEdge)
+	{
+		glWrapMode = GL_CLAMP_TO_EDGE;
+	}
+	else if (wrapMode == TextureWrapMode_t::MirroredRepeat)
+	{
+		glWrapMode = GL_MIRRORED_REPEAT;
+	}
+
+	glTexParameteri(target, GL_TEXTURE_WRAP_S, glWrapMode);
+	glTexParameteri(target, GL_TEXTURE_WRAP_T, glWrapMode);
+	if (target == GL_TEXTURE_CUBE_MAP || target == GL_TEXTURE_3D)
+	{
+		glTexParameteri(target, GL_TEXTURE_WRAP_R, glWrapMode);
+	}
 }
 
 void CGlRenderer::SetSampler(

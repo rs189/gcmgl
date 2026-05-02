@@ -89,6 +89,11 @@ gcmgl is a C++ graphics library targeting PlayStation 3 (GCM) and Linux (x86_64,
 - `Depth32F`
 - `Depth24Stencil8`
 
+### TextureWrapMode_t
+- `Repeat`
+- `MirroredRepeat`
+- `ClampToEdge`
+
 ### ShaderStage_t
 - `ShaderStageVertex`
 - `ShaderStageFragment`
@@ -216,7 +221,7 @@ gcmgl is a C++ graphics library targeting PlayStation 3 (GCM) and Linux (x86_64,
 - `void ClearShaderCache()`
 - `TextureHandle CreateTexture2D(uint32 width, uint32 height, TextureFormat_t::Enum format, const void* pData = GCMGL_NULL)`
 - `TextureHandle CreateTextureCube(uint32 size, TextureFormat_t::Enum format, const void** ppFaces = GCMGL_NULL)`
-- `void SetTexture(TextureHandle hTexture, uint32 slot, ShaderStage_t stage)`
+- `void SetTexture(TextureHandle hTexture, uint32 slot, ShaderStage_t stage, TextureWrapMode_t::Enum wrapMode = TextureWrapMode_t::Repeat)`
 - `void SetSampler(SamplerHandle hSampler, uint32 slot, ShaderStage_t stage)`
 - `void UpdateTexture(TextureHandle hTexture, const void* pData, uint32 mipLevel = 0)`
 - `void DestroyTexture(TextureHandle hTexture)`

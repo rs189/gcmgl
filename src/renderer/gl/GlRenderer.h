@@ -87,7 +87,8 @@ public:
 	virtual void SetTexture(
 		TextureHandle hTexture,
 		uint32 slot,
-		ShaderStage_t stage) GCMGL_OVERRIDE;
+		ShaderStage_t stage,
+		TextureWrapMode_t::Enum wrapMode = TextureWrapMode_t::Repeat) GCMGL_OVERRIDE;
 	virtual void SetSampler(
 		SamplerHandle hSampler,
 		uint32 slot,

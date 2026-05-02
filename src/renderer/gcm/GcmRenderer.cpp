@@ -916,7 +916,8 @@ TextureHandle CGcmRenderer::CreateTextureCube(
 void CGcmRenderer::SetTexture(
 	TextureHandle hTexture,
 	uint32 slot,
-	ShaderStage_t stage)
+	ShaderStage_t stage,
+	TextureWrapMode_t::Enum wrapMode)
 {
 	if (stage != ShaderStageFragment)
 	{
@@ -997,12 +998,23 @@ void CGcmRenderer::SetTexture(
 		GCM_TEXTURE_LINEAR,
 		GCM_TEXTURE_LINEAR,
 		GCM_TEXTURE_CONVOLUTION_QUINCUNX);
+
+	uint8 gcmWrapMode = GCM_TEXTURE_WRAP;
+	if (wrapMode == TextureWrapMode_t::ClampToEdge)
+	{
+		gcmWrapMode = GCM_TEXTURE_CLAMP_TO_EDGE;
+	}
+	else if (wrapMode == TextureWrapMode_t::MirroredRepeat)
+	{
+		gcmWrapMode = GCM_TEXTURE_MIRROR;
+	}
+
 	rsxTextureWrapMode(
 		context,
 		slot,
-		GCM_TEXTURE_CLAMP_TO_EDGE,
-		GCM_TEXTURE_CLAMP_TO_EDGE,
-		GCM_TEXTURE_CLAMP_TO_EDGE,
+		gcmWrapMode,
+		gcmWrapMode,
+		gcmWrapMode,
 		0,
 		GCM_TEXTURE_ZFUNC_LESS,
 		0);

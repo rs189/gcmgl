@@ -514,7 +514,11 @@ int32 RunTexturedLitExample(
 		pRenderer->SetIndexBuffer(hIndexBuffer);
 
 		// Bind texture
-		pRenderer->SetTexture(hTexture, 0, ShaderStageFragment);
+		pRenderer->SetTexture(
+			hTexture,
+			0,
+			ShaderStageFragment,
+			TextureWrapMode_t::Repeat);
 
 		// Draw cube
 		pRenderer->DrawIndexed(36, 0);
