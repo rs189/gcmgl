@@ -68,10 +68,10 @@ int32 RunLitExample(
 
 	// Create shader
 	ShaderProgramHandle hShaderProgram = pRenderer->CreateShaderProgram(
-		"example_lit");
+		"ExampleLit");
 	if (hShaderProgram == 0)
 	{
-		Error("[Lit] Failed to create shader program 'example_lit'\n");
+		Error("[Lit] Failed to create shader program 'ExampleLit'\n");
 
 		return 1;
 	}
@@ -173,14 +173,14 @@ int32 RunLitExample(
 
 	// Create uniform layout for MVP matrix
 	UniformBlockLayout_t mvpLayout;
-	mvpLayout.m_UniformNames.AddToTail("mvp");
+	mvpLayout.m_UniformNames.AddToTail("Mvp");
 	mvpLayout.m_Binding = 0;
 	mvpLayout.m_Size = sizeof(CMatrix4);
 	uint32 hMVPLayout = pRenderer->CreateUniformBlockLayout(mvpLayout);
 
 	// Create uniform layout for model matrix
 	UniformBlockLayout_t modelLayout;
-	modelLayout.m_UniformNames.AddToTail("model");
+	modelLayout.m_UniformNames.AddToTail("Model");
 	modelLayout.m_Binding = 2;
 	modelLayout.m_Size = sizeof(CMatrix4);
 	uint32 hModelLayout = pRenderer->CreateUniformBlockLayout(modelLayout);
@@ -189,26 +189,26 @@ int32 RunLitExample(
 	UniformBlockLayout_t lightLayout;
 	lightLayout.m_Binding = 1;
 	lightLayout.m_Size = sizeof(CVector4) * MAX_LIGHTS * 2;
-	lightLayout.m_UniformNames.AddToTail("lightData0");
-	lightLayout.m_UniformNames.AddToTail("lightData1");
-	lightLayout.m_UniformNames.AddToTail("lightData2");
-	lightLayout.m_UniformNames.AddToTail("lightData3");
-	lightLayout.m_UniformNames.AddToTail("lightData4");
-	lightLayout.m_UniformNames.AddToTail("lightData5");
-	lightLayout.m_UniformNames.AddToTail("lightData6");
-	lightLayout.m_UniformNames.AddToTail("lightData7");
-	lightLayout.m_UniformNames.AddToTail("lightData8");
-	lightLayout.m_UniformNames.AddToTail("lightData9");
-	lightLayout.m_UniformNames.AddToTail("lightData10");
-	lightLayout.m_UniformNames.AddToTail("lightData11");
-	lightLayout.m_UniformNames.AddToTail("lightData12");
-	lightLayout.m_UniformNames.AddToTail("lightData13");
-	lightLayout.m_UniformNames.AddToTail("lightData14");
-	lightLayout.m_UniformNames.AddToTail("lightData15");
+	lightLayout.m_UniformNames.AddToTail("LightData0");
+	lightLayout.m_UniformNames.AddToTail("LightData1");
+	lightLayout.m_UniformNames.AddToTail("LightData2");
+	lightLayout.m_UniformNames.AddToTail("LightData3");
+	lightLayout.m_UniformNames.AddToTail("LightData4");
+	lightLayout.m_UniformNames.AddToTail("LightData5");
+	lightLayout.m_UniformNames.AddToTail("LightData6");
+	lightLayout.m_UniformNames.AddToTail("LightData7");
+	lightLayout.m_UniformNames.AddToTail("LightData8");
+	lightLayout.m_UniformNames.AddToTail("LightData9");
+	lightLayout.m_UniformNames.AddToTail("LightData10");
+	lightLayout.m_UniformNames.AddToTail("LightData11");
+	lightLayout.m_UniformNames.AddToTail("LightData12");
+	lightLayout.m_UniformNames.AddToTail("LightData13");
+	lightLayout.m_UniformNames.AddToTail("LightData14");
+	lightLayout.m_UniformNames.AddToTail("LightData15");
 	uint32 hLightLayout = pRenderer->CreateUniformBlockLayout(lightLayout);
 
 	UniformBlockLayout_t numLightsLayout;
-	numLightsLayout.m_UniformNames.AddToTail("numLights");
+	numLightsLayout.m_UniformNames.AddToTail("NumLights");
 	numLightsLayout.m_Binding = 3;
 	numLightsLayout.m_Size = sizeof(float32);
 	uint32 hNumLightsLayout =

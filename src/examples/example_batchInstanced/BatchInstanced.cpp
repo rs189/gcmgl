@@ -71,11 +71,11 @@ int32 RunBatchInstancedExample(
 
 	// Create shader
 	ShaderProgramHandle hShaderProgram = pRenderer->CreateShaderProgram(
-		"example_rainbow_instanced");
+		"ExampleRainbowInstanced");
 	if (hShaderProgram == 0)
 	{
 		Error(
-			"[BatchInstanced] Failed to create shader program 'example_rainbow_instanced'\n");
+			"[BatchInstanced] Failed to create shader program 'ExampleRainbowInstanced'\n");
 
 		return 1;
 	}
@@ -155,7 +155,7 @@ int32 RunBatchInstancedExample(
 
 	// Create uniform layout for view-projection matrix
 	UniformBlockLayout_t viewProjectionLayout;
-	viewProjectionLayout.m_UniformNames.AddToTail("viewProjection");
+	viewProjectionLayout.m_UniformNames.AddToTail("ViewProjection");
 	viewProjectionLayout.m_Binding = 0;
 	viewProjectionLayout.m_Size = sizeof(CMatrix4);
 	UniformBlockLayoutHandle hViewProjectionLayout = pRenderer->CreateUniformBlockLayout(
@@ -163,7 +163,7 @@ int32 RunBatchInstancedExample(
 
 	// Create uniform layout for time parameters
 	UniformBlockLayout_t timeLayout;
-	timeLayout.m_UniformNames.AddToTail("timeParams");
+	timeLayout.m_UniformNames.AddToTail("TimeData");
 	timeLayout.m_Binding = 1;
 	timeLayout.m_Size = sizeof(float32) * 4;
 	UniformBlockLayoutHandle hTimeLayout = pRenderer->CreateUniformBlockLayout(
@@ -171,7 +171,7 @@ int32 RunBatchInstancedExample(
 
 	// Create uniform layout for camera parameters
 	UniformBlockLayout_t cameraLayout;
-	cameraLayout.m_UniformNames.AddToTail("cameraParams");
+	cameraLayout.m_UniformNames.AddToTail("CameraParams");
 	cameraLayout.m_Binding = 2;
 	cameraLayout.m_Size = sizeof(float32) * 4;
 	UniformBlockLayoutHandle hCameraLayout = pRenderer->CreateUniformBlockLayout(

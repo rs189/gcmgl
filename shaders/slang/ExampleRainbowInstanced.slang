@@ -8,15 +8,15 @@
 
 [vk::binding(0, 0)] cbuffer Uniforms
 {
-    float4x4 viewProjection;
+    float4x4 ViewProjection;
 };
 [vk::binding(1, 0)] cbuffer TimeParams
 {
-    float4 timeParams;
+    float4 TimeData;
 };
 [vk::binding(2, 0)] cbuffer CameraData
 {
-    float4 cameraParams;
+    float4 CameraParams;
 };
 
 struct VertexInput
@@ -45,23 +45,23 @@ VertexOutput vertMain(VertexInput input)
     float posX = input.modelCol0.x;
     float posZ = input.modelCol0.y;
 
-    float sinVal = timeParams.x * input.modelCol0.w + timeParams.y * input.modelCol0.z;
+    float sinVal = TimeData.x * input.modelCol0.w + TimeData.y * input.modelCol0.z;
     float posY = (sinVal * 0.5 + 0.5) * input.modelCol2.x * 20.0;
 
     float4 r = float4(
-        timeParams.w * input.modelCol1.x + timeParams.z * input.modelCol1.z,
-        timeParams.w * input.modelCol1.y + timeParams.z * input.modelCol1.w,
-        timeParams.w * input.modelCol1.z - timeParams.z * input.modelCol1.x,
-        timeParams.w * input.modelCol1.w - timeParams.z * input.modelCol1.y);
+        TimeData.w * input.modelCol1.x + TimeData.z * input.modelCol1.z,
+        TimeData.w * input.modelCol1.y + TimeData.z * input.modelCol1.w,
+        TimeData.w * input.modelCol1.z - TimeData.z * input.modelCol1.x,
+        TimeData.w * input.modelCol1.w - TimeData.z * input.modelCol1.y);
 
     float3 c1 = cross(r.xyz, input.position);
     float3 c2 = cross(r.xyz, c1);
     float3 wp = input.position + 2.0 * r.w * c1 + 2.0 * c2 + float3(posX, posY, posZ);
 
-    wp += (input.modelCol2.xyz + input.modelCol3.xyz) * cameraParams.w;
+    wp += (input.modelCol2.xyz + input.modelCol3.xyz) * CameraParams.w;
 
     VertexOutput output;
-    output.position = mul(float4(wp, 1.0), viewProjection);
+    output.position = mul(float4(wp, 1.0), ViewProjection);
     output.color = input.color.rgb;
 
     return output;

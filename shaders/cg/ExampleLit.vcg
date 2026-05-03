@@ -29,22 +29,22 @@ void main(
     float3 normal : NORMAL,
     float4 color : COLOR0,
 
-    out float4 oPosition : POSITION,
-    out float3 oWorldPos : TEXCOORD0,
-    out float2 oTexCoord : TEXCOORD1,
-    out float3 oNormal : TEXCOORD2,
-    out float3 oColor : COLOR,
+    out float4 outPosition : POSITION,
+    out float3 outWorldPos : TEXCOORD0,
+    out float2 outTexCoord : TEXCOORD1,
+    out float3 outNormal : TEXCOORD2,
+    out float3 outColor : COLOR,
 
-    uniform float4x4 mvp,
-    uniform float4x4 model)
+    uniform float4x4 Mvp,
+    uniform float4x4 Model)
 {
     // World space
-    oWorldPos = mul(model, float4(position, 1.0)).xyz;
+    outWorldPos = mul(Model, float4(position, 1.0)).xyz;
 
-    // Transform normal using inverse transpose
-    oNormal = normalize(mul((float3x3)model, normal));
+    // Transform using inverse transpose
+    outNormal = normalize(mul((float3x3)Model, normal));
 
-    oTexCoord = texCoord;
-    oColor = color.rgb;
-    oPosition = mul(mvp, float4(position, 1.0));
+    outTexCoord = texCoord;
+    outColor = color.rgb;
+    outPosition = mul(Mvp, float4(position, 1.0));
 }

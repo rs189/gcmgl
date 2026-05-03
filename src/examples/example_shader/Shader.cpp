@@ -42,10 +42,10 @@ int32 RunShaderExample(
 
 	// Create shader
 	ShaderProgramHandle hShaderProgram = pRenderer->CreateShaderProgram(
-		"example_plasma");
+		"ExamplePlasma");
 	if (hShaderProgram == 0)
 	{
-		Error("[Shader] Failed to create shader program 'example_plasma'\n");
+		Error("[Shader] Failed to create shader program 'ExamplePlasma'\n");
 
 		return 1;
 	}
@@ -117,13 +117,13 @@ int32 RunShaderExample(
 
 	// Create uniform layout for MVP matrix
 	UniformBlockLayout_t mvpLayout;
-	mvpLayout.m_UniformNames.AddToTail("mvp");
+	mvpLayout.m_UniformNames.AddToTail("Mvp");
 	mvpLayout.m_Binding = 0;
 	mvpLayout.m_Size = sizeof(CMatrix4);
 	uint32 hMVPLayout = pRenderer->CreateUniformBlockLayout(mvpLayout);
 
 	UniformBlockLayout_t timeLayout;
-	timeLayout.m_UniformNames.AddToTail("time");
+	timeLayout.m_UniformNames.AddToTail("Time");
 	timeLayout.m_Binding = 1;
 	timeLayout.m_Size = sizeof(float32);
 	uint32 hTimeLayout = pRenderer->CreateUniformBlockLayout(timeLayout);

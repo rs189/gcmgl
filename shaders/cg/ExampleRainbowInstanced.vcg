@@ -1,0 +1,47 @@
+//===----------------------------------------------------------------------===//
+//
+// Part of the gcmgl, under the MIT License.
+// See LICENSE for license information.
+// SPDX-License-Identifier: MIT
+//
+//===----------------------------------------------------------------------===//
+
+void main(
+	float3 position : POSITION,
+	float4 color : COLOR0,
+	float4 ModelCol0 : TEXCOORD1,
+	float4 ModelCol1 : TEXCOORD2,
+	float4 ModelCol2 : TEXCOORD3,
+	float4 ModelCol3 : TEXCOORD4,
+
+	out float4 outPosition : POSITION,
+	out float3 outColor : COLOR,
+
+	uniform float4x4 ViewProjection,
+	uniform float4 TimeData,
+	uniform float4 CameraParams)
+{
+	// ModelCol0 = (posX, posZ, phaseSin, phaseCos)
+	// ModelCol1 = (qx, qy, qz, qw)
+	float posX = ModelCol0.x;
+	float posZ = ModelCol0.y;
+
+	// TimeData = (sinT, cosT, sinHalfY, cosHalfY)
+	float sinVal = TimeData.x * ModelCol0.w + TimeData.y * ModelCol0.z;
+	float posY = (sinVal * 0.5 + 0.5) * ModelCol2.x * 20.0;
+
+	float4 r = float4(
+		TimeData.w * ModelCol1.x + TimeData.z * ModelCol1.z,
+		TimeData.w * ModelCol1.y + TimeData.z * ModelCol1.w,
+		TimeData.w * ModelCol1.z - TimeData.z * ModelCol1.x,
+		TimeData.w * ModelCol1.w - TimeData.z * ModelCol1.y);
+
+	float3 c1 = cross(r.xyz, position);
+	float3 c2 = cross(r.xyz, c1);
+	float3 wp = position + 2.0 * r.w * c1 + 2.0 * c2 + float3(posX, posY, posZ);
+
+	wp += (ModelCol2.xyz + ModelCol3.xyz) * CameraParams.w;
+
+	outPosition = mul(ViewProjection, float4(wp, 1.0));
+	outColor = color.rgb;
+}

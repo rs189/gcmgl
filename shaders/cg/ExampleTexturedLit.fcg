@@ -19,7 +19,7 @@ struct PS_OUTPUT
     float4 color : COLOR;
 };
 
-float3 calculateLight(
+float3 CalculateLight(
     float3 worldPos,
     float3 normal,
     float3 baseColor,
@@ -47,89 +47,93 @@ float3 calculateLight(
 
 PS_OUTPUT main(
     PS_INPUT input,
+    uniform sampler2D tex : TEXUNIT0,
     // 8 lights (16 float4 registers)
-    uniform float4 lightData0 : register(c0),
-    uniform float4 lightData1 : register(c1),
-    uniform float4 lightData2 : register(c2),
-    uniform float4 lightData3 : register(c3),
-    uniform float4 lightData4 : register(c4),
-    uniform float4 lightData5 : register(c5),
-    uniform float4 lightData6 : register(c6),
-    uniform float4 lightData7 : register(c7),
-    uniform float4 lightData8 : register(c8),
-    uniform float4 lightData9 : register(c9),
-    uniform float4 lightData10 : register(c10),
-    uniform float4 lightData11 : register(c11),
-    uniform float4 lightData12 : register(c12),
-    uniform float4 lightData13 : register(c13),
-    uniform float4 lightData14 : register(c14),
-    uniform float4 lightData15 : register(c15))
+    uniform float4 LightData0 : register(c0),
+    uniform float4 LightData1 : register(c1),
+    uniform float4 LightData2 : register(c2),
+    uniform float4 LightData3 : register(c3),
+    uniform float4 LightData4 : register(c4),
+    uniform float4 LightData5 : register(c5),
+    uniform float4 LightData6 : register(c6),
+    uniform float4 LightData7 : register(c7),
+    uniform float4 LightData8 : register(c8),
+    uniform float4 LightData9 : register(c9),
+    uniform float4 LightData10 : register(c10),
+    uniform float4 LightData11 : register(c11),
+    uniform float4 LightData12 : register(c12),
+    uniform float4 LightData13 : register(c13),
+    uniform float4 LightData14 : register(c14),
+    uniform float4 LightData15 : register(c15))
 {
     PS_OUTPUT output;
+
+    // Sample texture
+    float4 texColor = tex2D(tex, input.texCoord);
 
     float3 diffuse = float3(0.0, 0.0, 0.0);
 
     // 8 lights
-    diffuse += calculateLight(
+    diffuse += CalculateLight(
         input.worldPos,
         input.normal,
         input.color,
-        lightData0.xyz,
-        lightData1.xyz,
-        lightData0.w);
-    diffuse += calculateLight(
+        LightData0.xyz,
+        LightData1.xyz,
+        LightData0.w);
+    diffuse += CalculateLight(
         input.worldPos,
         input.normal,
         input.color,
-        lightData2.xyz,
-        lightData3.xyz,
-        lightData2.w);
-    diffuse += calculateLight(
+        LightData2.xyz,
+        LightData3.xyz,
+        LightData2.w);
+    diffuse += CalculateLight(
         input.worldPos,
         input.normal,
         input.color,
-        lightData4.xyz,
-        lightData5.xyz,
-        lightData4.w);
-    diffuse += calculateLight(
+        LightData4.xyz,
+        LightData5.xyz,
+        LightData4.w);
+    diffuse += CalculateLight(
         input.worldPos,
         input.normal,
         input.color,
-        lightData6.xyz,
-        lightData7.xyz,
-        lightData6.w);
-    diffuse += calculateLight(
+        LightData6.xyz,
+        LightData7.xyz,
+        LightData6.w);
+    diffuse += CalculateLight(
         input.worldPos,
         input.normal,
         input.color,
-        lightData8.xyz,
-        lightData9.xyz,
-        lightData8.w);
-    diffuse += calculateLight(
+        LightData8.xyz,
+        LightData9.xyz,
+        LightData8.w);
+    diffuse += CalculateLight(
         input.worldPos,
         input.normal,
         input.color,
-        lightData10.xyz,
-        lightData11.xyz,
-        lightData10.w);
-    diffuse += calculateLight(
+        LightData10.xyz,
+        LightData11.xyz,
+        LightData10.w);
+    diffuse += CalculateLight(
         input.worldPos,
         input.normal,
         input.color,
-        lightData12.xyz,
-        lightData13.xyz,
-        lightData12.w);
-    diffuse += calculateLight(
+        LightData12.xyz,
+        LightData13.xyz,
+        LightData12.w);
+    diffuse += CalculateLight(
         input.worldPos,
         input.normal,
         input.color,
-        lightData14.xyz,
-        lightData15.xyz,
-        lightData14.w);
+        LightData14.xyz,
+        LightData15.xyz,
+        LightData14.w);
 
     float3 ambient = 0.3 * input.color;
 
-    output.color = float4(ambient + diffuse, 1.0);
+    output.color = float4(texColor.rgb * (ambient + diffuse), texColor.a);
 
     return output;
 }

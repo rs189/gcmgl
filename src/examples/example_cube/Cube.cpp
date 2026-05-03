@@ -42,10 +42,10 @@ int32 RunCubeExample(
 
 	// Create shader
 	ShaderProgramHandle hShaderProgram = pRenderer->CreateShaderProgram(
-		"example_rainbow");
+		"ExampleRainbow");
 	if (hShaderProgram == 0)
 	{
-		Error("[Cube] Failed to create shader program 'example_rainbow'\n");
+		Error("[Cube] Failed to create shader program 'ExampleRainbow'\n");
 
 		return 1;
 	}
@@ -117,7 +117,7 @@ int32 RunCubeExample(
 
 	// Create uniform layout for MVP matrix
 	UniformBlockLayout_t uniformLayout;
-	uniformLayout.m_UniformNames.AddToTail("mvp");
+	uniformLayout.m_UniformNames.AddToTail("Mvp");
 	uniformLayout.m_Binding = 0;
 	uniformLayout.m_Size = sizeof(CMatrix4);
 	uint32 hMVPLayout = pRenderer->CreateUniformBlockLayout(uniformLayout);

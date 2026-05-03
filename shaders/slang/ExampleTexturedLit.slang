@@ -8,11 +8,11 @@
 
 [vk::binding(0, 0)] cbuffer Uniforms
 {
-    float4x4 mvp;
+    float4x4 Mvp;
 };
 [vk::binding(2, 0)] cbuffer ModelData
 {
-    float4x4 model;
+    float4x4 Model;
 };
 
 struct VertexInput
@@ -36,44 +36,44 @@ struct VertexOutput
 VertexOutput vertMain(VertexInput input)
 {
     VertexOutput output;
-    float4 worldPos = mul(float4(input.position, 1.0), model);
+    float4 worldPos = mul(float4(input.position, 1.0), Model);
     output.worldPos = worldPos.xyz;
-    output.normal = normalize(mul(input.normal, (float3x3)model));
+    output.normal = normalize(mul(input.normal, (float3x3)Model));
     output.texCoord = input.texCoord;
     output.color = input.color.rgb;
-    output.position = mul(float4(input.position, 1.0), mvp);
+    output.position = mul(float4(input.position, 1.0), Mvp);
 
     return output;
 }
 
 [vk::binding(1, 0)] cbuffer LightData
 {
-    float4 lightData0;
-    float4 lightData1;
-    float4 lightData2;
-    float4 lightData3;
-    float4 lightData4;
-    float4 lightData5;
-    float4 lightData6;
-    float4 lightData7;
-    float4 lightData8;
-    float4 lightData9;
-    float4 lightData10;
-    float4 lightData11;
-    float4 lightData12;
-    float4 lightData13;
-    float4 lightData14;
-    float4 lightData15;
+    float4 LightData0;
+    float4 LightData1;
+    float4 LightData2;
+    float4 LightData3;
+    float4 LightData4;
+    float4 LightData5;
+    float4 LightData6;
+    float4 LightData7;
+    float4 LightData8;
+    float4 LightData9;
+    float4 LightData10;
+    float4 LightData11;
+    float4 LightData12;
+    float4 LightData13;
+    float4 LightData14;
+    float4 LightData15;
 };
 
 [vk::binding(3, 0)] cbuffer NumLights
 {
-    float numLights;
+    float NumLights;
 };
 
 [vk::binding(0, 0)] uniform Sampler2D tex;
 
-float3 calculateLight(
+float3 CalculateLight(
     float3 worldPos,
     float3 normal,
     float3 lightPosition,
@@ -98,77 +98,77 @@ float4 fragMain(VertexOutput input) : SV_Target
 {
     float4 texColor = tex.Sample(input.texCoord);
     float3 diffuse = float3(0.0, 0.0, 0.0);
-    if (numLights > 0.0)
+    if (NumLights > 0.0)
     {
-        diffuse += calculateLight(
+        diffuse += CalculateLight(
             input.worldPos,
             input.normal,
-            lightData0.xyz,
-            lightData1.xyz,
-            lightData0.w);
+            LightData0.xyz,
+            LightData1.xyz,
+            LightData0.w);
     }
-    if (numLights > 1.0)
+    if (NumLights > 1.0)
     {
-        diffuse += calculateLight(
+        diffuse += CalculateLight(
             input.worldPos,
             input.normal,
-            lightData2.xyz,
-            lightData3.xyz,
-            lightData2.w);
+            LightData2.xyz,
+            LightData3.xyz,
+            LightData2.w);
     }
-    if (numLights > 2.0)
+    if (NumLights > 2.0)
     {
-        diffuse += calculateLight(
+        diffuse += CalculateLight(
             input.worldPos,
             input.normal,
-            lightData4.xyz,
-            lightData5.xyz,
-            lightData4.w);
+            LightData4.xyz,
+            LightData5.xyz,
+            LightData4.w);
     }
-    if (numLights > 3.0)
+    if (NumLights > 3.0)
     {
-        diffuse += calculateLight(
+        diffuse += CalculateLight(
             input.worldPos,
             input.normal,
-            lightData6.xyz,
-            lightData7.xyz,
-            lightData6.w);
+            LightData6.xyz,
+            LightData7.xyz,
+            LightData6.w);
     }
-    if (numLights > 4.0)
+    if (NumLights > 4.0)
     {
-        diffuse += calculateLight(
+        diffuse += CalculateLight(
             input.worldPos,
             input.normal,
-            lightData8.xyz,
-            lightData9.xyz,
-            lightData8.w);
+            LightData8.xyz,
+            LightData9.xyz,
+            LightData8.w);
     }
-    if (numLights > 5.0)
+    if (NumLights > 5.0)
     {
-        diffuse += calculateLight(
+        diffuse += CalculateLight(
             input.worldPos,
             input.normal,
-            lightData10.xyz,
-            lightData11.xyz,
-            lightData10.w);
+            LightData10.xyz,
+            LightData11.xyz,
+            LightData10.w);
     }
-    if (numLights > 6.0)
+    if (NumLights > 6.0)
     {
-        diffuse += calculateLight(
+        diffuse += CalculateLight(
             input.worldPos,
             input.normal,
-            lightData12.xyz,
-            lightData13.xyz,
-            lightData12.w);
+            LightData12.xyz,
+            LightData13.xyz,
+            LightData12.w);
     }
-    if (numLights > 7.0)
+    if (NumLights > 7.0)
     {
-        diffuse += calculateLight(
+        diffuse += CalculateLight(
             input.worldPos,
             input.normal,
-            lightData14.xyz,
-            lightData15.xyz,
-            lightData14.w);
+            LightData14.xyz,
+            LightData15.xyz,
+            LightData14.w);
     }
     float3 ambient = 0.3 * input.color;
 

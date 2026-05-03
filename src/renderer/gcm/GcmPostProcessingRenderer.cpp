@@ -22,9 +22,9 @@ GcmPostProcessState_t CGcmPostProcessingRenderer::InitState(
 	memset(&state, 0, sizeof(state));
 
 	CUtlVector<uint8> vertexProgramBinary = CUtils::ReadBinaryFile(
-		"shaders/cg/post_desaturate.vpo");
+		"shaders/cg/PostDesaturate.vpo");
 	CUtlVector<uint8> fragmentProgramBinary = CUtils::ReadBinaryFile(
-		"shaders/cg/post_desaturate.fpo");
+		"shaders/cg/PostDesaturate.fpo");
 	if (vertexProgramBinary.Count() == 0 || fragmentProgramBinary.Count() == 0)
 	{
 		return state;

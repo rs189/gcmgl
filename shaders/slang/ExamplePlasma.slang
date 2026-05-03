@@ -8,11 +8,11 @@
 
 [vk::binding(0, 0)] cbuffer Uniforms
 {
-    float4x4 mvp;
+    float4x4 Mvp;
 };
 [vk::binding(1, 0)] cbuffer TimeParams
 {
-    float time;
+    float Time;
 };
 
 struct VertexInput
@@ -31,7 +31,7 @@ struct VertexOutput
 VertexOutput vertMain(VertexInput input)
 {
     VertexOutput output;
-    output.position = mul(float4(input.position, 1.0), mvp);
+    output.position = mul(float4(input.position, 1.0), Mvp);
     output.objPos = input.position;
 
     return output;
@@ -44,10 +44,10 @@ float4 fragMain(VertexOutput input) : SV_Target
     float y = input.objPos.y;
     float z = input.objPos.z;
 
-    float v = sin(x * 6.0 + time * 1.5)
-            + sin(y * 6.0 + time * 1.2)
-            + sin((x + y + z) * 4.0 + time)
-            + sin(sqrt(x * x + y * y + z * z + 1.0) * 5.0 - time * 2.0);
+    float v = sin(x * 6.0 + Time * 1.5)
+            + sin(y * 6.0 + Time * 1.2)
+            + sin((x + y + z) * 4.0 + Time)
+            + sin(sqrt(x * x + y * y + z * z + 1.0) * 5.0 - Time * 2.0);
 
     v = v * 0.25 + 0.5;
 
