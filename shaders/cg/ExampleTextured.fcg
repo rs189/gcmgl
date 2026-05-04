@@ -6,19 +6,19 @@
 //
 //===----------------------------------------------------------------------===//
 
-struct PS_INPUT
+struct FragmentInput_t
 {
     float2 texCoord : TEXCOORD0;
 };
 
-struct PS_OUTPUT
+struct FragmentOutput_t
 {
     float4 color : COLOR;
 };
 
-PS_OUTPUT main(PS_INPUT input, uniform sampler2D tex : TEXUNIT0)
+FragmentOutput_t main(FragmentInput_t input, uniform sampler2D tex : TEXUNIT0)
 {
-    PS_OUTPUT output;
+    FragmentOutput_t output;
     output.color = tex2D(tex, input.texCoord);
 
     return output;

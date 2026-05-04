@@ -6,7 +6,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-struct PS_INPUT
+struct FragmentInput_t
 {
     float3 worldPos : TEXCOORD0;
     float2 texCoord : TEXCOORD1;
@@ -14,7 +14,7 @@ struct PS_INPUT
     float3 color : COLOR;
 };
 
-struct PS_OUTPUT
+struct FragmentOutput_t
 {
     float4 color : COLOR;
 };
@@ -45,8 +45,8 @@ float3 CalculateLight(
     return intensity * attenuation * diff * lightColor * baseColor;
 }
 
-PS_OUTPUT main(
-    PS_INPUT input,
+FragmentOutput_t main(
+    FragmentInput_t input,
     // 8 lights (16 float4 registers)
     uniform float4 LightData0 : register(c0),
     uniform float4 LightData1 : register(c1),
@@ -65,7 +65,7 @@ PS_OUTPUT main(
     uniform float4 LightData14 : register(c14),
     uniform float4 LightData15 : register(c15))
 {
-    PS_OUTPUT output;
+    FragmentOutput_t output;
 
     float3 diffuse = float3(0.0, 0.0, 0.0);
 

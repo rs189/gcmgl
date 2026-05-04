@@ -6,21 +6,21 @@
 //
 //===----------------------------------------------------------------------===//
 
-struct VS_INPUT
+struct VertexInput_t
 {
     float3 position : POSITION;
     float3 color : COLOR;
 };
 
-struct VS_OUTPUT
+struct VertexOutput_t
 {
     float4 position : POSITION;
     float3 color : COLOR;
 };
 
-VS_OUTPUT main(VS_INPUT input, uniform float4x4 Mvp)
+VertexOutput_t main(VertexInput_t input, uniform float4x4 Mvp)
 {
-    VS_OUTPUT output;
+    VertexOutput_t output;
     output.position = mul(Mvp, float4(input.position, 1.0));
     output.color = input.color;
 

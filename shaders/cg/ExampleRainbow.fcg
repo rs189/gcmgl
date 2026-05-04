@@ -6,19 +6,19 @@
 //
 //===----------------------------------------------------------------------===//
 
-struct PS_INPUT
+struct FragmentInput_t
 {
     float3 color : COLOR;
 };
 
-struct PS_OUTPUT
+struct FragmentOutput_t
 {
     float4 color : COLOR;
 };
 
-PS_OUTPUT main(PS_INPUT input)
+FragmentOutput_t main(FragmentInput_t input)
 {
-    PS_OUTPUT output;
+    FragmentOutput_t output;
     output.color = float4(input.color, 1.0);
 
     return output;

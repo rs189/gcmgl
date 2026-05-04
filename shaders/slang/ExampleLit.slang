@@ -15,7 +15,7 @@
     float4x4 Model;
 };
 
-struct VertexInput
+struct VertexInput_t
 {
     [vk::location(0)] float3 position : POSITION;
     [vk::location(1)] float3 normal : NORMAL;
@@ -23,7 +23,7 @@ struct VertexInput
     [vk::location(3)] float4 color : COLOR0;
 };
 
-struct VertexOutput
+struct VertexOutput_t
 {
     float4 position : SV_Position;
     [vk::location(0)] float3 worldPos : TEXCOORD0;
@@ -32,9 +32,9 @@ struct VertexOutput
 };
 
 [shader("vertex")]
-VertexOutput vertMain(VertexInput input)
+VertexOutput_t vertMain(VertexInput_t input)
 {
-    VertexOutput output;
+    VertexOutput_t output;
     float4 worldPos = mul(float4(input.position, 1.0), Model);
     output.worldPos = worldPos.xyz;
     output.normal = normalize(mul(input.normal, (float3x3)Model));
@@ -91,7 +91,7 @@ float3 CalculateLight(
 }
 
 [shader("fragment")]
-float4 fragMain(VertexOutput input) : SV_Target
+float4 fragMain(VertexOutput_t input) : SV_Target
 {
     float3 diffuse = float3(0.0, 0.0, 0.0);
     if (NumLights > 0.0)

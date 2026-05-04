@@ -11,22 +11,22 @@
     float4x4 Mvp;
 };
 
-struct VertexInput
+struct VertexInput_t
 {
     [vk::location(0)] float3 position : POSITION;
     [vk::location(2)] float2 texCoord : TEXCOORD0;
 };
 
-struct VertexOutput
+struct VertexOutput_t
 {
     float4 position : SV_Position;
     [vk::location(0)] float2 texCoord : TEXCOORD0;
 };
 
 [shader("vertex")]
-VertexOutput vertMain(VertexInput input)
+VertexOutput_t vertMain(VertexInput_t input)
 {
-    VertexOutput output;
+    VertexOutput_t output;
     output.position = mul(float4(input.position, 1.0), Mvp);
     output.texCoord = input.texCoord;
 
@@ -36,7 +36,7 @@ VertexOutput vertMain(VertexInput input)
 [vk::binding(0, 0)] uniform Sampler2D tex;
 
 [shader("fragment")]
-float4 fragMain(VertexOutput input) : SV_Target
+float4 fragMain(VertexOutput_t input) : SV_Target
 {
     return tex.Sample(input.texCoord);
 }

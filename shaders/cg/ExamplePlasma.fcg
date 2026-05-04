@@ -6,19 +6,19 @@
 //
 //===----------------------------------------------------------------------===//
 
-struct PS_INPUT
+struct FragmentInput_t
 {
     float3 objPos : TEXCOORD0;
 };
 
-struct PS_OUTPUT
+struct FragmentOutput_t
 {
     float4 color : COLOR;
 };
 
-PS_OUTPUT main(PS_INPUT input, uniform float Time)
+FragmentOutput_t main(FragmentInput_t input, uniform float Time)
 {
-    PS_OUTPUT output;
+    FragmentOutput_t output;
 
     float x = input.objPos.x;
     float y = input.objPos.y;

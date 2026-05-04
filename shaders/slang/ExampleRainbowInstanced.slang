@@ -19,7 +19,7 @@
     float4 CameraParams;
 };
 
-struct VertexInput
+struct VertexInput_t
 {
     [vk::location(0)] float3 position : POSITION;
     [vk::location(3)] float4 color : COLOR0;
@@ -33,14 +33,14 @@ struct VertexInput
     [vk::location(7)] float4 modelCol3 : TEXCOORD4;
 };
 
-struct VertexOutput
+struct VertexOutput_t
 {
     float4 position : SV_Position;
     [vk::location(0)] float3 color : COLOR0;
 };
 
 [shader("vertex")]
-VertexOutput vertMain(VertexInput input)
+VertexOutput_t vertMain(VertexInput_t input)
 {
     float posX = input.modelCol0.x;
     float posZ = input.modelCol0.y;
@@ -60,7 +60,7 @@ VertexOutput vertMain(VertexInput input)
 
     wp += (input.modelCol2.xyz + input.modelCol3.xyz) * CameraParams.w;
 
-    VertexOutput output;
+    VertexOutput_t output;
     output.position = mul(float4(wp, 1.0), ViewProjection);
     output.color = input.color.rgb;
 
@@ -68,7 +68,7 @@ VertexOutput vertMain(VertexInput input)
 }
 
 [shader("fragment")]
-float4 fragMain(VertexOutput input) : SV_Target
+float4 fragMain(VertexOutput_t input) : SV_Target
 {
     return float4(input.color, 1.0);
 }
