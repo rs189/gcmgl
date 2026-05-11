@@ -32,6 +32,7 @@ gcmgl is a C++ graphics library targeting PlayStation 3 (GCM) and Linux (x86_64,
 - `ShaderProgramHandle`
 - `TextureHandle`
 - `SamplerHandle`
+- `RenderTargetHandle`
 - `UniformBlockLayoutHandle`
 
 ### RendererDesc_t
@@ -93,6 +94,10 @@ gcmgl is a C++ graphics library targeting PlayStation 3 (GCM) and Linux (x86_64,
 - `Repeat`
 - `MirroredRepeat`
 - `ClampToEdge`
+
+### TextureCompareMode_t
+- `None`
+- `RefToTexture`
 
 ### ShaderStage_t
 - `ShaderStageVertex`
@@ -207,6 +212,11 @@ gcmgl is a C++ graphics library targeting PlayStation 3 (GCM) and Linux (x86_64,
 - `Viewport_t GetViewport()`
 - `void SetScissor(const Rect_t& rect)`
 - `void SetStencilRef(uint32 stencilRef)`
+- `RenderTargetHandle CreateRenderTarget(uint32 width, uint32 height, TextureFormat_t::Enum colorFormat, TextureFormat_t::Enum depthFormat)`
+- `void DestroyRenderTarget(RenderTargetHandle hRenderTarget)`
+- `void SetRenderTarget(RenderTargetHandle hRenderTarget)`
+- `TextureHandle GetRenderTargetColorTexture(RenderTargetHandle hRenderTarget) const`
+- `TextureHandle GetRenderTargetDepthTexture(RenderTargetHandle hRenderTarget) const`
 - `BufferHandle CreateVertexBuffer(const void* pData, uint64 size, BufferUsage_t::Enum usage)`
 - `BufferHandle CreateIndexBuffer(const void* pData, uint64 size, IndexFormat_t::Enum format, BufferUsage_t::Enum usage)`
 - `BufferHandle CreateConstantBuffer(uint64 size, BufferUsage_t::Enum usage)`
@@ -222,6 +232,7 @@ gcmgl is a C++ graphics library targeting PlayStation 3 (GCM) and Linux (x86_64,
 - `TextureHandle CreateTexture2D(uint32 width, uint32 height, TextureFormat_t::Enum format, const void* pData = GCMGL_NULL)`
 - `TextureHandle CreateTextureCube(uint32 size, TextureFormat_t::Enum format, const void** ppFaces = GCMGL_NULL)`
 - `void SetTexture(TextureHandle hTexture, uint32 slot, ShaderStage_t stage, TextureWrapMode_t::Enum wrapMode = TextureWrapMode_t::Repeat)`
+- `void SetTextureCompareMode(TextureHandle hTexture, TextureCompareMode_t::Enum compareMode)`
 - `void SetSampler(SamplerHandle hSampler, uint32 slot, ShaderStage_t stage)`
 - `void UpdateTexture(TextureHandle hTexture, const void* pData, uint32 mipLevel = 0)`
 - `void DestroyTexture(TextureHandle hTexture)`

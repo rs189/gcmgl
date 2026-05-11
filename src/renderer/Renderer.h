@@ -159,6 +159,15 @@ struct TextureWrapMode_t
 	};
 };
 
+struct TextureCompareMode_t
+{
+	enum Enum
+	{
+		None,
+		RefToTexture
+	};
+};
+
 enum ShaderStage_t
 {
 	ShaderStageVertex = 1 << 0,
@@ -524,6 +533,18 @@ public:
 	virtual void SetScissor(const Rect_t& rect) = 0;
 	virtual void SetStencilRef(uint32 stencilRef) = 0;
 
+	virtual RenderTargetHandle CreateRenderTarget(
+		uint32 width,
+		uint32 height,
+		TextureFormat_t::Enum colorFormat,
+		TextureFormat_t::Enum depthFormat) = 0;
+	virtual void DestroyRenderTarget(RenderTargetHandle hRenderTarget) = 0;
+	virtual void SetRenderTarget(RenderTargetHandle hRenderTarget) = 0;
+	virtual TextureHandle GetRenderTargetColorTexture(
+		RenderTargetHandle hRenderTarget) const = 0;
+	virtual TextureHandle GetRenderTargetDepthTexture(
+		RenderTargetHandle hRenderTarget) const = 0;
+
 	virtual BufferHandle CreateVertexBuffer(
 		const void* pData,
 		uint64 size,
@@ -567,6 +588,9 @@ public:
 		uint32 slot,
 		ShaderStage_t stage,
 		TextureWrapMode_t::Enum wrapMode = TextureWrapMode_t::Repeat) = 0;
+	virtual void SetTextureCompareMode(
+		TextureHandle hTexture,
+		TextureCompareMode_t::Enum compareMode) = 0;
 	virtual void SetSampler(
 		SamplerHandle hSampler,
 		uint32 slot,

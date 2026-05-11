@@ -184,6 +184,13 @@ void CGlRenderer::Shutdown()
 	}
 	m_ProgramResources.RemoveAll();
 
+	for (int32 i = m_RenderTargetResources.FirstInorder(); m_RenderTargetResources.IsValidIndex(i); i = m_RenderTargetResources.NextInorder(i))
+	{
+		const RenderTargetResource_t& renderTargetResource = m_RenderTargetResources.Element(i);
+		glDeleteFramebuffers(1, &renderTargetResource.m_hFramebuffer);
+	}
+	m_RenderTargetResources.RemoveAll();
+
 	m_ProgramUniformBuffers.RemoveAll();
 
 	for (int32 i = m_BufferResources.FirstInorder(); m_BufferResources.IsValidIndex(i); i = m_BufferResources.NextInorder(i))
@@ -274,6 +281,7 @@ void CGlRenderer::Clear(
 
 	if (clearFlags & ClearDepth)
 	{
+		glDepthMask(GL_TRUE);
 		glClearDepth(depth);
 		clearMask |= GL_DEPTH_BUFFER_BIT;
 	}
@@ -285,6 +293,11 @@ void CGlRenderer::Clear(
 	}
 
 	glClear(clearMask);
+
+	if (clearFlags & ClearDepth)
+	{
+		glDepthMask(m_PipelineState.m_DepthStencilState.m_IsDepthWrite ? GL_TRUE : GL_FALSE);
+	}
 }
 
 void CGlRenderer::GetFramebufferSize(uint32& width, uint32& height) const
@@ -327,6 +340,155 @@ void CGlRenderer::SetScissor(const Rect_t& rect)
 void CGlRenderer::SetStencilRef(uint32 stencilRef)
 {
 	glStencilFunc(GL_ALWAYS, static_cast<GLint>(stencilRef), 0xFF);
+}
+
+RenderTargetHandle CGlRenderer::CreateRenderTarget(
+	uint32 width,
+	uint32 height,
+	TextureFormat_t::Enum colorFormat,
+	TextureFormat_t::Enum depthFormat)
+{
+	uint32 hFramebuffer;
+	glGenFramebuffers(1, &hFramebuffer);
+	glBindFramebuffer(GL_FRAMEBUFFER, hFramebuffer);
+
+	TextureHandle hColorTexture = 0;
+	if (colorFormat != TextureFormat_t::Depth16 &&
+		colorFormat != TextureFormat_t::Depth24 &&
+		colorFormat != TextureFormat_t::Depth32F &&
+		colorFormat != TextureFormat_t::Depth24Stencil8)
+	{
+		hColorTexture = CreateTexture2D(width, height, colorFormat, GCMGL_NULL);
+		const int32 colorIndex = m_TextureResources.Find(hColorTexture);
+		if (colorIndex != m_TextureResources.InvalidIndex())
+		{
+			const TextureResource_t& colorTextureResource = m_TextureResources.Element(
+				colorIndex);
+			glFramebufferTexture2D(
+				GL_FRAMEBUFFER,
+				GL_COLOR_ATTACHMENT0,
+				GL_TEXTURE_2D,
+				colorTextureResource.m_hId,
+				0);
+		}
+	}
+
+	TextureHandle hDepthTexture = 0;
+	if (depthFormat == TextureFormat_t::Depth16 ||
+		depthFormat == TextureFormat_t::Depth24 ||
+		depthFormat == TextureFormat_t::Depth32F ||
+		depthFormat == TextureFormat_t::Depth24Stencil8)
+	{
+		hDepthTexture = CreateTexture2D(width, height, depthFormat, GCMGL_NULL);
+		const int32 depthIndex = m_TextureResources.Find(hDepthTexture);
+		if (depthIndex != m_TextureResources.InvalidIndex())
+		{
+			const TextureResource_t& depthTextureResource = m_TextureResources.Element(
+				depthIndex);
+
+			GLenum attachment = GL_DEPTH_ATTACHMENT;
+			if (depthFormat == TextureFormat_t::Depth24Stencil8)
+			{
+				attachment = GL_DEPTH_STENCIL_ATTACHMENT;
+			}
+
+			glFramebufferTexture2D(
+				GL_FRAMEBUFFER,
+				attachment,
+				GL_TEXTURE_2D,
+				depthTextureResource.m_hId,
+				0);
+		}
+	}
+
+	GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+	if (status != GL_FRAMEBUFFER_COMPLETE)
+	{
+		Warning(
+			"[GLRenderer] Invalid framebuffer complete status: 0x%x\n",
+			status);
+	}
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	RenderTargetHandle hRenderTarget = AllocHandle();
+	RenderTargetResource_t renderTargetResource;
+	renderTargetResource.m_hFramebuffer = hFramebuffer;
+	renderTargetResource.m_hColorTexture = hColorTexture;
+	renderTargetResource.m_hDepthTexture = hDepthTexture;
+	renderTargetResource.m_Width = width;
+	renderTargetResource.m_Height = height;
+	m_RenderTargetResources.Insert(hRenderTarget, renderTargetResource);
+
+	return hRenderTarget;
+}
+
+void CGlRenderer::DestroyRenderTarget(RenderTargetHandle hRenderTarget)
+{
+	const int32 index = m_RenderTargetResources.Find(hRenderTarget);
+	if (index != m_RenderTargetResources.InvalidIndex())
+	{
+		const RenderTargetResource_t& renderTargetResource = m_RenderTargetResources.Element(
+			index);
+		glDeleteFramebuffers(1, &renderTargetResource.m_hFramebuffer);
+		if (renderTargetResource.m_hColorTexture != 0)
+		{
+			DestroyTexture(renderTargetResource.m_hColorTexture);
+		}
+		if (renderTargetResource.m_hDepthTexture != 0)
+		{
+			DestroyTexture(renderTargetResource.m_hDepthTexture);
+		}
+		m_RenderTargetResources.RemoveAt(index);
+	}
+}
+
+void CGlRenderer::SetRenderTarget(RenderTargetHandle hRenderTarget)
+{
+	if (hRenderTarget == 0)
+	{
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		SetFullViewport();
+
+		return;
+	}
+
+	const int32 index = m_RenderTargetResources.Find(hRenderTarget);
+	if (index != m_RenderTargetResources.InvalidIndex())
+	{
+		const RenderTargetResource_t& renderTargetResource = m_RenderTargetResources.Element(
+			index);
+		glBindFramebuffer(GL_FRAMEBUFFER, renderTargetResource.m_hFramebuffer);
+		glViewport(
+			0,
+			0,
+			renderTargetResource.m_Width,
+			renderTargetResource.m_Height);
+	}
+}
+
+TextureHandle CGlRenderer::GetRenderTargetColorTexture(
+	RenderTargetHandle hRenderTarget) const
+{
+	const int32 index = m_RenderTargetResources.Find(hRenderTarget);
+	if (index != m_RenderTargetResources.InvalidIndex())
+	{
+		return m_RenderTargetResources.Element(index).m_hColorTexture;
+	}
+
+	return 0;
+}
+
+TextureHandle CGlRenderer::GetRenderTargetDepthTexture(
+	RenderTargetHandle hRenderTarget) const
+{
+	const int32 index = m_RenderTargetResources.Find(hRenderTarget);
+	if (index != m_RenderTargetResources.InvalidIndex())
+	{
+		return m_RenderTargetResources.Element(index).m_hDepthTexture;
+	}
+
+	return 0;
 }
 
 BufferHandle CGlRenderer::CreateVertexBuffer(
@@ -691,13 +853,15 @@ ShaderProgramHandle CGlRenderer::CreateShaderProgram(
 		for (int32 j = 0; j < numUniformsInBlock; j++)
 		{
 			GLchar name[256];
+			GLint size;
+			GLenum type;
 			glGetActiveUniform(
 				glProgram,
 				(GLuint)uniformIndices[j],
 				sizeof(name),
 				GCMGL_NULL,
-				GCMGL_NULL,
-				GCMGL_NULL,
+				&size,
+				&type,
 				name);
 
 			char* pDot = strrchr(name, '.');
@@ -775,6 +939,30 @@ TextureHandle CGlRenderer::CreateTexture2D(
 			glType = GL_UNSIGNED_BYTE;
 
 			break;
+		case TextureFormat_t::Depth16:
+			internalFormat = GL_DEPTH_COMPONENT16;
+			glFormat = GL_DEPTH_COMPONENT;
+			glType = GL_UNSIGNED_SHORT;
+
+			break;
+		case TextureFormat_t::Depth24:
+			internalFormat = GL_DEPTH_COMPONENT24;
+			glFormat = GL_DEPTH_COMPONENT;
+			glType = GL_UNSIGNED_INT;
+
+			break;
+		case TextureFormat_t::Depth32F:
+			internalFormat = GL_DEPTH_COMPONENT32F;
+			glFormat = GL_DEPTH_COMPONENT;
+			glType = GL_FLOAT;
+
+			break;
+		case TextureFormat_t::Depth24Stencil8:
+			internalFormat = GL_DEPTH24_STENCIL8;
+			glFormat = GL_DEPTH_STENCIL;
+			glType = GL_UNSIGNED_INT_24_8;
+
+			break;
 		default:
 			internalFormat = GL_RGBA8;
 			glFormat = GL_RGBA;
@@ -819,17 +1007,73 @@ TextureHandle CGlRenderer::CreateTextureCube(
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
+	GLenum internalFormat;
+	GLenum glFormat;
+	GLenum glType;
+
+	switch (format)
+	{
+		case TextureFormat_t::R8:
+			internalFormat = GL_R8;
+			glFormat = GL_RED;
+			glType = GL_UNSIGNED_BYTE;
+
+			break;
+		case TextureFormat_t::RGB8:
+			internalFormat = GL_RGB8;
+			glFormat = GL_RGB;
+			glType = GL_UNSIGNED_BYTE;
+
+			break;
+		case TextureFormat_t::RGBA8:
+			internalFormat = GL_RGBA8;
+			glFormat = GL_RGBA;
+			glType = GL_UNSIGNED_BYTE;
+
+			break;
+		case TextureFormat_t::Depth16:
+			internalFormat = GL_DEPTH_COMPONENT16;
+			glFormat = GL_DEPTH_COMPONENT;
+			glType = GL_UNSIGNED_SHORT;
+
+			break;
+		case TextureFormat_t::Depth24:
+			internalFormat = GL_DEPTH_COMPONENT24;
+			glFormat = GL_DEPTH_COMPONENT;
+			glType = GL_UNSIGNED_INT;
+
+			break;
+		case TextureFormat_t::Depth32F:
+			internalFormat = GL_DEPTH_COMPONENT32F;
+			glFormat = GL_DEPTH_COMPONENT;
+			glType = GL_FLOAT;
+
+			break;
+		case TextureFormat_t::Depth24Stencil8:
+			internalFormat = GL_DEPTH24_STENCIL8;
+			glFormat = GL_DEPTH_STENCIL;
+			glType = GL_UNSIGNED_INT_24_8;
+
+			break;
+		default:
+			internalFormat = GL_RGBA8;
+			glFormat = GL_RGBA;
+			glType = GL_UNSIGNED_BYTE;
+
+			break;
+	}
+
 	for (int32 i = 0; i < 6; i++)
 	{
 		glTexImage2D(
 			GL_TEXTURE_CUBE_MAP_POSITIVE_X + uint32(i),
 			0,
-			GL_RGBA8,
+			internalFormat,
 			static_cast<GLsizei>(size),
 			static_cast<GLsizei>(size),
 			0,
-			GL_RGBA,
-			GL_UNSIGNED_BYTE,
+			glFormat,
+			glType,
 			pFaces ? pFaces[i] : GCMGL_NULL);
 	}
 
@@ -890,6 +1134,39 @@ void CGlRenderer::SetTexture(
 	{
 		glTexParameteri(target, GL_TEXTURE_WRAP_R, glWrapMode);
 	}
+}
+
+void CGlRenderer::SetTextureCompareMode(
+	TextureHandle hTexture,
+	TextureCompareMode_t::Enum compareMode)
+{
+	int32 textureIndex = m_TextureResources.Find(hTexture);
+	if (textureIndex == m_TextureResources.InvalidIndex())
+	{
+		Warning("[GLRenderer] Invalid texture handle: %d\n", hTexture);
+
+		return;
+	}
+
+	const TextureResource_t& textureResource = m_TextureResources.Element(
+		textureIndex);
+
+	uint32 target = textureResource.m_Target ? textureResource.m_Target : GL_TEXTURE_2D;
+	glBindTexture(target, textureResource.m_hId);
+
+	if (compareMode == TextureCompareMode_t::RefToTexture)
+	{
+		glTexParameteri(
+			target,
+			GL_TEXTURE_COMPARE_MODE,
+			GL_COMPARE_REF_TO_TEXTURE);
+		glTexParameteri(target, GL_TEXTURE_COMPARE_FUNC, GL_LEQUAL);
+	}
+	else
+	{
+		glTexParameteri(target, GL_TEXTURE_COMPARE_MODE, GL_NONE);
+	}
+	glBindTexture(target, 0);
 }
 
 void CGlRenderer::SetSampler(

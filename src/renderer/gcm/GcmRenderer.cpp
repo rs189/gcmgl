@@ -240,7 +240,8 @@ void CGcmRenderer::Shutdown()
 	}
 	m_ProgramResources.RemoveAll();
 
-	m_ProgramUniformShadows.RemoveAll();
+	m_RenderTargetResources.RemoveAll();
+
 	m_ProgramUniformBuffers.RemoveAll();
 
 	for (int32 i = m_BufferResources.FirstInorder(); m_BufferResources.IsValidIndex(i); i = m_BufferResources.NextInorder(i))
@@ -362,26 +363,37 @@ void CGcmRenderer::Clear(
 	float32 depth,
 	uint32 stencil)
 {
-	uint32 clearMask = 0;
-	if ((clearFlags & ClearColor) != 0)
+	uint32 gcmClearFlags = 0;
+	if (clearFlags & ClearColor)
 	{
-		rsxSetClearColor(context, CColor::PackARGB(color));
-		clearMask |= GCM_CLEAR_R | GCM_CLEAR_G | GCM_CLEAR_B | GCM_CLEAR_A;
-	}
-	if ((clearFlags & ClearDepth) != 0)
-	{
-		clearMask |= GCM_CLEAR_Z;
-	}
-	if ((clearFlags & ClearStencil) != 0)
-	{
-		clearMask |= GCM_CLEAR_S;
+		rsxSetClearColor(
+			context,
+			CColor::PackColor(color));
+		gcmClearFlags |= GCM_CLEAR_R | GCM_CLEAR_G | GCM_CLEAR_B | GCM_CLEAR_A;
 	}
 
-	uint32 depthPacked = uint32(depth * 16777215.0f);
-	uint32 depthStencilClear = (depthPacked << 8) | (stencil & 0xff);
+	if (clearFlags & ClearDepth)
+	{
+		rsxSetDepthWriteEnable(context, GCM_TRUE);
+		rsxSetClearDepthStencil(
+			context,
+			static_cast<uint32>(depth * 0xFFFFFF) << 8 | stencil);
+		gcmClearFlags |= GCM_CLEAR_Z;
+	}
 
-	rsxSetClearDepthStencil(context, depthStencilClear);
-	rsxClearSurface(context, clearMask);
+	if (clearFlags & ClearStencil)
+	{
+		gcmClearFlags |= GCM_CLEAR_S;
+	}
+
+	rsxClearSurface(context, gcmClearFlags);
+
+	if (clearFlags & ClearDepth)
+	{
+		rsxSetDepthWriteEnable(
+			context,
+			m_PipelineState.m_DepthStencilState.m_IsDepthWrite ? GCM_TRUE : GCM_FALSE);
+	}
 }
 
 void CGcmRenderer::GetFramebufferSize(uint32& width, uint32& height) const
@@ -438,6 +450,210 @@ void CGcmRenderer::SetStencilRef(uint32 stencilRef)
 
 	rsxSetBackStencilFunc(context, GCM_ALWAYS, stencilRef, 0xFF);
 	rsxSetBackStencilOp(context, GCM_KEEP, GCM_KEEP, GCM_KEEP);
+}
+
+RenderTargetHandle CGcmRenderer::CreateRenderTarget(
+	uint32 width,
+	uint32 height,
+	TextureFormat_t::Enum colorFormat,
+	TextureFormat_t::Enum depthFormat)
+{
+	uint32 colorPitch = (width * 4 + 63) & ~63;
+	RsxAllocation_t colorAlloc;
+	colorAlloc.m_pPtr = GCMGL_NULL;
+	TextureHandle hColorTexture = 0;
+	if (colorFormat != TextureFormat_t::Depth16 &&
+		colorFormat != TextureFormat_t::Depth24 &&
+		colorFormat != TextureFormat_t::Depth32F &&
+		colorFormat != TextureFormat_t::Depth24Stencil8)
+	{
+		colorAlloc = m_StaticHeap.Alloc(colorPitch * height, 64);
+		if (colorAlloc.m_pPtr)
+		{
+			memset(colorAlloc.m_pPtr, 0, colorPitch * height);
+			hColorTexture = AllocHandle();
+			TextureResource_t colorTextureResource;
+			colorTextureResource.m_pBuffer = colorAlloc.m_pPtr;
+			colorTextureResource.m_Offset = colorAlloc.m_Offset;
+			colorTextureResource.m_Width = width;
+			colorTextureResource.m_Height = height;
+			colorTextureResource.m_Format = colorFormat;
+			colorTextureResource.m_Alloc = colorAlloc;
+			colorTextureResource.m_IsCubemap = false;
+			m_TextureResources.Insert(hColorTexture, colorTextureResource);
+		}
+	}
+
+	uint32 depthPitch = (width * 4 + 63) & ~63;
+	RsxAllocation_t depthAlloc;
+	depthAlloc.m_pPtr = GCMGL_NULL;
+	TextureHandle hDepthTexture = 0;
+	if (depthFormat == TextureFormat_t::Depth16 ||
+		depthFormat == TextureFormat_t::Depth24 ||
+		depthFormat == TextureFormat_t::Depth32F ||
+		depthFormat == TextureFormat_t::Depth24Stencil8)
+	{
+		depthAlloc = m_StaticHeap.Alloc(depthPitch * height, 64);
+		if (depthAlloc.m_pPtr)
+		{
+			memset(depthAlloc.m_pPtr, 0, depthPitch * height);
+			hDepthTexture = AllocHandle();
+			TextureResource_t depthTextureResource;
+			depthTextureResource.m_pBuffer = depthAlloc.m_pPtr;
+			depthTextureResource.m_Offset = depthAlloc.m_Offset;
+			depthTextureResource.m_Width = width;
+			depthTextureResource.m_Height = height;
+			depthTextureResource.m_Format = depthFormat;
+			depthTextureResource.m_Alloc = depthAlloc;
+			depthTextureResource.m_IsCubemap = false;
+			m_TextureResources.Insert(hDepthTexture, depthTextureResource);
+		}
+	}
+
+	__sync_synchronize();
+
+	RenderTargetHandle hRenderTarget = AllocHandle();
+	RenderTargetResource_t renderTargetResource;
+	renderTargetResource.m_hColorTexture = hColorTexture;
+	renderTargetResource.m_hDepthTexture = hDepthTexture;
+	renderTargetResource.m_Width = width;
+	renderTargetResource.m_Height = height;
+
+	memset(&renderTargetResource.m_Surface, 0, sizeof(gcmSurface));
+	
+	if (hColorTexture != 0)
+	{
+		if (colorFormat == TextureFormat_t::RGBA8)
+		{
+			renderTargetResource.m_Surface.colorFormat = GCM_SURFACE_A8R8G8B8;
+		}
+		else
+		{
+			renderTargetResource.m_Surface.colorFormat = GCM_SURFACE_X8R8G8B8;
+		}
+		renderTargetResource.m_Surface.colorTarget = GCM_SURFACE_TARGET_0;
+		renderTargetResource.m_Surface.colorLocation[0] = GCM_LOCATION_RSX;
+		renderTargetResource.m_Surface.colorOffset[0] = colorAlloc.m_Offset;
+		renderTargetResource.m_Surface.colorPitch[0] = colorPitch;
+		renderTargetResource.m_Surface.colorLocation[1] = GCM_LOCATION_RSX;
+		renderTargetResource.m_Surface.colorLocation[2] = GCM_LOCATION_RSX;
+		renderTargetResource.m_Surface.colorLocation[3] = GCM_LOCATION_RSX;
+		renderTargetResource.m_Surface.colorOffset[1] = 0;
+		renderTargetResource.m_Surface.colorOffset[2] = 0;
+		renderTargetResource.m_Surface.colorOffset[3] = 0;
+		renderTargetResource.m_Surface.colorPitch[1] = colorPitch;
+		renderTargetResource.m_Surface.colorPitch[2] = colorPitch;
+		renderTargetResource.m_Surface.colorPitch[3] = colorPitch;
+	}
+	else
+	{
+		renderTargetResource.m_Surface.colorFormat = GCM_SURFACE_X8R8G8B8;
+		renderTargetResource.m_Surface.colorTarget = GCM_SURFACE_TARGET_NONE;
+		renderTargetResource.m_Surface.colorLocation[0] = GCM_LOCATION_RSX;
+		renderTargetResource.m_Surface.colorOffset[0] = 0;
+		renderTargetResource.m_Surface.colorPitch[0] = 64;
+		renderTargetResource.m_Surface.colorLocation[1] = GCM_LOCATION_RSX;
+		renderTargetResource.m_Surface.colorLocation[2] = GCM_LOCATION_RSX;
+		renderTargetResource.m_Surface.colorLocation[3] = GCM_LOCATION_RSX;
+		renderTargetResource.m_Surface.colorOffset[1] = 0;
+		renderTargetResource.m_Surface.colorOffset[2] = 0;
+		renderTargetResource.m_Surface.colorOffset[3] = 0;
+		renderTargetResource.m_Surface.colorPitch[1] = 64;
+		renderTargetResource.m_Surface.colorPitch[2] = 64;
+		renderTargetResource.m_Surface.colorPitch[3] = 64;
+	}
+
+	if (hDepthTexture != 0)
+	{
+		renderTargetResource.m_Surface.depthFormat = GCM_SURFACE_ZETA_Z24S8;
+		renderTargetResource.m_Surface.depthLocation = GCM_LOCATION_RSX;
+		renderTargetResource.m_Surface.depthOffset = depthAlloc.m_Offset;
+		renderTargetResource.m_Surface.depthPitch = depthPitch;
+	}
+	else
+	{
+		renderTargetResource.m_Surface.depthFormat = GCM_SURFACE_ZETA_Z24S8;
+		renderTargetResource.m_Surface.depthLocation = GCM_LOCATION_RSX;
+		renderTargetResource.m_Surface.depthOffset = 0;
+		renderTargetResource.m_Surface.depthPitch = 64;
+	}
+
+	renderTargetResource.m_Surface.type = GCM_SURFACE_TYPE_LINEAR;
+	renderTargetResource.m_Surface.antiAlias = GCM_SURFACE_CENTER_1;
+	renderTargetResource.m_Surface.width = width;
+	renderTargetResource.m_Surface.height = height;
+	renderTargetResource.m_Surface.x = 0;
+	renderTargetResource.m_Surface.y = 0;
+	m_RenderTargetResources.Insert(hRenderTarget, renderTargetResource);
+
+	return hRenderTarget;
+}
+
+void CGcmRenderer::DestroyRenderTarget(RenderTargetHandle hRenderTarget)
+{
+	const int32 index = m_RenderTargetResources.Find(hRenderTarget);
+	if (index != m_RenderTargetResources.InvalidIndex())
+	{
+		const RenderTargetResource_t& res = m_RenderTargetResources.Element(index);
+		if (res.m_hColorTexture != 0)
+		{
+			DestroyTexture(res.m_hColorTexture);
+		}
+		if (res.m_hDepthTexture != 0)
+		{
+			DestroyTexture(res.m_hDepthTexture);
+		}
+		m_RenderTargetResources.RemoveAt(index);
+	}
+}
+
+void CGcmRenderer::SetRenderTarget(RenderTargetHandle hRenderTarget)
+{
+	if (hRenderTarget == 0)
+	{
+		setRenderTarget(curr_fb);
+		SetFullViewport();
+
+		return;
+	}
+
+	const int32 index = m_RenderTargetResources.Find(hRenderTarget);
+	if (index != m_RenderTargetResources.InvalidIndex())
+	{
+		const RenderTargetResource_t& renderTargetResource = m_RenderTargetResources.Element(
+			index);
+		rsxSetSurface(context, const_cast<gcmSurface*>(&renderTargetResource.m_Surface));
+		Viewport_t viewport(
+			0.0f,
+			0.0f,
+			float32(renderTargetResource.m_Width),
+			float32(renderTargetResource.m_Height));
+		SetViewport(viewport);
+	}
+}
+
+TextureHandle CGcmRenderer::GetRenderTargetColorTexture(
+	RenderTargetHandle hRenderTarget) const
+{
+	const int32 index = m_RenderTargetResources.Find(hRenderTarget);
+	if (index != m_RenderTargetResources.InvalidIndex())
+	{
+		return m_RenderTargetResources.Element(index).m_hColorTexture;
+	}
+
+	return 0;
+}
+
+TextureHandle CGcmRenderer::GetRenderTargetDepthTexture(
+	RenderTargetHandle hRenderTarget) const
+{
+	const int32 index = m_RenderTargetResources.Find(hRenderTarget);
+	if (index != m_RenderTargetResources.InvalidIndex())
+	{
+		return m_RenderTargetResources.Element(index).m_hDepthTexture;
+	}
+
+	return 0;
 }
 
 BufferHandle CGcmRenderer::CreateVertexBuffer(
@@ -999,14 +1215,14 @@ void CGcmRenderer::SetTexture(
 		GCM_TEXTURE_LINEAR,
 		GCM_TEXTURE_CONVOLUTION_QUINCUNX);
 
-	uint8 gcmWrapMode = GCM_TEXTURE_WRAP;
+	uint8 gcmWrapMode = GCM_TEXTURE_REPEAT;
 	if (wrapMode == TextureWrapMode_t::ClampToEdge)
 	{
 		gcmWrapMode = GCM_TEXTURE_CLAMP_TO_EDGE;
 	}
 	else if (wrapMode == TextureWrapMode_t::MirroredRepeat)
 	{
-		gcmWrapMode = GCM_TEXTURE_MIRROR;
+		gcmWrapMode = GCM_TEXTURE_MIRRORED_REPEAT;
 	}
 
 	rsxTextureWrapMode(
@@ -1018,6 +1234,13 @@ void CGcmRenderer::SetTexture(
 		0,
 		GCM_TEXTURE_ZFUNC_LESS,
 		0);
+}
+
+void CGcmRenderer::SetTextureCompareMode(
+	TextureHandle hTexture,
+	TextureCompareMode_t::Enum compareMode)
+{
+	Warning("[GCMRenderer] SetTextureCompareMode not implemented\n");
 }
 
 void CGcmRenderer::SetSampler(

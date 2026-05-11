@@ -54,6 +54,20 @@ public:
 	virtual void SetScissor(const Rect_t& rect) GCMGL_OVERRIDE;
 	virtual void SetStencilRef(uint32 stencilRef) GCMGL_OVERRIDE;
 
+	virtual RenderTargetHandle CreateRenderTarget(
+		uint32 width,
+		uint32 height,
+		TextureFormat_t::Enum colorFormat,
+		TextureFormat_t::Enum depthFormat) GCMGL_OVERRIDE;
+	virtual void DestroyRenderTarget(
+		RenderTargetHandle hRenderTarget) GCMGL_OVERRIDE;
+	virtual void SetRenderTarget(
+		RenderTargetHandle hRenderTarget) GCMGL_OVERRIDE;
+	virtual TextureHandle GetRenderTargetColorTexture(
+		RenderTargetHandle hRenderTarget) const GCMGL_OVERRIDE;
+	virtual TextureHandle GetRenderTargetDepthTexture(
+		RenderTargetHandle hRenderTarget) const GCMGL_OVERRIDE;
+
 	// Buffers
 	virtual BufferHandle CreateVertexBuffer(
 		const void* pData,
@@ -97,6 +111,9 @@ public:
 		uint32 slot,
 		ShaderStage_t stage,
 		TextureWrapMode_t::Enum wrapMode = TextureWrapMode_t::Repeat) GCMGL_OVERRIDE;
+	virtual void SetTextureCompareMode(
+		TextureHandle hTexture,
+		TextureCompareMode_t::Enum compareMode) GCMGL_OVERRIDE;
 	virtual void SetSampler(
 		SamplerHandle hSampler,
 		uint32 slot,
@@ -247,6 +264,15 @@ private:
 		bool m_IsCubemap;
 	};
 
+	struct RenderTargetResource_t
+	{
+		gcmSurface m_Surface;
+		TextureHandle m_hColorTexture;
+		TextureHandle m_hDepthTexture;
+		uint32 m_Width;
+		uint32 m_Height;
+	};
+
 	struct BoundUniform_t
 	{
 		BufferHandle m_hBuffer;
@@ -263,6 +289,7 @@ private:
 	CUtlMap<ShaderProgramHandle, CUtlMap<uint32, UniformShadow_t> > m_ProgramUniformShadows;
 	CUtlMap<ShaderProgramHandle, CUtlMap<uint32, BoundUniform_t> > m_ProgramUniformBuffers;
 	CUtlMap<TextureHandle, TextureResource_t> m_TextureResources;
+	CUtlMap<RenderTargetHandle, RenderTargetResource_t> m_RenderTargetResources;
 
 	Viewport_t m_Viewport;
 	float32 m_ViewportScale[4];

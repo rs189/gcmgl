@@ -27,7 +27,6 @@ void CTime::Init()
 		s_LastTime = s_CurrentTime;
 		s_DeltaTime = 0.0f;
 		s_FrameCount = 0;
-
 		s_IsInitialized = true;
 	}
 }
@@ -48,7 +47,6 @@ void CTime::Update()
 	s_FrameCount++;
 }
 
-// Get elapsed time since startup
 float64 CTime::GetTime()
 {
 	return s_CurrentTime;
@@ -69,5 +67,5 @@ float64 CTime::GetTimeSinceStartup()
 	timeval tv;
 	gettimeofday(&tv, GCMGL_NULL);
 
-	return float64(tv.tv_sec) + float64(tv.tv_usec) / 1000000.0;
+	return static_cast<float64>(tv.tv_sec) + static_cast<float64>(tv.tv_usec) / 1000000.0;
 }
