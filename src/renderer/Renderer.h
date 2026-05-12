@@ -538,8 +538,14 @@ public:
 		uint32 height,
 		TextureFormat_t::Enum colorFormat,
 		TextureFormat_t::Enum depthFormat) = 0;
+	virtual RenderTargetHandle CreateRenderTargetCube(
+		uint32 size,
+		TextureFormat_t::Enum colorFormat,
+		TextureFormat_t::Enum depthFormat) = 0;
 	virtual void DestroyRenderTarget(RenderTargetHandle hRenderTarget) = 0;
-	virtual void SetRenderTarget(RenderTargetHandle hRenderTarget) = 0;
+	virtual void SetRenderTarget(
+		RenderTargetHandle hRenderTarget,
+		uint32 faceIndex = 0) = 0;
 	virtual TextureHandle GetRenderTargetColorTexture(
 		RenderTargetHandle hRenderTarget) const = 0;
 	virtual TextureHandle GetRenderTargetDepthTexture(

@@ -213,8 +213,9 @@ gcmgl is a C++ graphics library targeting PlayStation 3 (GCM) and Linux (x86_64,
 - `void SetScissor(const Rect_t& rect)`
 - `void SetStencilRef(uint32 stencilRef)`
 - `RenderTargetHandle CreateRenderTarget(uint32 width, uint32 height, TextureFormat_t::Enum colorFormat, TextureFormat_t::Enum depthFormat)`
+- `RenderTargetHandle CreateRenderTargetCube(uint32 size, TextureFormat_t::Enum colorFormat, TextureFormat_t::Enum depthFormat)`
 - `void DestroyRenderTarget(RenderTargetHandle hRenderTarget)`
-- `void SetRenderTarget(RenderTargetHandle hRenderTarget)`
+- `void SetRenderTarget(RenderTargetHandle hRenderTarget, uint32 faceIndex = 0)`
 - `TextureHandle GetRenderTargetColorTexture(RenderTargetHandle hRenderTarget) const`
 - `TextureHandle GetRenderTargetDepthTexture(RenderTargetHandle hRenderTarget) const`
 - `BufferHandle CreateVertexBuffer(const void* pData, uint64 size, BufferUsage_t::Enum usage)`

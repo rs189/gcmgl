@@ -59,10 +59,15 @@ public:
 		uint32 height,
 		TextureFormat_t::Enum colorFormat,
 		TextureFormat_t::Enum depthFormat) GCMGL_OVERRIDE;
+	virtual RenderTargetHandle CreateRenderTargetCube(
+		uint32 size,
+		TextureFormat_t::Enum colorFormat,
+		TextureFormat_t::Enum depthFormat) GCMGL_OVERRIDE;
 	virtual void DestroyRenderTarget(
 		RenderTargetHandle hRenderTarget) GCMGL_OVERRIDE;
 	virtual void SetRenderTarget(
-		RenderTargetHandle hRenderTarget) GCMGL_OVERRIDE;
+		RenderTargetHandle hRenderTarget,
+		uint32 faceIndex = 0) GCMGL_OVERRIDE;
 	virtual TextureHandle GetRenderTargetColorTexture(
 		RenderTargetHandle hRenderTarget) const GCMGL_OVERRIDE;
 	virtual TextureHandle GetRenderTargetDepthTexture(
@@ -271,6 +276,7 @@ private:
 		TextureHandle m_hDepthTexture;
 		uint32 m_Width;
 		uint32 m_Height;
+		bool m_IsCubemap;
 	};
 
 	struct BoundUniform_t

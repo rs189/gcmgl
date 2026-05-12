@@ -418,6 +418,88 @@ RenderTargetHandle CGlRenderer::CreateRenderTarget(
 	renderTargetResource.m_hDepthTexture = hDepthTexture;
 	renderTargetResource.m_Width = width;
 	renderTargetResource.m_Height = height;
+	renderTargetResource.m_IsCubemap = false;
+	m_RenderTargetResources.Insert(hRenderTarget, renderTargetResource);
+
+	return hRenderTarget;
+}
+
+RenderTargetHandle CGlRenderer::CreateRenderTargetCube(
+	uint32 size,
+	TextureFormat_t::Enum colorFormat,
+	TextureFormat_t::Enum depthFormat)
+{
+	uint32 hFramebuffer;
+	glGenFramebuffers(1, &hFramebuffer);
+	glBindFramebuffer(GL_FRAMEBUFFER, hFramebuffer);
+
+	TextureHandle hColorTexture = 0;
+	if (colorFormat != TextureFormat_t::Depth16 &&
+		colorFormat != TextureFormat_t::Depth24 &&
+		colorFormat != TextureFormat_t::Depth32F &&
+		colorFormat != TextureFormat_t::Depth24Stencil8)
+	{
+		hColorTexture = CreateTextureCube(size, colorFormat, GCMGL_NULL);
+		const int32 colorIndex = m_TextureResources.Find(hColorTexture);
+		if (colorIndex != m_TextureResources.InvalidIndex())
+		{
+			const TextureResource_t& colorTextureResource = m_TextureResources.Element(
+				colorIndex);
+			glFramebufferTexture2D(
+				GL_FRAMEBUFFER,
+				GL_COLOR_ATTACHMENT0,
+				GL_TEXTURE_CUBE_MAP_POSITIVE_X,
+				colorTextureResource.m_hId,
+				0);
+		}
+	}
+
+	TextureHandle hDepthTexture = 0;
+	if (depthFormat == TextureFormat_t::Depth16 ||
+		depthFormat == TextureFormat_t::Depth24 ||
+		depthFormat == TextureFormat_t::Depth32F ||
+		depthFormat == TextureFormat_t::Depth24Stencil8)
+	{
+		hDepthTexture = CreateTextureCube(size, depthFormat, GCMGL_NULL);
+		const int32 depthIndex = m_TextureResources.Find(hDepthTexture);
+		if (depthIndex != m_TextureResources.InvalidIndex())
+		{
+			const TextureResource_t& depthTextureResource = m_TextureResources.Element(
+				depthIndex);
+
+			GLenum attachment = GL_DEPTH_ATTACHMENT;
+			if (depthFormat == TextureFormat_t::Depth24Stencil8)
+			{
+				attachment = GL_DEPTH_STENCIL_ATTACHMENT;
+			}
+
+			glFramebufferTexture2D(
+				GL_FRAMEBUFFER,
+				attachment,
+				GL_TEXTURE_CUBE_MAP_POSITIVE_X,
+				depthTextureResource.m_hId,
+				0);
+		}
+	}
+
+	GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+	if (status != GL_FRAMEBUFFER_COMPLETE)
+	{
+		Warning(
+			"[GLRenderer] Invalid framebuffer complete status: 0x%x\n",
+			status);
+	}
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+	RenderTargetHandle hRenderTarget = AllocHandle();
+	RenderTargetResource_t renderTargetResource;
+	renderTargetResource.m_hFramebuffer = hFramebuffer;
+	renderTargetResource.m_hColorTexture = hColorTexture;
+	renderTargetResource.m_hDepthTexture = hDepthTexture;
+	renderTargetResource.m_Width = size;
+	renderTargetResource.m_Height = size;
+	renderTargetResource.m_IsCubemap = true;
 	m_RenderTargetResources.Insert(hRenderTarget, renderTargetResource);
 
 	return hRenderTarget;
@@ -443,7 +525,9 @@ void CGlRenderer::DestroyRenderTarget(RenderTargetHandle hRenderTarget)
 	}
 }
 
-void CGlRenderer::SetRenderTarget(RenderTargetHandle hRenderTarget)
+void CGlRenderer::SetRenderTarget(
+	RenderTargetHandle hRenderTarget,
+	uint32 faceIndex)
 {
 	if (hRenderTarget == 0)
 	{
@@ -459,6 +543,46 @@ void CGlRenderer::SetRenderTarget(RenderTargetHandle hRenderTarget)
 		const RenderTargetResource_t& renderTargetResource = m_RenderTargetResources.Element(
 			index);
 		glBindFramebuffer(GL_FRAMEBUFFER, renderTargetResource.m_hFramebuffer);
+		
+		if (renderTargetResource.m_IsCubemap)
+		{
+			if (renderTargetResource.m_hColorTexture != 0)
+			{
+				const int32 colorIndex = m_TextureResources.Find(
+					renderTargetResource.m_hColorTexture);
+				if (colorIndex != m_TextureResources.InvalidIndex())
+				{
+					glFramebufferTexture2D(
+						GL_FRAMEBUFFER,
+						GL_COLOR_ATTACHMENT0,
+						GL_TEXTURE_CUBE_MAP_POSITIVE_X + faceIndex,
+						m_TextureResources.Element(colorIndex).m_hId,
+						0);
+				}
+			}
+			if (renderTargetResource.m_hDepthTexture != 0)
+			{
+				const int32 depthIndex = m_TextureResources.Find(
+					renderTargetResource.m_hDepthTexture);
+				if (depthIndex != m_TextureResources.InvalidIndex())
+				{
+					const TextureResource_t& depthResource = m_TextureResources.Element(
+						depthIndex);
+					GLenum attachment = GL_DEPTH_ATTACHMENT;
+					if (depthResource.m_Format == TextureFormat_t::Depth24Stencil8)
+					{
+						attachment = GL_DEPTH_STENCIL_ATTACHMENT;
+					}
+					glFramebufferTexture2D(
+						GL_FRAMEBUFFER,
+						attachment,
+						GL_TEXTURE_CUBE_MAP_POSITIVE_X + faceIndex,
+						depthResource.m_hId,
+						0);
+				}
+			}
+		}
+
 		glViewport(
 			0,
 			0,

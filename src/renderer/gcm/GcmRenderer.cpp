@@ -518,6 +518,7 @@ RenderTargetHandle CGcmRenderer::CreateRenderTarget(
 	renderTargetResource.m_hDepthTexture = hDepthTexture;
 	renderTargetResource.m_Width = width;
 	renderTargetResource.m_Height = height;
+	renderTargetResource.m_IsCubemap = false;
 
 	memset(&renderTargetResource.m_Surface, 0, sizeof(gcmSurface));
 	
@@ -589,6 +590,151 @@ RenderTargetHandle CGcmRenderer::CreateRenderTarget(
 	return hRenderTarget;
 }
 
+RenderTargetHandle CGcmRenderer::CreateRenderTargetCube(
+	uint32 size,
+	TextureFormat_t::Enum colorFormat,
+	TextureFormat_t::Enum depthFormat)
+{
+	uint32 colorPitch = (size * 4 + 63) & ~63;
+	RsxAllocation_t colorAlloc;
+	colorAlloc.m_pPtr = GCMGL_NULL;
+	TextureHandle hColorTexture = 0;
+	if (colorFormat != TextureFormat_t::Depth16 &&
+		colorFormat != TextureFormat_t::Depth24 &&
+		colorFormat != TextureFormat_t::Depth32F &&
+		colorFormat != TextureFormat_t::Depth24Stencil8)
+	{
+		colorAlloc = m_StaticHeap.Alloc(colorPitch * size * 6, 64);
+		if (colorAlloc.m_pPtr)
+		{
+			memset(colorAlloc.m_pPtr, 0, colorPitch * size * 6);
+			hColorTexture = AllocHandle();
+			TextureResource_t colorTextureResource;
+			colorTextureResource.m_pBuffer = colorAlloc.m_pPtr;
+			colorTextureResource.m_Offset = colorAlloc.m_Offset;
+			colorTextureResource.m_Width = size;
+			colorTextureResource.m_Height = size;
+			colorTextureResource.m_Format = colorFormat;
+			colorTextureResource.m_Alloc = colorAlloc;
+			colorTextureResource.m_IsCubemap = true;
+			m_TextureResources.Insert(hColorTexture, colorTextureResource);
+		}
+	}
+
+	uint32 depthPitch = (size * 4 + 63) & ~63;
+	RsxAllocation_t depthAlloc;
+	depthAlloc.m_pPtr = GCMGL_NULL;
+	TextureHandle hDepthTexture = 0;
+	if (depthFormat == TextureFormat_t::Depth16 ||
+		depthFormat == TextureFormat_t::Depth24 ||
+		depthFormat == TextureFormat_t::Depth32F ||
+		depthFormat == TextureFormat_t::Depth24Stencil8)
+	{
+		depthAlloc = m_StaticHeap.Alloc(depthPitch * size * 6, 64);
+		if (depthAlloc.m_pPtr)
+		{
+			memset(depthAlloc.m_pPtr, 0, depthPitch * size * 6);
+			hDepthTexture = AllocHandle();
+			TextureResource_t depthTextureResource;
+			depthTextureResource.m_pBuffer = depthAlloc.m_pPtr;
+			depthTextureResource.m_Offset = depthAlloc.m_Offset;
+			depthTextureResource.m_Width = size;
+			depthTextureResource.m_Height = size;
+			depthTextureResource.m_Format = depthFormat;
+			depthTextureResource.m_Alloc = depthAlloc;
+			depthTextureResource.m_IsCubemap = true;
+			m_TextureResources.Insert(hDepthTexture, depthTextureResource);
+		}
+	}
+
+	__sync_synchronize();
+
+	RenderTargetHandle hRenderTarget = AllocHandle();
+	RenderTargetResource_t renderTargetResource;
+	renderTargetResource.m_hColorTexture = hColorTexture;
+	renderTargetResource.m_hDepthTexture = hDepthTexture;
+	renderTargetResource.m_Width = size;
+	renderTargetResource.m_Height = size;
+	renderTargetResource.m_IsCubemap = true;
+
+	memset(&renderTargetResource.m_Surface, 0, sizeof(gcmSurface));
+	
+	if (hColorTexture != 0)
+	{
+		if (colorFormat == TextureFormat_t::RGBA8)
+		{
+			renderTargetResource.m_Surface.colorFormat = GCM_SURFACE_A8R8G8B8;
+		}
+		else
+		{
+			renderTargetResource.m_Surface.colorFormat = GCM_SURFACE_X8R8G8B8;
+		}
+		renderTargetResource.m_Surface.colorTarget = GCM_SURFACE_TARGET_0;
+		renderTargetResource.m_Surface.colorLocation[0] = GCM_LOCATION_RSX;
+		renderTargetResource.m_Surface.colorOffset[0] = colorAlloc.m_Offset;
+		renderTargetResource.m_Surface.colorPitch[0] = colorPitch;
+		renderTargetResource.m_Surface.colorLocation[1] = GCM_LOCATION_RSX;
+		renderTargetResource.m_Surface.colorLocation[2] = GCM_LOCATION_RSX;
+		renderTargetResource.m_Surface.colorLocation[3] = GCM_LOCATION_RSX;
+		renderTargetResource.m_Surface.colorOffset[1] = 0;
+		renderTargetResource.m_Surface.colorOffset[2] = 0;
+		renderTargetResource.m_Surface.colorOffset[3] = 0;
+		renderTargetResource.m_Surface.colorPitch[1] = colorPitch;
+		renderTargetResource.m_Surface.colorPitch[2] = colorPitch;
+		renderTargetResource.m_Surface.colorPitch[3] = colorPitch;
+	}
+	else
+	{
+		renderTargetResource.m_Surface.colorFormat = GCM_SURFACE_X8R8G8B8;
+		renderTargetResource.m_Surface.colorTarget = GCM_SURFACE_TARGET_NONE;
+		renderTargetResource.m_Surface.colorLocation[0] = GCM_LOCATION_RSX;
+		renderTargetResource.m_Surface.colorOffset[0] = 0;
+		renderTargetResource.m_Surface.colorPitch[0] = 64;
+		renderTargetResource.m_Surface.colorLocation[1] = GCM_LOCATION_RSX;
+		renderTargetResource.m_Surface.colorLocation[2] = GCM_LOCATION_RSX;
+		renderTargetResource.m_Surface.colorLocation[3] = GCM_LOCATION_RSX;
+		renderTargetResource.m_Surface.colorOffset[1] = 0;
+		renderTargetResource.m_Surface.colorOffset[2] = 0;
+		renderTargetResource.m_Surface.colorOffset[3] = 0;
+		renderTargetResource.m_Surface.colorPitch[1] = 64;
+		renderTargetResource.m_Surface.colorPitch[2] = 64;
+		renderTargetResource.m_Surface.colorPitch[3] = 64;
+	}
+
+	if (hDepthTexture != 0)
+	{
+		if (depthFormat == TextureFormat_t::Depth16)
+		{
+			renderTargetResource.m_Surface.depthFormat = GCM_SURFACE_Z16;
+		}
+		else
+		{
+			renderTargetResource.m_Surface.depthFormat = GCM_SURFACE_Z24S8;
+		}
+		renderTargetResource.m_Surface.depthLocation = GCM_LOCATION_RSX;
+		renderTargetResource.m_Surface.depthOffset = depthAlloc.m_Offset;
+		renderTargetResource.m_Surface.depthPitch = depthPitch;
+	}
+	else
+	{
+		renderTargetResource.m_Surface.depthFormat = GCM_SURFACE_Z24S8;
+		renderTargetResource.m_Surface.depthLocation = GCM_LOCATION_RSX;
+		renderTargetResource.m_Surface.depthOffset = 0;
+		renderTargetResource.m_Surface.depthPitch = 64;
+	}
+
+	renderTargetResource.m_Surface.type = GCM_SURFACE_TYPE_MAX;
+	renderTargetResource.m_Surface.antialias = GCM_SURFACE_CENTER_1;
+	renderTargetResource.m_Surface.width = size;
+	renderTargetResource.m_Surface.height = size;
+	renderTargetResource.m_Surface.x = 0;
+	renderTargetResource.m_Surface.y = 0;
+
+	m_RenderTargetResources.Insert(hRenderTarget, renderTargetResource);
+
+	return hRenderTarget;
+}
+
 void CGcmRenderer::DestroyRenderTarget(RenderTargetHandle hRenderTarget)
 {
 	const int32 index = m_RenderTargetResources.Find(hRenderTarget);
@@ -607,7 +753,7 @@ void CGcmRenderer::DestroyRenderTarget(RenderTargetHandle hRenderTarget)
 	}
 }
 
-void CGcmRenderer::SetRenderTarget(RenderTargetHandle hRenderTarget)
+void CGcmRenderer::SetRenderTarget(RenderTargetHandle hRenderTarget, uint32 faceIndex)
 {
 	if (hRenderTarget == 0)
 	{
@@ -620,8 +766,29 @@ void CGcmRenderer::SetRenderTarget(RenderTargetHandle hRenderTarget)
 	const int32 index = m_RenderTargetResources.Find(hRenderTarget);
 	if (index != m_RenderTargetResources.InvalidIndex())
 	{
-		const RenderTargetResource_t& renderTargetResource = m_RenderTargetResources.Element(
+		RenderTargetResource_t renderTargetResource = m_RenderTargetResources.Element(
 			index);
+			
+		if (renderTargetResource.m_IsCubemap)
+		{
+			uint32 size = renderTargetResource.m_Width;
+			uint32 faceOffset = size * size * 4 * faceIndex;
+			
+			if (renderTargetResource.m_hColorTexture != 0)
+			{
+				const TextureResource_t& colorRes = m_TextureResources.Element(
+					m_TextureResources.Find(renderTargetResource.m_hColorTexture));
+				renderTargetResource.m_Surface.colorOffset[0] = colorRes.m_Offset + faceOffset;
+			}
+			
+			if (renderTargetResource.m_hDepthTexture != 0)
+			{
+				const TextureResource_t& depthRes = m_TextureResources.Element(
+					m_TextureResources.Find(renderTargetResource.m_hDepthTexture));
+				renderTargetResource.m_Surface.depthOffset = depthRes.m_Offset + faceOffset;
+			}
+		}
+
 		rsxSetSurface(context, const_cast<gcmSurface*>(&renderTargetResource.m_Surface));
 		Viewport_t viewport(
 			0.0f,
