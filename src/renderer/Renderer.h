@@ -259,6 +259,7 @@ private:
 struct BlendState_t
 {
 	bool m_IsEnabled;
+	bool m_IsAdditive;
 };
 
 struct DepthStencilState_t

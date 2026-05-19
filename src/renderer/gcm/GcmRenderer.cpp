@@ -103,7 +103,7 @@ bool CGcmRenderer::Init(const RendererDesc_t& rendererDesc)
 		uint16(m_Viewport.m_Height));
 
 	rsxSetDepthTestEnable(context, GCM_TRUE);
-	rsxSetDepthFunc(context, GCM_LESS);
+	rsxSetDepthFunc(context, GCM_LEQUAL);
 	rsxSetShadeModel(context, GCM_SHADE_MODEL_SMOOTH);
 	rsxSetDepthWriteEnable(context, 1);
 	rsxSetFrontFace(context, GCM_FRONTFACE_CCW);
@@ -310,7 +310,7 @@ void CGcmRenderer::SetEnvironment()
 		uint16(m_Viewport.m_Height));
 
 	rsxSetDepthTestEnable(context, GCM_TRUE);
-	rsxSetDepthFunc(context, GCM_LESS);
+	rsxSetDepthFunc(context, GCM_LEQUAL);
 	rsxSetDepthWriteEnable(context, 1);
 
 	rsxSetFrontFace(context, GCM_FRONTFACE_CCW);
@@ -1510,12 +1510,24 @@ void CGcmRenderer::SetBlendState(const BlendState_t& state)
 	if (state.m_IsEnabled)
 	{
 		rsxSetBlendEnable(context, GCM_TRUE);
-		rsxSetBlendFunc(
-			context,
-			GCM_SRC_ALPHA,
-			GCM_ONE_MINUS_SRC_ALPHA,
-			GCM_ONE,
-			GCM_ZERO);
+		if (state.m_IsAdditive)
+		{
+			rsxSetBlendFunc(
+				context,
+				GCM_ONE,
+				GCM_ONE,
+				GCM_ONE,
+				GCM_ZERO);
+		}
+		else
+		{
+			rsxSetBlendFunc(
+				context,
+				GCM_SRC_ALPHA,
+				GCM_ONE_MINUS_SRC_ALPHA,
+				GCM_ONE,
+				GCM_ZERO);
+		}
 		rsxSetBlendEquation(context, GCM_FUNC_ADD, GCM_FUNC_ADD);
 	}
 	else
@@ -1527,7 +1539,7 @@ void CGcmRenderer::SetBlendState(const BlendState_t& state)
 void CGcmRenderer::SetDepthStencilState(const DepthStencilState_t& state)
 {
 	rsxSetDepthTestEnable(context, state.m_IsDepthTest ? GCM_TRUE : GCM_FALSE);
-	rsxSetDepthFunc(context, GCM_LESS);
+	rsxSetDepthFunc(context, GCM_LEQUAL);
 	rsxSetDepthWriteEnable(
 		context,
 		state.m_IsDepthWrite ? GCM_TRUE : GCM_FALSE);

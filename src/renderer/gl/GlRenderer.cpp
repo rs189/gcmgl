@@ -100,7 +100,7 @@ bool CGlRenderer::Init(const RendererDesc_t& rendererDesc)
 		static_cast<GLsizei>(m_Viewport.m_Height));
 
 	glEnable(GL_DEPTH_TEST);
-	glDepthFunc(GL_LESS);
+	glDepthFunc(GL_LEQUAL);
 	glShadeModel(GL_SMOOTH);
 	glDepthMask(GL_TRUE);
 	glFrontFace(GL_CCW);
@@ -235,6 +235,11 @@ void CGlRenderer::Shutdown()
 
 void CGlRenderer::SetEnvironment()
 {
+#ifndef GL_TEXTURE_CUBE_MAP_SEAMLESS
+#define GL_TEXTURE_CUBE_MAP_SEAMLESS 0x884F
+#endif
+	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
+
 	glDepthMask(GL_TRUE);
 }
 
@@ -1128,7 +1133,14 @@ TextureHandle CGlRenderer::CreateTextureCube(
 	GLuint id;
 	glGenTextures(1, &id);
 	glBindTexture(GL_TEXTURE_CUBE_MAP, id);
-	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	bool isDepth = (format == TextureFormat_t::Depth16 ||
+		format == TextureFormat_t::Depth24 ||
+		format == TextureFormat_t::Depth32F ||
+		format == TextureFormat_t::Depth24Stencil8);
+	glTexParameteri(
+		GL_TEXTURE_CUBE_MAP,
+		GL_TEXTURE_MIN_FILTER,
+		isDepth ? GL_LINEAR : GL_LINEAR_MIPMAP_LINEAR);
 	glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
 	GLenum internalFormat;
@@ -1201,6 +1213,11 @@ TextureHandle CGlRenderer::CreateTextureCube(
 			pFaces ? pFaces[i] : GCMGL_NULL);
 	}
 
+	if (!isDepth)
+	{
+		glGenerateMipmap(GL_TEXTURE_CUBE_MAP);
+	}
+
 	const TextureHandle hTexture = AllocHandle();
 	const TextureResource_t textureResource = {
 		id,
@@ -1208,7 +1225,7 @@ TextureHandle CGlRenderer::CreateTextureCube(
 		size,
 		size,
 		format,
-		true
+		!isDepth
 	};
 	m_TextureResources.Insert(hTexture, textureResource);
 
@@ -1404,7 +1421,14 @@ void CGlRenderer::SetBlendState(const BlendState_t& state)
 	if (state.m_IsEnabled)
 	{
 		glEnable(GL_BLEND);
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		if (state.m_IsAdditive)
+		{
+			glBlendFunc(GL_ONE, GL_ONE);
+		}
+		else
+		{
+			glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		}
 	}
 	else
 	{
@@ -1417,7 +1441,7 @@ void CGlRenderer::SetDepthStencilState(const DepthStencilState_t& state)
 	if (state.m_IsDepthTest)
 	{
 		glEnable(GL_DEPTH_TEST);
-		glDepthFunc(GL_LESS);
+		glDepthFunc(GL_LEQUAL);
 	}
 	else
 	{

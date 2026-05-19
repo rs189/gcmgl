@@ -149,6 +149,7 @@ gcmgl is a C++ graphics library targeting PlayStation 3 (GCM) and Linux (x86_64,
 
 ### BlendState_t
 - `bool m_IsEnabled`
+- `bool m_IsAdditive`
 
 ### DepthStencilState_t
 - `bool m_IsDepthTest`
