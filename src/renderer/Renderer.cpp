@@ -355,3 +355,33 @@ FrustumVisibility_t::Enum CRenderer::GetAABBFrustumVisibility(
 
 	return frustumVisibility;
 }
+
+UniformBlockLayoutHandle CRenderer::GetOrCreateUniformBlockLayout(
+	ShaderProgramHandle hProgram,
+	const UniformBlockLayout_t& layout)
+{
+	int32 programIndex = m_UniformLayoutCache.Find(hProgram);
+	if (programIndex != m_UniformLayoutCache.InvalidIndex())
+	{
+		CUtlMap<uint32, UniformBlockLayoutHandle>& programCache =
+			m_UniformLayoutCache.Element(programIndex);
+		int32 cacheIndex = programCache.Find(layout.m_Binding);
+		if (cacheIndex != programCache.InvalidIndex())
+		{
+			return programCache.Element(cacheIndex);
+		}
+
+		UniformBlockLayoutHandle hLayout = CreateUniformBlockLayout(layout);
+		programCache.Insert(layout.m_Binding, hLayout);
+
+		return hLayout;
+	}
+
+	UniformBlockLayoutHandle hLayout = CreateUniformBlockLayout(layout);
+
+	CUtlMap<uint32, UniformBlockLayoutHandle> programCache;
+	programCache.Insert(layout.m_Binding, hLayout);
+	m_UniformLayoutCache.Insert(hProgram, programCache);
+
+	return hLayout;
+}

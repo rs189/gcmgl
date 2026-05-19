@@ -619,6 +619,9 @@ public:
 
 	virtual UniformBlockLayoutHandle CreateUniformBlockLayout(
 		const UniformBlockLayout_t& layout) = 0;
+	virtual UniformBlockLayoutHandle GetOrCreateUniformBlockLayout(
+		ShaderProgramHandle hProgram,
+		const UniformBlockLayout_t& layout) = 0;
 	virtual void SetConstantBuffer(
 		BufferHandle hBuffer,
 		UniformBlockLayoutHandle hLayout,
@@ -712,6 +715,9 @@ public:
 
 	virtual UniformBlockLayoutHandle CreateUniformBlockLayout(
 		const UniformBlockLayout_t& layout) GCMGL_OVERRIDE;
+	virtual UniformBlockLayoutHandle GetOrCreateUniformBlockLayout(
+		ShaderProgramHandle hProgram,
+		const UniformBlockLayout_t& layout) GCMGL_OVERRIDE;
 
 	virtual void SetPipelineState(const PipelineState_t& state) GCMGL_OVERRIDE;
 	virtual void FlushPipelineState() GCMGL_OVERRIDE;
@@ -745,6 +751,7 @@ protected:
 	PipelineState_t m_PipelineState;
 	CUtlMap<CFixedString, ShaderProgramHandle> m_ShaderCache;
 	CUtlMap<UniformBlockLayoutHandle, UniformBlockLayout_t> m_UniformBlockLayouts;
+	CUtlMap<ShaderProgramHandle, CUtlMap<uint32, UniformBlockLayoutHandle> > m_UniformLayoutCache;
 	StateDirtyFlags_t::Enum m_StateDirtyFlags;
 	uint32 m_NextHandle;
 };

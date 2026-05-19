@@ -242,6 +242,7 @@ gcmgl is a C++ graphics library targeting PlayStation 3 (GCM) and Linux (x86_64,
 - `void SetVertexBuffer(BufferHandle hBuffer, uint32 slot = 0, uint32 vertexStride = 0, uint32 offset = 0, const CVertexLayout* pLayout = GCMGL_NULL)`
 - `void SetIndexBuffer(BufferHandle hBuffer, uint64 offset = 0)`
 - `UniformBlockLayoutHandle CreateUniformBlockLayout(const UniformBlockLayout_t& layout)`
+- `UniformBlockLayoutHandle GetOrCreateUniformBlockLayout(ShaderProgramHandle hProgram, const UniformBlockLayout_t& layout)`
 - `void SetConstantBuffer(BufferHandle hBuffer, UniformBlockLayoutHandle hLayout, uint32 slot, ShaderStage_t stage)`
 - `int32 GetUniformBlockBinding(ShaderProgramHandle hProgram, const char* pBlockName)`
 - `void SetBlendState(const BlendState_t& state)`
