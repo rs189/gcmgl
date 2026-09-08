@@ -24,7 +24,7 @@
 #elif defined( PLATFORM_MACOS ) || defined( __APPLE__ )
 	#undef PLATFORM_MACOS
 	#define PLATFORM_MACOS 1
-#else // unknown platform
+#else // Unknown platform
 	#error "Unknown platform"
 #endif // PLATFORM_PS3 || PLATFORM_WINDOWS || PLATFORM_LINUX || PLATFORM_MACOS
 
