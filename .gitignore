@@ -34,7 +34,7 @@
 # Visual Studio Code
 .vscode
 
-# Gitignore
+# gitignore
 gitignore/
 
 # Build
