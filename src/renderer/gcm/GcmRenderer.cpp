@@ -705,11 +705,11 @@ RenderTargetHandle CGcmRenderer::CreateRenderTargetCube(
 	{
 		if (depthFormat == TextureFormat_t::Depth16)
 		{
-			renderTargetResource.m_Surface.depthFormat = GCM_SURFACE_Z16;
+			renderTargetResource.m_Surface.depthFormat = GCM_SURFACE_ZETA_Z16;
 		}
 		else
 		{
-			renderTargetResource.m_Surface.depthFormat = GCM_SURFACE_Z24S8;
+			renderTargetResource.m_Surface.depthFormat = GCM_SURFACE_ZETA_Z24S8;
 		}
 		renderTargetResource.m_Surface.depthLocation = GCM_LOCATION_RSX;
 		renderTargetResource.m_Surface.depthOffset = depthAlloc.m_Offset;
@@ -717,14 +717,14 @@ RenderTargetHandle CGcmRenderer::CreateRenderTargetCube(
 	}
 	else
 	{
-		renderTargetResource.m_Surface.depthFormat = GCM_SURFACE_Z24S8;
+		renderTargetResource.m_Surface.depthFormat = GCM_SURFACE_ZETA_Z24S8;
 		renderTargetResource.m_Surface.depthLocation = GCM_LOCATION_RSX;
 		renderTargetResource.m_Surface.depthOffset = 0;
 		renderTargetResource.m_Surface.depthPitch = 64;
 	}
 
-	renderTargetResource.m_Surface.type = GCM_SURFACE_TYPE_MAX;
-	renderTargetResource.m_Surface.antialias = GCM_SURFACE_CENTER_1;
+	renderTargetResource.m_Surface.type = GCM_SURFACE_TYPE_LINEAR;
+	renderTargetResource.m_Surface.antiAlias = GCM_SURFACE_CENTER_1;
 	renderTargetResource.m_Surface.width = size;
 	renderTargetResource.m_Surface.height = size;
 	renderTargetResource.m_Surface.x = 0;
