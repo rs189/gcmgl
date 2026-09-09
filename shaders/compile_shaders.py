@@ -48,7 +48,7 @@ class ShaderCompiler:
         for slang_file in sorted(slang_source_dir.glob("*.slang")):
             base = slang_file.stem
             name = slang_file.name
-            print(f"[INFO] Compiling {name}")
+            print(f"Compiling {name}...")
 
             vert_out = self._glsl_output_dir / f"{base}.vert"
             frag_out = self._glsl_output_dir / f"{base}.frag"
@@ -88,7 +88,7 @@ class ShaderCompiler:
                         glsl = glsl.replace("layout(row_major) uniform;\n", "")
                         glsl = glsl.replace("layout(row_major) buffer;\n", "")
                         out_path.write_text(glsl)
-                        print(f"[INFO] Slang {stage} OK -> {out_path}")
+                        print(f"Slang {stage} OK -> {out_path}")
                     else:
                         out_path.unlink(missing_ok=True)
                         print(f"[WARNING] Failed to compile {stage} shader {name}")
@@ -135,7 +135,7 @@ class ShaderCompiler:
         for shader_name in shader_names:
             vcg_file = vcg_files.get(shader_name)
             fcg_file = fcg_files.get(shader_name)
-            print(f"[INFO] Building {shader_name}")
+            print(f"Building {shader_name}...")
 
             vpo_path = self._cg_output_dir / f"{shader_name}.vpo"
             fpo_path = self._cg_output_dir / f"{shader_name}.fpo"
@@ -152,7 +152,7 @@ class ShaderCompiler:
                     )
 
                     if result.returncode == 0:
-                        print(f"[INFO] GCM vertex OK -> {vpo_path}")
+                        print(f"GCM vertex OK -> {vpo_path}")
                     else:
                         vpo_path.unlink(missing_ok=True)
                         print(f"[WARNING] Failed to compile vertex shader {vcg_file}")
@@ -174,7 +174,7 @@ class ShaderCompiler:
                     )
 
                     if result.returncode == 0:
-                        print(f"[INFO] GCM fragment OK -> {fpo_path}")
+                        print(f"GCM fragment OK -> {fpo_path}")
                     else:
                         fpo_path.unlink(missing_ok=True)
                         print(f"[WARNING] Failed to compile fragment shader {fcg_file}")
@@ -184,16 +184,17 @@ class ShaderCompiler:
                 except (OSError, UnicodeDecodeError) as error:
                     print(f"[ERROR] Failed to compile fragment: {error}")
 
-        print("[INFO] Shader compilation complete.")
+        print("Shader compilation complete")
 
         return True
 
 
-def main() -> None:
+def main() -> int:
     project_root = Path(__file__).parent.parent.resolve()
     compiler = ShaderCompiler(project_root)
-    compiler.run()
+
+    return 0 if compiler.run() else 1
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
