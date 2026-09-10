@@ -6,15 +6,19 @@ ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 cd "$ROOT_DIR"
 
 LOG_DIR="$ROOT_DIR/build/logs"
+LOG_FILE="$LOG_DIR/pull_submodules.log"
 mkdir -p "$LOG_DIR"
-exec > >(tee "$LOG_DIR/pull_submodules.log") 2>&1
+: > "$LOG_FILE"
+exec 3>&1 1>>"$LOG_FILE" 2>&1
 
+PULL_MATHSFURY=1
 PULL_GLAD=0
 PULL_SIMDE=0
 PULL_OFFSET_ALLOCATOR=0
 PULL_SLANG=0
 for arg in "$@"; do
 	case $arg in
+		--pull-mathsfury) PULL_MATHSFURY=1 ;;
 		--pull-glad) PULL_GLAD=1 ;;
 		--pull-simde) PULL_SIMDE=1 ;;
 		--pull-offset-allocator) PULL_OFFSET_ALLOCATOR=1 ;;
@@ -23,74 +27,72 @@ for arg in "$@"; do
 done
 
 if ! command -v git >/dev/null 2>&1; then
-	echo "[ERROR] git not found"
+	printf '[ERROR] git not found\n' >&3
 	exit 1
 fi
 
 echo "Updating submodules..."
 
 MATHSFURY_DIR="$ROOT_DIR/thirdparty/mathsfury"
-if [ -d "$MATHSFURY_DIR/.git" ]; then
-	echo ""
-	echo "Pushing mathsfury submodule..."
+GLAD_DIR="$ROOT_DIR/thirdparty/glad"
+SIMDE_DIR="$ROOT_DIR/thirdparty/simde"
+OFFSET_ALLOCATOR_DIR="$ROOT_DIR/thirdparty/OffsetAllocator"
+SLANG_DIR="$ROOT_DIR/thirdparty/slang"
 
-	git -C "$MATHSFURY_DIR" push
+MATHSFURY_BRANCH=origin/main
+GLAD_BRANCH=origin/glad2
+SIMDE_BRANCH=origin/master
+OFFSET_ALLOCATOR_BRANCH=origin/main
+SLANG_BRANCH=origin/master
+
+update_submodule() {
+	local name="$1"
+	local dir="$2"
+	local branch="$3"
+
+	echo "Updating $name submodule..."
+
+	if git -C "$dir" fetch && git -C "$dir" checkout "$branch"; then
+		git add "$dir"
+		printf '%s updated\n' "$name" >&3
+		return 0
+	fi
+
+	printf '[ERROR] %s update failed\n' "$name" >&3
+	return 1
+}
+
+git submodule sync --recursive
+git submodule update --init --recursive
+printf 'Submodules synced and initialized\n' >&3
+
+if [ "$PULL_MATHSFURY" -eq 1 ]; then
+	update_submodule mathsfury "$MATHSFURY_DIR" "$MATHSFURY_BRANCH"
 fi
 
-echo ""
-git submodule update --init
-git -C "$MATHSFURY_DIR" fetch
-git -C "$MATHSFURY_DIR" checkout origin/main
-git add "$MATHSFURY_DIR"
-echo "mathsfury updated"
-
 if [ "$PULL_GLAD" -eq 1 ]; then
-	echo ""
-	echo "Updating glad submodule..."
-
-	git -C "$ROOT_DIR/thirdparty/glad" fetch
-	git -C "$ROOT_DIR/thirdparty/glad" checkout origin/glad2
-	git add "$ROOT_DIR/thirdparty/glad"
-	echo "glad updated"
+	update_submodule glad "$GLAD_DIR" "$GLAD_BRANCH"
 fi
 
 if [ "$PULL_SIMDE" -eq 1 ]; then
-	echo ""
-	echo "Updating simde submodule..."
-
-	git -C "$ROOT_DIR/thirdparty/simde" fetch
-	git -C "$ROOT_DIR/thirdparty/simde" checkout origin/master
-	git add "$ROOT_DIR/thirdparty/simde"
-	echo "simde updated"
+	update_submodule simde "$SIMDE_DIR" "$SIMDE_BRANCH"
 fi
 
 if [ "$PULL_OFFSET_ALLOCATOR" -eq 1 ]; then
-	echo ""
-	echo "Updating OffsetAllocator submodule..."
-
-	git -C "$ROOT_DIR/thirdparty/OffsetAllocator" fetch
-	git -C "$ROOT_DIR/thirdparty/OffsetAllocator" checkout origin/main
-	git add "$ROOT_DIR/thirdparty/OffsetAllocator"
-	echo "OffsetAllocator updated"
+	update_submodule offset_allocator "$OFFSET_ALLOCATOR_DIR" "$OFFSET_ALLOCATOR_BRANCH"
 fi
 
 if [ "$PULL_SLANG" -eq 1 ]; then
-	echo ""
-	echo "Updating slang submodule..."
-
-	git -C "$ROOT_DIR/thirdparty/slang" fetch
-	git -C "$ROOT_DIR/thirdparty/slang" checkout origin/master
-	git add "$ROOT_DIR/thirdparty/slang"
-	echo "slang updated"
+	update_submodule slang "$SLANG_DIR" "$SLANG_BRANCH"
 fi
 
 echo ""
 echo "Committing updated submodules..."
 
-git commit -m "feat: update submodules" || {
-	echo "[INFO] No submodule changes to commit"
-}
+if git commit -m "feat: update submodules"; then
+	printf 'Submodules committed\n' >&3
+else
+	printf '[INFO] No submodule changes to commit\n' >&3
+fi
 
-echo ""
-echo "Submodule update complete"
-
+printf 'Submodule update complete\n' >&3
