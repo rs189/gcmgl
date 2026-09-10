@@ -9,7 +9,7 @@ gcmgl is a C++ graphics library targeting PlayStation 3 (GCM) and Linux (x86_64,
 
 ##### Core dependencies:
 
-- [mathsfury](https://github.com/rs189/mathsfury)
+- [mathsfury](https://github.com/Index-Software/mathsfury)
 
 ##### PS3 build dependencies:
 
